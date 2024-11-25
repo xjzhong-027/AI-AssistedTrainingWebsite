@@ -1,0 +1,36 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>英语听力教学网站</title>
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+</head>
+<body>
+<form method="post" action="/login/">
+    {% csrf_token %}
+    <div class="header">
+        Login
+    </div>
+    <div class="username">
+        <label for="username">Username: </label>
+        <input type="text" id="username" name="username">
+    </div>
+    <div class="password">
+        <label for="password">Password: </label>
+        <input type="password" id="password" name="password">
+    </div>
+    <div class="role">
+        <input type="radio" name="role" value="student" checked id="student_role">
+        <label for="student_role">Student</label>
+        <input type="radio" name="role" value="teacher" id="teacher_role">
+        <label for="teacher_role">Teacher</label>
+        <input type="radio" name="role" value="admin" id="admin_role">
+        <label for="admin_role">admin</label>
+    </div>
+    <p class="error_message">{{ error_message }}</p>
+    <input type="submit" value="Login" class="submit">
+</form>
+</body>
+</html>
