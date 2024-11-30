@@ -1,6 +1,7 @@
 #导入要用的模块
 import os
 from django.shortcuts import render, HttpResponse, redirect
+# from django.contrib.auth import authenticate, login
 from English_Listening_Website import settings
 from .forms import UploadMediaForm
 
@@ -9,6 +10,7 @@ from .forms import UploadMediaForm
 def test_page(request):
     return render(request, 'test_page.html')
 
+# 登录板块
 def login(request):
     if request.method == 'GET':
         return render(request, 'login.html')
@@ -33,6 +35,7 @@ def login(request):
                           'error_message': 'Invalid username or password！',
                       })
 
+# 教师端主页展示
 def teacher_index(request):
     return render(request, 'teacher_side/index.html')
 
@@ -42,6 +45,7 @@ def teacher_course(request):
 def teacher_class(request):
     return render(request, 'teacher_side/class.html')
 
+# 题库管理
 def teacher_question_bank(request):
     if request.session.get('is_login', None):
         username = request.session.get('username', None)
@@ -63,6 +67,7 @@ def teacher_forum(request):
 def teacher_question_add(request):
     return render(request, 'teacher_side/task_package_add.html')
 
+# 传统试题交互界面+文档批量导入
 def teacher_task_package_add(request):
     if request.method == 'POST':
         # print('post successfully.')

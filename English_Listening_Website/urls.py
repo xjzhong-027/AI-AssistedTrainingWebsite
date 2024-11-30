@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from setuptools.extern import names
+# from setuptools.extern import names
 
 #导入ELW视图
 from ELW import views, urls
@@ -26,10 +26,10 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    path('login/', views.login, name='login'),
+    path(route='login/', view=views.login, name='login'),
 
-    # path('test_page/', views.test_page, name='test_page'),
-    path('', include('ELW.urls')),
+    # 分发路由
+    path('teacher/', include('ELW.urls')),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)   #添加对媒体文件的访问路由
 
