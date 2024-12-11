@@ -1,9 +1,14 @@
 #导入要用的模块
+import datetime
 import os
 from django.shortcuts import render, HttpResponse, redirect
+
 # from django.contrib.auth import authenticate, login
 from English_Listening_Website import settings
 from .forms import UploadMediaForm
+from ELW import models
+
+
 
 # Create your views here.
 
@@ -21,15 +26,27 @@ def login(request):
         role = request.POST['role']
         username = request.POST['username']
         password = request.POST['password']
-        if role == 'student' and username == 'student' and password == 'student':
-            return HttpResponse('The main page of student version should be shown here.')
-        # 【待修改为教师端主页面】
-        if role == 'teacher' and username == 'teacher' and password == 'teacher':
-            request.session['username'] = username  #username值发送给session的username
-            request.session['is_login'] = True  #认证为真
-            return redirect('teacher_index')
-        if role == 'admin' and username == 'admin' and password == 'admin':
-            return HttpResponse('The main page of admin version should be shown here.')
+
+        # 验证学生登录
+        if role == 'student':
+            if models.Students.objects.filter(username=username).exists():
+                time = datetime.datetime.now()
+                # print(time)
+                # 【待修改周次week，登录设备信息device_info的数据写入】
+                models.LoginInfo.objects.create(username=username, action='login', action_time=time, last_action_time=time, device_info='test' )
+                # 【待替换学生端页面】
+                return HttpResponse('The main page of student version should be shown here.')
+        # 验证教师登录
+        if role == 'teacher':
+            if models.Teachers.objects.filter(username=username,password=password).exists():
+                request.session['username'] = username  #username值发送给session的username
+                request.session['is_login'] = True  #认证为真
+                return redirect('teacher_index')
+        # 验证管理员登录
+        if role == 'admin':
+            if models.Admins.objects.filter(username=username).exists():
+                #【待替换管理员页面】
+                return HttpResponse('The main page of admin version should be shown here.')
         return render(request, 'login.html',
                       {
                           'error_message': 'Invalid username or password！',
