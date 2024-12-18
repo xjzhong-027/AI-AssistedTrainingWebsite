@@ -24,7 +24,7 @@ class LoginInfo(models.Model):
     week = models.IntegerField(default=0)
     action = models.CharField(max_length=10)
     action_time = models.DateTimeField()
-    last_action_time = models.DateTimeField()
-    device_info = models.CharField(max_length=20)
+    last_active_time = models.CharField(max_length=50)
+    device_info = models.CharField(max_length=500)
 
 

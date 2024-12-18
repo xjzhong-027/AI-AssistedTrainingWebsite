@@ -1,0 +1,78 @@
+let timeout;  // 用于保存定时器的 ID
+let firstActivityTime = null;  // 记录首次活动的时间
+let lastActivitySentTime = null;  // 记录上次发送请求的时间
+
+// 监控鼠标点击事件
+document.addEventListener('click', function() {
+    console.log('clicked.')
+    updateLastActivity();
+});
+
+// 监控键盘按键事件
+document.addEventListener('keydown', function() {
+    updateLastActivity();
+});
+
+// 监控鼠标移动事件
+// document.addEventListener('mousemove', function() {
+//     updateLastActivity();
+// });
+
+// 更新最后活跃时间
+function updateLastActivity() {
+    const currentTime = new Date();
+
+    // 如果是第一次活动，立即发送请求，并设置第一次活动的时间
+    if (!firstActivityTime) {
+        firstActivityTime = currentTime;
+        sendActivityToServer(currentTime.toISOString());  // 立即发送请求
+        lastActivitySentTime = currentTime;  // 更新上次发送的时间
+    }
+
+    // 如果首次活动时间存在，检查距离上次发送请求是否超过5分钟
+    const timeSinceLastRequest = currentTime - lastActivitySentTime;
+    if (timeSinceLastRequest >= 300000) {  // 5分钟（300000毫秒）
+        sendActivityToServer(currentTime.toISOString());  // 发送请求
+        lastActivitySentTime = currentTime;  // 更新上次发送的时间
+    }
+
+    // 设置定时器（每次活动都会清除前一个定时器，重置定时器）
+    if (timeout) clearTimeout(timeout);
+
+    // 设定定时器，5分钟后清空状态
+    timeout = setTimeout(function() {
+        firstActivityTime = null;  // 清除首次活动时间
+        lastActivitySentTime = null;  // 清除上次发送的时间
+    }, 300000);  // 5分钟后清空活动状态
+}
+
+// 将活动时间发送到后端
+function sendActivityToServer(lastActiveTime) {
+    console.log('already sent for 1!');
+    fetch('/update_last_activity/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')  // 获取 CSRF token
+        },
+        body: JSON.stringify({
+            last_active_time: lastActiveTime
+        })
+    });
+}
+
+// 获取 CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}

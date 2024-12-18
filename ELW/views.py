@@ -2,6 +2,9 @@
 import datetime
 import os
 from django.shortcuts import render, HttpResponse, redirect
+from django.contrib.auth import logout
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 # from django.contrib.auth import authenticate, login
 from English_Listening_Website import settings
@@ -15,14 +18,27 @@ from ELW import models
 def test_page(request):
     return render(request, 'test_page.html')
 
+
+@csrf_exempt
+def update_last_activity(request):
+    if request.method == 'POST':
+        # 获取请求中的时间
+        # import json
+        # data = json.loads(request.body)
+        # last_active_time = data.get('last_active_time')
+        print('received POST request.')
+        if request.session.get('is_login', False):
+            # 更新数据库中的最后活跃时间
+            request.session['last_active_time'] = str(datetime.datetime.now())
+            # print('last_active_time', request.session['last_active_time'])
+        return JsonResponse({"status": "success"})
+    return JsonResponse({"status": "error"}, status=400)
+
 # 登录板块
 def login(request):
     if request.method == 'GET':
         return render(request, 'login.html')
-
-    #【待连接数据库...】
     if request.method == 'POST':
-        #print(request.POST)
         role = request.POST['role']
         username = request.POST['username']
         password = request.POST['password']
@@ -31,9 +47,16 @@ def login(request):
         if role == 'student':
             if models.Students.objects.filter(username=username).exists():
                 time = datetime.datetime.now()
-                # print(time)
-                # 【待修改周次week，登录设备信息device_info的数据写入】
-                models.LoginInfo.objects.create(username=username, action='login', action_time=time, last_action_time=time, device_info='test' )
+                # 获取用户的 User-Agent 信息，包括浏览器类型和引擎、操作系统信息、设备类型等信息
+                user_agent = request.META.get('HTTP_USER_AGENT', '')
+                # 【待修改周次week】
+                models.LoginInfo.objects.create(
+                    username=username,
+                    action='login',
+                    action_time=time,
+                    last_active_time='',
+                    device_info=user_agent,
+                )
                 # 【待替换学生端页面】
                 return HttpResponse('The main page of student version should be shown here.')
         # 验证教师登录
@@ -41,6 +64,8 @@ def login(request):
             if models.Teachers.objects.filter(username=username,password=password).exists():
                 request.session['username'] = username  #username值发送给session的username
                 request.session['is_login'] = True  #认证为真
+                request.session['teacher_name'] = models.Teachers.objects.get(username=username).name
+                # print(request.session['teacher_name'])
                 return redirect('teacher_index')
         # 验证管理员登录
         if role == 'admin':
@@ -52,9 +77,28 @@ def login(request):
                           'error_message': 'Invalid username or password！',
                       })
 
+# 登出板块
+def log_out(request):
+    # 获取用户的 IP 地址
+    # ip_address = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
+    # print('ip_address', ip_address)
+    models.LoginInfo.objects.create(
+        username=request.session.get('username'),
+        action='logout',
+        action_time=datetime.datetime.now(),
+        last_active_time=request.session['last_active_time'],   #待修改
+        device_info=request.META.get('HTTP_USER_AGENT', ''),
+    )
+    logout(request)
+    return redirect('login')
+
 # 教师端主页展示
 def teacher_index(request):
-    return render(request, 'teacher_side/index.html')
+    if request.session.get('is_login', None):
+        return render(request, 'teacher_side/index.html', {
+            'teacher_name': request.session['teacher_name'],
+        })
+    return redirect('login')
 
 def teacher_course(request):
     return render(request, 'teacher_side/course.html')

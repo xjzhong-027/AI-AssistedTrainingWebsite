@@ -145,3 +145,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# 设置会话过期时间（单位：秒）
+SESSION_COOKIE_AGE = 1800  # 30分钟
+# 用户登录后，浏览器关闭时，关闭登录状态
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+

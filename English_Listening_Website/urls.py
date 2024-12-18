@@ -27,6 +27,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     path(route='login/', view=views.login, name='login'),
+    path(route='logout/', view=views.log_out, name='logout'),
+    path('update_last_activity/', view=views.update_last_activity, name='update_last_activity'),
 
     # 分发路由
     path('teacher/', include('ELW.urls')),
