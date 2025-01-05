@@ -6,6 +6,50 @@ import os
 from django.template.context_processors import request
 
 
+
+
+
+from django import forms
+from django.forms import inlineformset_factory
+from .models import BigQuestion, SmallQuestion
+
+class BigQuestionForm(forms.ModelForm):
+    class Meta:
+        model = BigQuestion
+        fields = ['question_text']
+        widgets = {
+            'question_text': forms.Textarea(attrs={'rows': 4}),
+        }
+
+class SmallQuestionForm(forms.ModelForm):
+    class Meta:
+        model = SmallQuestion
+        fields = ['question_text', 'image_url', 'tips', 'answer', 'analysis', 'score']
+        widgets = {
+            'question_text': forms.Textarea(attrs={'rows': 2}),
+            'tips': forms.Textarea(attrs={'rows': 2}),
+            'answer': forms.Textarea(attrs={'rows': 2}),
+            'analysis': forms.Textarea(attrs={'rows': 2}),
+            'score': forms.NumberInput(),
+        }
+
+# 创建大题与小题的表单集合
+SmallQuestionFormSet = inlineformset_factory(
+    BigQuestion, SmallQuestion,  # 父模型和子模型
+    form=SmallQuestionForm,
+    extra=1,  # 默认提供一个空表单
+    can_delete=True  # 允许用户删除小题
+)
+
+
+
+
+
+
+
+
+
+
 #
 # def validate_file_extension(value):
 #     valid_extensions = ['.mp3', '.wav', '.mp4', '.avi', '.mov']  # 根据需要添加更多扩展名
@@ -20,22 +64,29 @@ from django.template.context_processors import request
 #     ])
 
 class UploadMediaForm(forms.Form):
-    audio_file = forms.FileField(
-        # 只允许上传音频
-        validators=[FileExtensionValidator(allowed_extensions=['mp3', 'mp4'])],
-        widget=ClearableFileInput(attrs={'accept': 'audio/*'}),
-        required=False,
-    )
-    video_file = forms.FileField(
-        # 只允许上传视频
-        validators=[FileExtensionValidator(allowed_extensions=['avi', 'wav', 'mov', 'ogg', 'webm'])],
-        widget=ClearableFileInput(attrs={'accept': 'video/*'}),
-        required=False,
+    # audio_file = forms.FileField(
+    #     # 只允许上传音频
+    #     validators=[FileExtensionValidator(allowed_extensions=['mp3', 'mp4'])],
+    #     widget=ClearableFileInput(attrs={'accept': 'audio/*'}),
+    #     required=False,
+    # )
+    # video_file = forms.FileField(
+    #     # 只允许上传视频
+    #     validators=[FileExtensionValidator(allowed_extensions=['avi', 'wav', 'mov', 'ogg', 'webm'])],
+    #     widget=ClearableFileInput(attrs={'accept': 'video/*'}),
+    #     required=False,
+    # )
+    media_file = forms.FileField(
+        validators=[FileExtensionValidator(allowed_extensions=['mp3', 'mp4', 'avi', 'wav', 'mov', 'ogg', 'webm'])],
+        widget=ClearableFileInput(attrs={'accept': '.mp3,.mp4,.avi,.wav,.mov,.ogg,.webm,audio/*'}),
+        # 至少要上传一个媒体文件
+        required=True,
     )
     image_file = forms.FileField(
         # 只允许上传图片
         validators=[FileExtensionValidator(allowed_extensions=['png', 'jpg', 'jpeg', 'gif'])],
         widget=ClearableFileInput(attrs={'accept': 'image/*'}),
+        # 可以不上传图片
         required=False,
     )
 

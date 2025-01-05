@@ -1,0 +1,120 @@
+<h2>创建大题及小题</h2>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- 大题表单 -->
+    <h3>大题信息</h3>
+    {{ big_question_form.as_p }}
+
+    <!-- 小题表单集合 -->
+    <h3>小题信息</h3>
+    {{ small_question_formset.management_form }}
+    <div id="small-questions-formset">
+        <!-- 渲染初始的小题表单 -->
+        {% for form in small_question_formset.forms %}
+            <div class="small-question-form">
+                {{ form.as_p }}
+                <button type="button" class="delete-form-btn">删除</button>
+            </div>
+        {% endfor %}
+    </div>
+
+    <button type="button" id="add-form-btn">添加小题</button>
+    <button type="submit">保存</button>
+</form>
+
+<!-- 隐藏一个空表单模板，用于动态添加 -->
+<div id="empty-form-template" style="display: none;">
+    {{ small_question_formset.empty_form.as_p }}
+    <button type="button" class="delete-form-btn">删除</button>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const formsetContainer = document.getElementById("small-questions-formset");
+        const addFormBtn = document.getElementById("add-form-btn");
+        const emptyFormTemplate = document.getElementById("empty-form-template").innerHTML;
+        const managementFormTotal = document.querySelector("#id_small_questions-TOTAL_FORMS");
+
+        // 更新管理表单总数
+        const updateFormsetTotalForms = () => {
+            const forms = formsetContainer.querySelectorAll(".small-question-form");
+            managementFormTotal.value = forms.length; // 更新表单总数
+        };
+
+        // 更新每个表单的索引
+        const updateFormIndexes = () => {
+            const forms = formsetContainer.querySelectorAll(".small-question-form");
+            forms.forEach((form, index) => {
+                form.querySelectorAll("[name], [id], [for]").forEach((element) => {
+                    ["name", "id", "for"].forEach((attr) => {
+                        if (element.hasAttribute(attr)) {
+                            element.setAttribute(
+                                attr,
+                                element.getAttribute(attr).replace(/-\d+-/, `-${index}-`)
+                            );
+                        }
+                    });
+                });
+            });
+        };
+
+        // 添加新表单
+        addFormBtn.addEventListener("click", () => {
+            const totalForms = parseInt(managementFormTotal.value, 10);
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, totalForms);
+            const newFormDiv = document.createElement("div");
+            newFormDiv.classList.add("small-question-form");
+            newFormDiv.innerHTML = newFormHtml;
+            formsetContainer.appendChild(newFormDiv);
+            updateFormsetTotalForms();
+        });
+
+        // 删除表单
+        formsetContainer.addEventListener("click", (event) => {
+            if (event.target.classList.contains("delete-form-btn")) {
+                const formDiv = event.target.closest(".small-question-form");
+                formDiv.remove();
+                updateFormsetTotalForms();
+                updateFormIndexes(); // 删除后更新索引
+            }
+        });
+    });
+</script>
+
+
+{##}
+{#<script>#}
+{#    document.addEventListener("DOMContentLoaded", function () {#}
+{#        const formsetContainer = document.getElementById("small-questions-formset");#}
+{#        const addFormBtn = document.getElementById("add-form-btn");#}
+{#        const emptyFormTemplate = document.getElementById("empty-form-template").innerHTML;#}
+{##}
+{#        // 更新管理表单总数#}
+{#        const updateFormsetTotalForms = () => {#}
+{#            const totalForms = formsetContainer.querySelectorAll(".small-question-form").length;#}
+{#            const managementForm = document.querySelector("#id_small_questions-TOTAL_FORMS");#}
+{#            managementForm.value = totalForms;#}
+{#        };#}
+{##}
+{#        // 添加新表单#}
+{#        addFormBtn.addEventListener("click", () => {#}
+{#            const totalForms = formsetContainer.querySelectorAll(".small-question-form").length;#}
+{#            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, totalForms);#}
+{#            const newFormDiv = document.createElement("div");#}
+{#            newFormDiv.classList.add("small-question-form");#}
+{#            newFormDiv.innerHTML = newFormHtml;#}
+{#            formsetContainer.appendChild(newFormDiv);#}
+{#            updateFormsetTotalForms();#}
+{#        });#}
+{##}
+{#        // 删除表单#}
+{#        formsetContainer.addEventListener("click", (event) => {#}
+{#            if (event.target.classList.contains("delete-form-btn")) {#}
+{#                const formDiv = event.target.closest(".small-question-form");#}
+{#                formDiv.remove();#}
+{#                updateFormsetTotalForms();#}
+{#            }#}
+{#        });#}
+{#    });#}
+{#</script>#}

@@ -1,89 +1,95 @@
-* {
+/* 基本样式重置 */
+body, html {
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
     font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    display: flex;
+    min-height: 100vh; /* 确保容器高度至少为视口高度 */
 }
 
-body, html {
-    height: 100%;
-    margin: 0;
-}
-
+/* 页面布局容器 */
 .container {
     display: flex;
-    height: 100vh;
-    width: 100%;
+    width: 100%; /* 确保容器宽度为100% */
 }
 
+/* 侧边栏样式 */
 .sidebar {
-    width: 20%;
+    width: 25%; /* 侧边栏占据20%宽度 */
     background-color: #333;
     color: white;
     padding: 20px;
-    position: fixed;
-    height: 100vh;
-    overflow-y: auto;
+    box-sizing: border-box; /* 包括内边距和边框在内计算宽度 */
 }
 
-.sidebar ul {
-    list-style-type: none;
-    padding: 0;
+/* 侧边栏表格样式 */
+.sidebar table {
+    width: 100%;
+    border-collapse: collapse;
 }
 
-.sidebar li {
-    margin: 10px 0;
+.sidebar th, .sidebar td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #555;
 }
 
-.sidebar a {
-    color: white;
-    text-decoration: none;
+.sidebar th {
+    background-color: #444;
 }
 
-.form-container {
-    width: 80%;
-    margin-left: 20%; /* To offset the fixed sidebar */
-    padding: 20px;
-    overflow-y: auto; /* Enable vertical scrolling if content overflows */
-    background-color: #f4f4f4;
-}
-
-form {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
+/* 主内容区域样式 */
+.main {
+    width: 80%; /* 主内容区域占据剩余80%宽度 */
     background-color: white;
+    padding: 20px;
+    box-sizing: border-box; /* 包括内边距和边框在内计算宽度 */
+    display: flex; /* 可选，用于内部布局调整 */
+    flex-direction: column; /* 可选，如果需要在主内容区域内进行垂直布局 */
+}
+
+/* 表单样式 */
+.main form {
+    max-width: 100%; /* 确保表单不会超出主内容区域宽度 */
+    margin: 0 auto; /* 水平居中（如果需要的话） */
+    background-color: #f9f9f9;
+    padding: 20px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-form h2 {
-    margin-bottom: 20px;
-}
-
-form label {
+/* 表单元素样式 */
+.main form label {
     display: block;
     margin-bottom: 5px;
+    font-weight: bold;
 }
 
-form input[type="text"],
-form input[type="email"],
-form textarea {
+.main form input[type="text"],
+.main form textarea {
     width: 100%;
-    padding: 8px;
-    margin-bottom: 20px;
+    padding: 10px;
+    margin-bottom: 15px;
     border: 1px solid #ccc;
     border-radius: 4px;
 }
 
-form input[type="submit"] {
-    padding: 10px 20px;
-    background-color: #333;
-    color: white;
+.main form textarea {
+    resize: vertical; /* 允许垂直调整大小 */
+}
+
+.main form button {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
     border: none;
     border-radius: 4px;
+    color: white;
+    font-size: 16px;
     cursor: pointer;
 }
 
-form input[type="submit"]:hover {
-    background-color: #555;
+.main form button:hover {
+    background-color: #0056b3; /* 鼠标悬停时改变背景色 */
 }

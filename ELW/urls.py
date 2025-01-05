@@ -22,4 +22,6 @@ urlpatterns = [
 
     path('task_package_add/', views.teacher_task_package_add, name='teacher_task_package_add'),
 
+    path('question_add/', views.teacher_question_add, name='teacher_question_add'),
+
 ]

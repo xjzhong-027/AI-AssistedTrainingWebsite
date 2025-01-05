@@ -8,36 +8,9 @@
     <link rel="stylesheet" href="{% static 'css/teacher_side/task_package_add.css'%}">
 </head>
 <body>
-    <div class="sidebar">
-        <table>
-            <thead>
-                <tr>
-                    <th>NO.</th>
-                    <th>Title</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <th>1</th>
-                    <th>Flight to HK.</th>
-                </tr>
-                <tr>
-                    <th>2</th>
-                    <th>Thanksgiving Day</th>
-                </tr>
-                <tr>
-                    <th>3</th>
-                    <th>Have a good Day.</th>
-                </tr>
-                <tr>
-                    <th>...</th>
-                    <th>...</th>
-                </tr>
-            </tbody>
-        </table>
 
-    </div>
-    <form method="post" action="/teacher/task_package_add/" enctype="multipart/form-data">
+    <div class="main">
+        <form method="post" action="/teacher/task_package_add/" enctype="multipart/form-data">
         {% csrf_token %}
         {{ form.as_p }}
         <div>
@@ -54,5 +27,7 @@
         </div>
         <button type="submit">Add</button>
     </form>
+
+    </div>
 </body>
 </html>

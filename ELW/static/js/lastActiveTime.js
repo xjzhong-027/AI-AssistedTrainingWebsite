@@ -31,7 +31,7 @@ function updateLastActivity() {
 
     // 如果首次活动时间存在，检查距离上次发送请求是否超过5分钟
     const timeSinceLastRequest = currentTime - lastActivitySentTime;
-    if (timeSinceLastRequest >= 300000) {  // 5分钟（300000毫秒）
+    if (timeSinceLastRequest >= 5 * 60000) {  // 5分钟（300000毫秒 5 * 60 * 1000）
         sendActivityToServer(currentTime.toISOString());  // 发送请求
         lastActivitySentTime = currentTime;  // 更新上次发送的时间
     }
@@ -43,8 +43,28 @@ function updateLastActivity() {
     timeout = setTimeout(function() {
         firstActivityTime = null;  // 清除首次活动时间
         lastActivitySentTime = null;  // 清除上次发送的时间
-    }, 300000);  // 5分钟后清空活动状态
+    },   5 * 60000);  // 5分钟后清空活动状态
 }
+//
+// setInterval(function() {
+//     console.log('send info.')
+//     fetch('/update_last_activity/', {
+//         method: 'GET',
+//         headers: {
+//             'X-CSRFToken': getCookie('csrftoken')
+//         }
+//     })
+//     .then(response => {
+//         return response.json();
+//     })
+//     .then(data => {
+//         if (data.session_expired) {
+//             // 如果 session 已经过期，跳转到登录页面
+//             window.location.href = '/login/';
+//         }
+//         console.log(data.session_expired)
+//     });
+// }, 1 * 60 * 1000);  // 每 5 分钟检查一次
 
 // 将活动时间发送到后端
 function sendActivityToServer(lastActiveTime) {

@@ -29,9 +29,14 @@ urlpatterns = [
     path(route='login/', view=views.login, name='login'),
     path(route='logout/', view=views.log_out, name='logout'),
     path('update_last_activity/', view=views.update_last_activity, name='update_last_activity'),
+    path('submit_question/', view=views.submit_question, name='submit_question'),
 
     # 分发路由
     path('teacher/', include('ELW.urls')),
+
+
+    path('create-big-question/', views.create_big_question_with_small_questions, name='create_big_question_with_small_questions'),
+
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)   #添加对媒体文件的访问路由
 

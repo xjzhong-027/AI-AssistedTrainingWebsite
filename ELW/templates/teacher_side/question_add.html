@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Question_add</title>
+</head>
+<body>
+<div class="sidebar">
+
+</div>
+
+
+
+
+<script>
+    function submitQuestion() {
+        console.log('already submitted.');
+        fetch('/submit_question/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')  // 获取 CSRF token
+            },
+            body: JSON.stringify({
+                activity: 'submit_question'
+            })
+        });
+    }
+
+    // 获取 CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+    <div class="sidebar">
+
+        <button onclick="submitQuestion()">Save and Exit</button>
+
+    </div>
+<p>question adding.</p>
+
+</body>
+</html>
