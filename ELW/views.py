@@ -2,6 +2,8 @@
 import os
 import uuid
 import datetime
+from msilib.schema import Media
+
 from django.urls import reverse
 from urllib.parse import urlencode
 from django.http import HttpResponseRedirect
@@ -18,16 +20,27 @@ from ELW import models
 
 
 
-from .models import BigQuestion, MediaMaterial
-from .forms import BigQuestionForm, SmallQuestionFormSet
+from .models import MediaMaterial, MainQuestion, SubQuestion
+from .forms import (
+    MainQuestionForm,
+    SubQuestionForm,
+    SubQuestionFormSet,
+    ChoiceOptionFormSet,
+    MatchingOptionFormset,
+    CorrectionFormset
+)
+
 
 # 大题+小题页
 def create_big_question_with_small_questions(request):
     task_package_id = request.GET.get('task_package_id')
     print('task_package_id', task_package_id)
     if request.method == 'POST':
-        big_question_form = BigQuestionForm(request.POST)
-        small_question_formset = SmallQuestionFormSet(request.POST, request.FILES)
+        big_question_form = MainQuestionForm(request.POST)
+        small_question_formset = SubQuestionFormSet(request.POST, request.FILES)
+
+        choice_option_formsets = []
+        matching_option_formsets = []
 
         if big_question_form.is_valid() and small_question_formset.is_valid():
             # 保存大题
@@ -35,29 +48,102 @@ def create_big_question_with_small_questions(request):
             big_question.media_material = MediaMaterial.objects.get(id=task_package_id)
             big_question.save()
 
-            # 将每个小题的关联设置为刚保存的大题
-            small_questions = small_question_formset.save(commit=False)
-            for small_question in small_questions:
-                # if not small_question.cleaned_data.get('DELETE', False):
-                small_question.big_question = big_question
+
+            for small_question_form in small_question_formset:
+                small_question = small_question_form.save(commit=False)
+                small_question.main_question = big_question
                 small_question.save()
-            # 删除已标记为删除的小题
-            # for deleted_form in small_question_formset.deleted_objects:
-            #     deleted_form.delete()
-            # return redirect('big_question_list')  # 假设有一个大题列表页面
+
+                # if big_question.question_type == 'choice':
+                #     choice_option_formset = ChoiceOptionFormSet(
+                #         request.POST,
+                #         prefix=f"options-{small_question_form.prefix}",
+                #         instance=small_question
+                #     )
+                # 根据大题类型初始化选项表单集合
+                if big_question.question_type == "choice":
+                    choice_option_formset = ChoiceOptionFormSet(instance=small_question)
+                    choice_option_formsets.append(choice_option_formset)
+                elif big_question.question_type == "matching":
+                    matching_option_formset = MatchingOptionFormset(instance=small_question)
+                    matching_option_formsets.append(matching_option_formset)
+                if choice_option_formset.is_valid():
+                        choice_option_formset.save()
             return HttpResponse('submit all.')
     else:
-        big_question_form = BigQuestionForm()
-        small_question_formset = SmallQuestionFormSet()
+        big_question_form = MainQuestionForm()
+        small_question_formset = SubQuestionFormSet()
+        choice_option_formsets = [ChoiceOptionFormSet()]
+        matching_option_formsets = [MatchingOptionFormset()]
+
+        # 动态初始化选项表单集
+        # for small_question_form in small_question_formset:
+        #     small_question_form.options_formset = ChoiceOptionFormSet(
+        #         prefix=f"options-{small_question_form.prefix}",
+        #         instance=small_question_form.instance
+        #     )
 
     return render(request, 'create_big_question_with_small_questions.html', {
-        'big_question_form': big_question_form,
-        'small_question_formset': small_question_formset
+        # 'big_question_form': big_question_form,
+        # 'small_question_formset': small_question_formset,
+        "big_question_form": big_question_form,
+        "small_question_formset": small_question_formset,
+        "choice_option_formsets": choice_option_formsets,
+        "matching_option_formsets": matching_option_formsets,
     })
 
 
+'''
+def create_big_question_with_small_questions(request):
+    task_package_id = request.GET.get('task_package_id')
+    print('task_package_id', task_package_id)
 
+    if request.method == "POST":
+        big_question_form = BigQuestionForm(request.POST)
+        small_question_formset = SmallQuestionFormSet(request.POST)
 
+        # 根据大题类型动态绑定选项表单
+        choice_option_formsets = []
+        matching_option_formsets = []
+        correction_formsets = []
+
+        if big_question_form.is_valid() and small_question_formset.is_valid():
+            # 保存大题
+            big_question = big_question_form.save(commit=False)
+            big_question.media_material = MediaMaterial.objects.get(id=task_package_id)
+            big_question.save()
+
+            for small_form in small_question_formset:
+                small_question = small_form.save(commit=False)
+                small_question.big_question = big_question
+                small_question.save()
+
+                if big_question.question_type == 'choice':
+                    choice_option_formset = ChoiceOptionFormSet(request.POST, instance=small_question)
+                    if choice_option_formset.is_valid():
+                        choice_option_formset.save()
+                elif big_question.question_type == 'matching':
+                    matching_option_formset = MatchingOptionFormset(request.POST, instance=small_question)
+                    if matching_option_formset.is_valid():
+                        matching_option_formset.save()
+                elif big_question.question_type == 'correction':
+                    correction_formset = CorrectionFormset(request.POST, instance=small_question)
+                    if correction_formset.is_valid():
+                        correction_formset.save()
+            return HttpResponse('submit all.')
+        else:
+            big_question_form = BigQuestionForm()
+            small_question_formset = SmallQuestionFormSet()
+    else:
+        # GET 请求初始化表单
+        big_question_form = BigQuestionForm()
+        small_question_formset = SmallQuestionFormSet()
+
+    return render(request, "teacher_side/create_question.html", {
+        "big_question_form": big_question_form,
+        "small_question_formset": small_question_formset,
+    })
+'''
 
 
 
@@ -238,7 +324,8 @@ def teacher_task_package_add(request):
             # return render(request, 'teacher_side/question_add.html')    #替换为待跳转页面
             params = {'task_package_id': id}
             query_string = urlencode(params)
-            url = reverse('create_big_question_with_small_questions')
+            # url = reverse('create_big_question_with_small_questions')
+            url = reverse('teacher_question_type')
             return HttpResponseRedirect(f"{url}?{query_string}")
             # return redirect('teacher_question_add')
 
@@ -251,8 +338,63 @@ def teacher_task_package_add(request):
                 })
 
 
+def teacher_question_type(request):
+    task_package_id = request.GET.get('task_package_id')
+    if request.method == 'POST':
+        question_type = request.POST.get('question_type')
+        if question_type == 'matching':
+            params = {
+                'task_package_id': task_package_id,
+                'question_type': question_type,
+                      }
+            query_string = urlencode(params)
+            url = reverse('teacher_matching')
+            return HttpResponseRedirect(f"{url}?{query_string}")
+        return HttpResponse(question_type)
+    return render(request, 'teacher_side/question_type.html')
 
 
+# 连线题
+def teacher_matching(request):
+    task_package_id = request.GET.get('task_package_id')
+    question_type = request.GET.get('question_type')
+
+    if request.method == 'POST':
+        main_form = MainQuestionForm(request.POST)
+        sub_form = SubQuestionForm(request.POST, request.FILES)
+        formset = MatchingOptionFormset(request.POST, request.FILES)
+
+        if main_form.is_valid() and sub_form.is_valid():
+            # 保存大题
+            main_question =main_form.save(commit=False)
+            main_question.media_material = MediaMaterial.objects.get(id=task_package_id)
+            main_question.question_type = question_type
+            main_question.save()
+
+
+            # 保存小题，关联大题
+            sub_question = sub_form.save(commit=False)
+            sub_question.main_question = main_question
+            sub_question.save()
+
+            # 保存 MatchingOption，关联小题
+            if formset.is_valid():
+                matching_options = formset.save(commit=False)
+                for option in matching_options:
+                    option.sub_question = sub_question
+                    option.save()
+
+            return HttpResponse('save.')
+    else:
+        main_form = MainQuestionForm()
+        sub_form = SubQuestionForm()
+        formset = MatchingOptionFormset()
+
+    return render(request, 'teacher_side/matching.html', {
+        'main_form': main_form,
+        'sub_form': sub_form,
+        'formset': formset,
+    })
 
 
 

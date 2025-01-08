@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form method="post">
+    {% csrf_token %}
+    <input type="text" name="question_type" value="choice" style="display: none">
+    <button type="submit">选择题</button>
+</form>
+<form method="post">
+    {% csrf_token %}
+    <input type="text" name="question_type" value="matching" style="display: none">
+    <button type="submit">连线题</button>
+</form>
+<form method="post">
+    {% csrf_token %}
+    <input type="text" name="question_type" id="question_type" value="correction" style="display: none">
+    <button type="submit">改错题</button>
+</form>
+</body>
+</html>

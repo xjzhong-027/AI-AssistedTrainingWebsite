@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form method="post">
+    {% csrf_token %}
+    {{ big_question_form.as_p }}
+
+    <h2>Small Questions</h2>
+    {{ small_question_formset.management_form }}
+    {% for form in small_question_formset %}
+        {{ form.as_p }}
+    {% endfor %}
+
+    {% if big_question_form.instance.question_type == 'choice' %}
+        <h3>Choice Options</h3>
+        {{ choice_option_formset.management_form }}
+        {% for form in choice_option_formset %}
+            {{ form.as_p }}
+        {% endfor %}
+    {% elif big_question_form.instance.question_type == 'matching' %}
+        <h3>Matching Options</h3>
+        {{ matching_option_formset.management_form }}
+        {% for form in matching_option_formset %}
+            {{ form.as_p }}
+        {% endfor %}
+    {% elif big_question_form.instance.question_type == 'correction' %}
+        <h3>Correction</h3>
+        {{ correction_formset.management_form }}
+        {% for form in correction_formset %}
+            {{ form.as_p }}
+        {% endfor %}
+    {% endif %}
+
+    <button type="submit">Save</button>
+</form>
+
+<script>
+
+</script>
+
+</body>
+</html>

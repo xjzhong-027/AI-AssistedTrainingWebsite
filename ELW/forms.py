@@ -11,19 +11,22 @@ from django.template.context_processors import request
 
 from django import forms
 from django.forms import inlineformset_factory
-from .models import BigQuestion, SmallQuestion
+from .models import MainQuestion, SubQuestion, ChoiceOption, MatchingOption, Correction
 
-class BigQuestionForm(forms.ModelForm):
+
+# 大题表单
+class MainQuestionForm(forms.ModelForm):
     class Meta:
-        model = BigQuestion
+        model = MainQuestion
         fields = ['question_text']
         widgets = {
             'question_text': forms.Textarea(attrs={'rows': 4}),
         }
 
-class SmallQuestionForm(forms.ModelForm):
+# 小题表单
+class SubQuestionForm(forms.ModelForm):
     class Meta:
-        model = SmallQuestion
+        model = SubQuestion
         fields = ['question_text', 'image_url', 'tips', 'answer', 'analysis', 'score']
         widgets = {
             'question_text': forms.Textarea(attrs={'rows': 2}),
@@ -33,12 +36,56 @@ class SmallQuestionForm(forms.ModelForm):
             'score': forms.NumberInput(),
         }
 
+# 选择题-选项表单
+class ChoiceOptionForm(forms.ModelForm):
+    class Meta:
+        model = ChoiceOption
+        fields = ['option_label', 'option_content', 'is_answer']
+
+# 连线题右项表单
+class MatchingOptionForm(forms.ModelForm):
+    class Meta:
+        model = MatchingOption
+        fields = ['option_label', 'option_content', 'image_url']
+
+class CorrectionForm(forms.ModelForm):
+    class Meta:
+        model = Correction
+        fields = ['type', 'index']
+
 # 创建大题与小题的表单集合
-SmallQuestionFormSet = inlineformset_factory(
-    BigQuestion, SmallQuestion,  # 父模型和子模型
-    form=SmallQuestionForm,
+SubQuestionFormSet = inlineformset_factory(
+    MainQuestion, SubQuestion,  # 父模型和子模型
+    form=SubQuestionForm,
     extra=1,  # 默认提供一个空表单
     can_delete=True  # 允许用户删除小题
+)
+
+# 创建小题与选项的表单集合
+ChoiceOptionFormSet = inlineformset_factory(
+    SubQuestion,
+    ChoiceOption,
+    form=ChoiceOptionForm,
+    extra=2,
+    can_delete=True
+)
+
+# 创建小题与连线右项的表单集合
+MatchingOptionFormset = inlineformset_factory(
+    SubQuestion,
+    MatchingOption,
+    form=MatchingOptionForm,
+    extra=1,  # 默认多一个表单
+    can_delete=True
+)
+
+# 创建小题与改错信息的表单集合
+CorrectionFormset = inlineformset_factory(
+    SubQuestion,
+    Correction,
+    form=CorrectionForm,
+    extra=1,
+    can_delete=True
 )
 
 

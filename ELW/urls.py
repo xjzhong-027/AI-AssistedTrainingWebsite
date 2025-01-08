@@ -24,4 +24,8 @@ urlpatterns = [
 
     path('question_add/', views.teacher_question_add, name='teacher_question_add'),
 
+    path('question_type/', views.teacher_question_type, name='teacher_question_type'),
+
+    path('matching/', views.teacher_matching, name='teacher_matching'),
+
 ]
