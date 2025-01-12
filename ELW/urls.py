@@ -28,4 +28,6 @@ urlpatterns = [
 
     path('matching/', views.teacher_matching, name='teacher_matching'),
 
+    path('correction/', views.teacher_correction, name='teacher_correction'),
+
 ]

@@ -32,12 +32,17 @@ class LoginInfo(models.Model):
     device_info = models.CharField(max_length=500)
 
 # 动态生成文件名并设置上传路径。
-def upload_to(instance, filename):
+def images_upload_to(instance, filename):
     extension = os.path.splitext(filename)[1]  # 获取文件扩展名
     new_filename = f"{uuid.uuid4()}{extension}"  # 生成唯一文件名
     # print(extension)
     # print(f'images/{new_filename}')
     return f"images/{new_filename}"  # 存储到 media/images/
+
+def documents_upload_to(instance, filename):
+    extension = os.path.splitext(filename)[1]
+    new_filename = f"{uuid.uuid4()}{extension}"
+    return f"documents/{new_filename}"
 
 # 媒体素材表
 class MediaMaterial(models.Model):
@@ -69,11 +74,17 @@ class MainQuestion(models.Model):
         return self.question_text
 
 
+# 上传的word文件
+class Document(models.Model):
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    document_url = models.FileField(verbose_name='文件', upload_to=documents_upload_to, blank=False, null=False)
+    content = models.TextField(blank=True)  # 用于存储文档解析后的内容
+
 # 小题表
 class SubQuestion(models.Model):
     main_question = models.ForeignKey(MainQuestion, on_delete=models.CASCADE, related_name='sub_questions')
     question_text = models.TextField(verbose_name='小题内容', blank=False, null=False)
-    image_url = models.ImageField(verbose_name="图片", upload_to=upload_to, blank=True, null=True )
+    image_url = models.ImageField(verbose_name="图片", upload_to=images_upload_to, blank=True, null=True)
     tips = models.TextField(verbose_name='提示', blank=True, null=True)
     answer = models.TextField(verbose_name='参考答案', default='test', blank=False)
     analysis = models.TextField(verbose_name='解析', blank=True, null=True)
@@ -82,6 +93,8 @@ class SubQuestion(models.Model):
     #
     def __str__(self):
         return f"{self.main_question} - {self.question_text[:20]}"
+
+
 
 # 选择题-选项表
 class ChoiceOption(models.Model):
@@ -98,19 +111,18 @@ class MatchingOption(models.Model):
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='matchingOptions')
     option_label = models.CharField(max_length=1, verbose_name='选项字母', blank=False, null=False)
     option_content = models.TextField(verbose_name='选项内容')
-    image_url = models.ImageField(verbose_name='选项图片', upload_to=upload_to, blank=True, null=True )
+    image_url = models.ImageField(verbose_name='选项图片', upload_to=images_upload_to, blank=True, null=True)
 
     def __str__(self):
         return f"{self.option_label}: {self.option_content[:20]}"
 
-
+# 改错题
 class Correction(models.Model):
     CORRECTION_TYPES = [
         ('insert', '插入'),
         ('delete', '删除'),
         ('revise', '修改')
     ]
-
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='correction')
     type = models.CharField(max_length=10, choices=CORRECTION_TYPES, default='insert', verbose_name='改错类型')
     index = models.IntegerField(default=0, verbose_name='修改位置')

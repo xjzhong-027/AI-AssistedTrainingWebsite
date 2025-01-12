@@ -4,6 +4,7 @@ import uuid
 import datetime
 from msilib.schema import Media
 
+from django.template.context_processors import request
 from django.urls import reverse
 from urllib.parse import urlencode
 from django.http import HttpResponseRedirect
@@ -16,6 +17,7 @@ from django.views.decorators.csrf import csrf_exempt
 from English_Listening_Website import settings
 from .forms import UploadMediaForm
 from ELW import models
+from django.contrib import messages
 
 
 
@@ -24,10 +26,11 @@ from .models import MediaMaterial, MainQuestion, SubQuestion
 from .forms import (
     MainQuestionForm,
     SubQuestionForm,
+    CorrectionForm,
     SubQuestionFormSet,
     ChoiceOptionFormSet,
     MatchingOptionFormset,
-    CorrectionFormset
+    CorrectionFormSet
 )
 
 
@@ -342,15 +345,19 @@ def teacher_question_type(request):
     task_package_id = request.GET.get('task_package_id')
     if request.method == 'POST':
         question_type = request.POST.get('question_type')
+        params = {
+            'task_package_id': task_package_id,
+            'question_type': question_type,
+        }
+        query_string = urlencode(params)
         if question_type == 'matching':
-            params = {
-                'task_package_id': task_package_id,
-                'question_type': question_type,
-                      }
-            query_string = urlencode(params)
             url = reverse('teacher_matching')
             return HttpResponseRedirect(f"{url}?{query_string}")
-        return HttpResponse(question_type)
+        if question_type == 'correction':
+            url = reverse('teacher_correction')
+            return HttpResponseRedirect(f"{url}?{query_string}")
+        # return HttpResponse(question_type)
+        print('document')
     return render(request, 'teacher_side/question_type.html')
 
 
@@ -359,49 +366,317 @@ def teacher_matching(request):
     task_package_id = request.GET.get('task_package_id')
     question_type = request.GET.get('question_type')
 
-    if request.method == 'POST':
-        main_form = MainQuestionForm(request.POST)
-        sub_form = SubQuestionForm(request.POST, request.FILES)
-        formset = MatchingOptionFormset(request.POST, request.FILES)
 
-        if main_form.is_valid() and sub_form.is_valid():
+    if request.method == 'POST':
+        print('post data: ', request.POST)
+        main_form = MainQuestionForm(request.POST)
+        print("Main form data:", main_form.cleaned_data if main_form.is_valid() else main_form.errors)
+        sub_formset = SubQuestionFormSet(request.POST, request.FILES)
+
+        if main_form.is_valid() and sub_formset.is_valid():
             # 保存大题
             main_question =main_form.save(commit=False)
             main_question.media_material = MediaMaterial.objects.get(id=task_package_id)
             main_question.question_type = question_type
             main_question.save()
 
+            sub_formset.instance = main_question
+            sub_questions = sub_formset.save(commit=False)
+            # 保存小题和其选项
+            for sub_question in sub_questions:
+                sub_question.main_question = main_question
+                sub_question.save()
 
-            # 保存小题，关联大题
-            sub_question = sub_form.save(commit=False)
-            sub_question.main_question = main_question
-            sub_question.save()
-
-            # 保存 MatchingOption，关联小题
-            if formset.is_valid():
-                matching_options = formset.save(commit=False)
-                for option in matching_options:
-                    option.sub_question = sub_question
-                    option.save()
-
+                # 保存选项
+                prefix = f"options-{sub_question.id}"
+                print('prefix: ', prefix)
+                option_formset = MatchingOptionFormset(data=request.POST, files=request.FILES, instance=sub_question,
+                                                       prefix=prefix)
+                if option_formset.is_valid():
+                    option_formset.save()
+                else:
+                    # print('option_formset: ', option_formset)
+                    # print(f"Option formset errors for sub_question {sub_question.id}: {option_formset.errors}")
+                    print(f"Option formset errors for sub_question {sub_question.id}: {option_formset.errors}")
+                    print("POST data:", request.POST.dict())
+                    print("Management form data:", option_formset.management_form.data)
+                    print('option_formset: ', option_formset)
+                    print("Cleaned data:",
+                          option_formset.cleaned_data if hasattr(option_formset, 'cleaned_data') else "No cleaned data")
             return HttpResponse('save.')
+        else:
+            print("Form validation failed.")
+            print(main_form.errors, sub_formset.errors)
+        return HttpResponse("Form validation failed.")
     else:
         main_form = MainQuestionForm()
-        sub_form = SubQuestionForm()
-        formset = MatchingOptionFormset()
+        # sub_form = SubQuestionForm()
+        # formset = MatchingOptionFormset()
+        sub_formset = SubQuestionFormSet()
+        # 构造每个小题的选项表单
+        option_formsets = []
+        for i, sub_form in enumerate(sub_formset):
+            sub_question = sub_form.instance
+            prefix = f"options-{i}"
+            option_formsets.append({
+                'prefix': prefix,
+                'formset': MatchingOptionFormset(instance=sub_question, prefix=prefix)
+            })
+        print('option_formsets: ', option_formsets)
 
     return render(request, 'teacher_side/matching.html', {
         'main_form': main_form,
-        'sub_form': sub_form,
-        'formset': formset,
+        # 'sub_form': sub_form,
+        # 'formset': formset,
+        'sub_formset': sub_formset,
+        'option_formsets': option_formsets,
+        # 'option_formset_template': MatchingOptionFormset(instance=SubQuestion()).empty_form,
     })
 
+# correction.html
+'''
+def teacher_correction(request):
+    task_package_id = request.GET.get('task_package_id')
+    question_type = request.GET.get('question_type')
+    if request.method == 'POST':
+        # 处理提交的数据
+        main_form = MainQuestionForm(request.POST)
+        sub_formset = SubQuestionFormSet(request.POST, request.FILES)
+
+        if main_form.is_valid() and sub_formset.is_valid():
+            # 保存大题表单数据
+            main_question = main_form.save(commit=False)
+            main_question.media_material = MediaMaterial.objects.get(id=task_package_id)
+            main_question.question_type = question_type
+            main_question.save()
+            # 将大题对象关联到小题表单集
+            sub_questions = sub_formset.save(commit=False)
+            for sub_question in sub_questions:
+                sub_question.main_question = main_question
+                sub_question.save()
+                # 处理改错题表单集
+                correction_formset = CorrectionFormSet(
+                    request.POST,
+                    instance=sub_question,
+                )
+                if correction_formset.is_valid():
+                    corrections = correction_formset.save(commit=False)
+                    for correction in corrections:
+                        correction.sub_question = sub_question
+                        correction.save()
+                else:
+                    messages.error(request, "改错题表单填写有误，请检查后重试。")
+                    return render(request, 'correction.html', {
+                        'main_form': main_form,
+                        'sub_formset': sub_formset,
+                        'correction_formset': correction_formset,
+                    })
+            messages.success(request, "题目已成功保存！")
+            return HttpResponse('save.')
+        else:
+            messages.error(request, "表单填写有误，请检查后重试。")
+    else:
+        # 初始化空表单
+        main_form = MainQuestionForm()
+        sub_formset = SubQuestionFormSet()
+        correction_formset = CorrectionFormSet()
 
 
+    return render(request, 'teacher_side/correction.html', {
+        'main_form': main_form,
+        'sub_formset': sub_formset,
+        'correction_formset': correction_formset,
+    })
+'''
 
+# correction_test.html
+'''
+def teacher_correction(request):
+    task_package_id = request.GET.get('task_package_id')
+    question_type = request.GET.get('question_type')
+    correction_formsets = []
+    if request.method == 'POST':
+        # 处理提交的数据
+        main_form = MainQuestionForm(request.POST)
+        sub_formset = SubQuestionFormSet(request.POST, request.FILES)
 
+        if main_form.is_valid() and sub_formset.is_valid():
+            # 保存大题表单数据
+            main_question = main_form.save(commit=False)
+            main_question.media_material = MediaMaterial.objects.get(id=task_package_id)
+            main_question.question_type = question_type
+            main_question.save()
+            # 将大题对象关联到小题表单集
+            sub_questions = sub_formset.save(commit=False)
+            for index, sub_question in enumerate(sub_questions):
+                sub_question.main_question = main_question
+                sub_question.save()
+                # 初始化并验证每个小题的改错题表单集
+                correction_prefix = f'correction-{index}'  # 动态生成前缀
+                correction_formset = CorrectionFormSet(
+                    request.POST,
+                    instance=sub_question,
+                    prefix=correction_prefix,  # 使用唯一的 prefix
+                )
+                if correction_formset.is_valid():
+                    corrections = correction_formset.save(commit=False)
+                    for correction in corrections:
+                        correction.sub_question = sub_question
+                        correction.save()
+                else:
+                    # 如果某个改错题表单无效，需回显错误信息
+                    messages.error(request, f"改错题表单验证失败，请检查表单：{correction_prefix}")
+                    correction_formsets.append(correction_formset)
+                    break
+                correction_formsets.append(correction_formset)
+            if all([cf.is_valid() for cf in correction_formsets]):
+                messages.success(request, "题目已成功保存！")
+                return HttpResponse('save.')
+        else:
+            messages.error(request, "表单填写有误，请检查后重试。")
+    else:
+        # 初始化空表单
+        main_form = MainQuestionForm()
+        sub_formset = SubQuestionFormSet()
 
+        # 创建一个临时的主问题
+        media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+        print(media_material_instance)
+        main_question_instance = MainQuestion(
+            question_text='temporary main question instance',
+            media_material=media_material_instance  # 设置有效的外键实例
+        )
+        print('main_question_instance: ', main_question_instance)
 
+        # 初始化每个小题表单的改错题表单集
+        for index, sub_form in enumerate(sub_formset):
+            # 创建一个临时的 SubQuestion 实例
+            sub_question_instance = sub_form.instance if sub_form.instance.pk else SubQuestion(
+                main_question=main_question_instance,
+                question_text='temporary instance.',
+                answer='temporary instance.'
+            )
+            # temporary_sub_question = SubQuestion(main_question=instance)
+            print('instance: ', sub_question_instance)
+            correction_formsets.append(
+                CorrectionFormSet(
+                    # instance=sub_form.instance,
+                    instance=sub_question_instance,
+                    prefix=f'correction-{index}',
+                    initial=[
+                        {'type': 'insert', 'index': 0},  # 示例初始数据
+                    ]
+                )
+            )
+            print('count: ', correction_formsets[-1].total_form_count())
+            print('correction_formsets: ', correction_formsets)
+            print('correction_formsets[0]: ', correction_formsets[0])
+    # 修改视图中的上下文传递逻辑
+    form_pairs = zip(sub_formset, correction_formsets)
+
+    return render(request, 'teacher_side/correction_test2.html', {
+        'main_form': main_form,
+        'sub_formset': sub_formset,
+        'correction_formsets': correction_formsets,
+        'form_pairs': form_pairs,  # 传递组合后的表单对
+    })
+'''
+
+def teacher_correction(request):
+    task_package_id = request.GET.get('task_package_id')
+    question_type = request.GET.get('question_type')
+    correction_formsets = []
+
+    if request.method == 'POST':
+        print('data: ', request.POST)
+        # 处理提交的数据
+        main_form = MainQuestionForm(request.POST)
+        sub_formset = SubQuestionFormSet(request.POST, request.FILES)
+
+        if main_form.is_valid() and sub_formset.is_valid():
+            # 保存大题表单数据
+            main_question = main_form.save(commit=False)
+            main_question.media_material = MediaMaterial.objects.get(id=task_package_id)
+            main_question.question_type = question_type
+            main_question.save()
+
+            # 保存小题表单数据
+            sub_questions = sub_formset.save(commit=False)
+            for index, sub_question in enumerate(sub_questions):
+                # 小题关联大题后保存
+                sub_question.main_question = main_question
+                sub_question.save()
+                # 初始化并验证每个小题的改错题表单集
+                correction_prefix = f'correction-{index}'  # 动态生成前缀
+                correction_formset = CorrectionFormSet(
+                    request.POST,
+                    instance=sub_question,
+                    prefix=correction_prefix,  # 使用唯一的 prefix
+                )
+                if correction_formset.is_valid():
+                    corrections = correction_formset.save(commit=False)
+                    for correction in corrections:
+                        correction.sub_question = sub_question
+                        correction.save()
+                    # correction_formset.save()
+                else:
+                    # 返回无效改错题表单的错误信息
+                    messages.error(request, f"改错题表单验证失败，请检查表单：{correction_prefix}")
+                    correction_formsets.append(correction_formset)
+                    # break
+                correction_formsets.append(correction_formset)
+            if all([cf.is_valid() for cf in correction_formsets]):
+                messages.success(request, "题目已成功保存！")
+                return HttpResponse('save.')
+        else:
+            messages.error(request, "表单填写有误，请检查后重试。")
+    else:
+        # 初始化空表单
+        main_form = MainQuestionForm()
+        sub_formset = SubQuestionFormSet()
+
+        # 创建临时大题实例
+        media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+        # print(media_material_instance)
+        main_question_instance = MainQuestion(
+            question_text='temporary main question instance',
+            media_material=media_material_instance  # 设置有效的外键实例
+        )
+        # print('main_question_instance: ', main_question_instance)
+
+        for index, sub_form in enumerate(sub_formset):
+            # 创建临时小题实例
+            sub_question_instance = sub_form.instance if sub_form.instance.pk else SubQuestion(
+                main_question=main_question_instance,
+                question_text='temporary instance.',
+                answer='temporary instance.'
+            )
+            # temporary_sub_question = SubQuestion(main_question=instance)
+            # print('instance: ', sub_question_instance)
+            correction_formsets.append(
+                CorrectionFormSet(
+                    # instance=sub_form.instance,
+                    instance=sub_question_instance,
+                    prefix=f'correction-{index}',
+                    initial=[
+                        {'type': 'insert', 'index': 0},  # 示例初始数据
+                    ]
+                )
+            )
+            # print('count: ', correction_formsets[-1].total_form_count())
+            # print('correction_formsets: ', correction_formsets)
+            # print('correction_formsets[0]: ', correction_formsets[0])
+    # 组合表单对
+    form_pairs = zip(sub_formset, correction_formsets)
+    # 供前端模板动态加载
+    empty_correction_form = CorrectionFormSet(prefix='correction-__prefix__').empty_form
+    return render(request, 'teacher_side/correction_test2.html', {
+        'main_form': main_form,
+        'sub_formset': sub_formset,
+        'correction_formsets': correction_formsets,
+        'form_pairs': form_pairs,  # 传递组合后的表单对
+        'empty_correction_form': empty_correction_form,  #
+    })
 
 
 def teacher_course(request):

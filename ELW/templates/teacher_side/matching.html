@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>录入听力题目</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .form-container {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
     <h1>录入听力题目</h1>
@@ -13,17 +21,113 @@
         {{ main_form.as_p }}
 
         <h2>小题表单</h2>
-        {{ sub_form.as_p }}
+        <div id="sub-formset">
+            {{ sub_formset.management_form }}
+            {% for sub_form in sub_formset %}
+                {#data-sub-index="{{ forloop.counter0 }}" 为每个表单容器提供了一个唯一的索引，索引基于循环的当前迭代次数，从 0 开始#}
+                <div class="form-container" data-sub-index="{{ forloop.counter0 }}">
+                    {{ sub_form.as_p }}
+                    <h3>选项表单</h3>
+                    {#过滤器，如果option_formsets不为空则赋值给变量current_option_formsets#}
+                    {% with option_formsets|default_if_none:'' as current_option_formsets %}
+                        {% for option_formset in current_option_formsets %}
+                            {% with counter_value=forloop.counter0|stringformat:"d" %}
+                                {% with expected_prefix="options-"|add:counter_value %}
 
-        <h2>连线选项表单</h2>
-        {{ formset.management_form }}
-        {% for form in formset %}
-            <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
-                {{ form.as_p }}
-            </div>
-        {% endfor %}
+                                    {# 检查当前 option_formset 的 prefix 是否和构建出来的 expected_prefix一致，一致则渲染选项表单 #}
+                                    {% if option_formset.prefix == expected_prefix %}
+                                        {{ option_formset.formset.management_form }}
+                                        {% for option_form in option_formset.formset %}
+                                            {{ option_form.as_p }}
+                                        {% endfor %}
+                                    {% endif %}
 
+                                {% endwith %}
+                            {% endwith %}
+                        {% endfor %}
+                    {% endwith %}
+                    <button type="button" class="delete-sub-question">删除小题</button>
+                </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" id="add-sub-question">添加小题</button>
         <button type="submit">提交</button>
     </form>
+
+
+    <script>
+        $(document).ready(function () {
+    let subFormIndex = {{ sub_formset.total_form_count }};
+    $('#add-sub-question').on('click', function () {
+        const subFormHtml = `
+            <div class="form-container" data-sub-index="${subFormIndex}">
+                {{ sub_formset.empty_form.as_p|safe }}
+                <h3>选项表单</h3>
+                <div id="options-${subFormIndex}">
+                    <input type="hidden" name="options-${subFormIndex}-TOTAL_FORMS" value="1">
+                    <input type="hidden" name="options-${subFormIndex}-INITIAL_FORMS" value="0">
+                    <input type="hidden" name="options-${subFormIndex}-MIN_NUM_FORMS" value="0">
+                    <input type="hidden" name="options-${subFormIndex}-MAX_NUM_FORMS" value="1000">
+                    <p>
+                        <label for="options-${subFormIndex}-0-option_label">选项字母：</label>
+                        <input type="text" name="options-${subFormIndex}-0-option_label" value="A">
+                    </p>
+                    <p>
+                        <label for="options-${subFormIndex}-0-option_content">选项内容：</label>
+                        <input type="text" name="options-${subFormIndex}-0-option_content">
+                    </p>
+                </div>
+            </div>
+        `;
+        $('#sub-formset').append(subFormHtml);
+        subFormIndex++;
+        $('input[name="sub_questions-TOTAL_FORMS"]').val(subFormIndex);
+    });
+});
+
+    </script>
+{##}
+{#    <script>#}
+{#        $(document).ready(function () {#}
+{#            let subFormIndex = {{ sub_formset.total_form_count }};#}
+{#            const subFormTemplate = `#}
+{#                <div class="form-container" data-sub-index="__prefix__">#}
+{#                    {{ sub_formset.empty_form.as_p|safe }}#}
+{#                    <h3>选项表单</h3>#}
+{#                    <div id="options-__prefix__">#}
+{#                        <P>aaa</P>#}
+{#                        <p>#}
+{#                            <label>选项字母：</label>#}
+{#                            <input type="text" name="options-__prefix__-0-option_label" value="A">#}
+{#                        </p>#}
+{#                        <p>#}
+{#                            <label>选项内容：</label>#}
+{#                            <input type="text" name="options-__prefix__-0-option_content">#}
+{#                        </p>#}
+{#                        <p>#}
+{#                            <label>是否为答案：</label>#}
+{#                            <input type="checkbox" name="options-__prefix__-0-is_answer">#}
+{#                        </p>#}
+{#                    </div>#}
+{#                    <button type="button" class="delete-sub-question">删除小题</button>#}
+{#                </div>#}
+{#            `;#}
+{##}
+{#            $('#add-sub-question').on('click', function () {#}
+{#                const newSubForm = subFormTemplate.replace(/__prefix__/g, subFormIndex);#}
+{#                console.log(subFormIndex)#}
+{#                $('#sub-formset').append(newSubForm);#}
+{#                subFormIndex++;#}
+{#                $('input[name="sub_questions-TOTAL_FORMS"]').val(subFormIndex);#}
+{#            });#}
+{##}
+{#            $(document).on('click', '.delete-sub-question', function () {#}
+{#                $(this).closest('.form-container').remove();#}
+{#                subFormIndex--;#}
+{#                $('input[name="sub_questions-TOTAL_FORMS"]').val(subFormIndex);#}
+{#            });#}
+{#        });#}
+{#    </script>#}
 </body>
 </html>

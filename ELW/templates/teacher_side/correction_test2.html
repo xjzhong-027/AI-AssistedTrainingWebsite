@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题库管理</title>
+
+    <script>
+        function addSubQuestionForm() {
+            const subFormCount = document.getElementById('id_sub_questions-TOTAL_FORMS');
+            const currentSubFormCount = parseInt(subFormCount.value);
+
+            // 获取小题表单模板
+            const subFormTemplate = document.getElementById('empty-form-template').innerHTML;
+            const newSubFormHTML = subFormTemplate.replace(/__prefix__/g, currentSubFormCount);
+            console.log(newSubFormHTML)
+
+            // 插入新小题表单及其对应的改错题表单
+            document.getElementById('form-container').insertAdjacentHTML('beforeend', newSubFormHTML);
+
+            // 更新管理字段
+            subFormCount.value = currentSubFormCount + 1;
+
+            // 初始化新添加的改错题表单的管理字段
+            const correctionTotalForms = document.getElementById(`id_correction-${currentSubFormCount}-TOTAL_FORMS`);
+            const correctionInitialForms = document.getElementById(`id_correction-${currentSubFormCount}-INITIAL_FORMS`);
+            const correctionMinNumForms = document.getElementById(`id_correction-${currentSubFormCount}-MIN_NUM_FORMS`);
+            const correctionMaxNumForms = document.getElementById(`id_correction-${currentSubFormCount}-MAX_NUM_FORMS`);
+
+            console.log('correctionTotalForms: ', correctionTotalForms);
+            console.log('correctionInitialForms: ', correctionInitialForms);
+            if (correctionTotalForms && correctionInitialForms) {
+                correctionTotalForms.value = "1";
+                correctionInitialForms.value = "0";
+                correctionMinNumForms.value = "0";
+                correctionMaxNumForms.value = "1000";
+            }
+
+
+        }
+
+        function deleteForm(button) {
+            const formDiv = button.closest('.form-set');
+            formDiv.remove();
+
+            // 更新管理字段
+            const subFormCount = document.getElementById('id_sub_questions-TOTAL_FORMS');
+            subFormCount.value = parseInt(subFormCount.value) - 1;
+        }
+
+    </script>
+</head>
+<body>
+    <h1>题库管理</h1>
+
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- 大题表单 -->
+        <fieldset>
+            <legend>大题表单</legend>
+            {{ main_form.as_p }}
+        </fieldset>
+
+        <!-- 小题表单 -->
+        <fieldset>
+            <legend>小题表单</legend>
+            {{ sub_formset.management_form }}
+            <div id="form-container">
+                {% for sub_form, correction_formset in form_pairs %}
+                    <div class="form-set">
+                        {{ sub_form.as_p }}
+
+                        <!-- 改错题表单 -->
+                        <fieldset>
+                            <legend>改错题表单</legend>
+                            {{ correction_formset.management_form }}
+                            <div class="correction-container">
+                                {% for correction_form in correction_formset %}
+                                    {{ correction_form.as_p }}
+                                {% endfor %}
+                            </div>
+                        </fieldset>
+
+                        <button type="button" onclick="deleteForm(this)">删除</button>
+                    </div>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <button type="button" onclick="addSubQuestionForm()">添加小题</button>
+        <button type="submit">保存</button>
+    </form>
+
+    <!-- 隐藏的空白表单模板 -->
+    <template id="empty-form-template">
+        <div class="form-set">
+            {{ sub_formset.empty_form.as_p }}
+
+            <fieldset>
+                <legend>改错题表单</legend>
+                <div class="correction-management">
+                <input type="hidden" name="correction-__prefix__-TOTAL_FORMS" id="id_correction-__prefix__-TOTAL_FORMS" value="0">
+                <input type="hidden" name="correction-__prefix__-INITIAL_FORMS" id="id_correction-__prefix__-INITIAL_FORMS" value="0">
+                <input type="hidden" name="correction-__prefix__-MIN_NUM_FORMS" id="id_correction-__prefix__-MIN_NUM_FORMS" value="0">
+                <input type="hidden" name="correction-__prefix__-MAX_NUM_FORMS" id="id_correction-__prefix__-MAX_NUM_FORMS" value="1000">
+            </div>
+{#                {{ empty_correction_form.management_form }}#}
+                <div class="correction-container">
+                    {{ empty_correction_form.as_p }}
+                </div>
+            </fieldset>
+
+            <button type="button" onclick="deleteForm(this)">删除</button>
+        </div>
+    </template>
+</body>
+</html>

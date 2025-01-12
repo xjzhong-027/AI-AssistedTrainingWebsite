@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题库管理</title>
+</head>
+<body>
+    <h1>题库管理</h1>
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <fieldset>
+            <legend>大题表单</legend>
+            {{ main_form.as_p }}
+        </fieldset>
+
+        <fieldset>
+            <legend>小题表单</legend>
+            {{ sub_formset.management_form }}
+            {% for sub_form in sub_formset %}
+                {{ sub_form.as_p }}
+
+                <fieldset>
+                    <legend>改错题表单</legend>
+                    {{ correction_formset.management_form }}
+                    {% for correction_form in correction_formset %}
+                        {{ correction_form.as_p }}
+                    {% endfor %}
+                </fieldset>
+            {% endfor %}
+        </fieldset>
+
+        <button type="submit">保存</button>
+    </form>
+</body>
+</html>

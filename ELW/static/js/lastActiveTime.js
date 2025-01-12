@@ -70,7 +70,7 @@ function updateLastActivity() {
 function sendActivityToServer(lastActiveTime) {
     console.log('already sent for 1!');
     fetch('/update_last_activity/', {
-        method: 'POST',
+        method:'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken')  // 获取 CSRF token

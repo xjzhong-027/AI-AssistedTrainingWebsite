@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题库管理</title>
+    <script>
+        function addSubQuestionForm() {
+            const formCount = document.getElementById('id_sub_questions-TOTAL_FORMS');
+            const currentCount = parseInt(formCount.value);
+            const formTemplate = document.getElementById('empty-form-template').innerHTML;
+
+            const newForm = formTemplate.replace(/__prefix__/g, currentCount);
+            document.getElementById('form-container').insertAdjacentHTML('beforeend', newForm);
+
+            formCount.value = currentCount + 1;
+        }
+
+        function deleteForm(button) {
+            const formDiv = button.closest('.form-set');
+            formDiv.remove();
+        }
+    </script>
+</head>
+<body>
+    <h1>题库管理</h1>
+
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- 主问题表单 -->
+        <fieldset>
+            <legend>大题表单</legend>
+            {{ main_form.as_p }}
+        </fieldset>
+
+        <!-- 小题表单 -->
+        <fieldset>
+            <legend>小题表单</legend>
+            {{ sub_formset.management_form }}
+            <div id="form-container">
+                {% for sub_form, correction_formset in form_pairs %}
+                    <div class="form-set">
+                        {{ sub_form.as_p }}
+
+                        <!-- 改错题表单 -->
+                        <fieldset>
+                            <legend>改错题表单</legend>
+                            {{ correction_formset.management_form }}
+                            {% for correction_form in correction_formset %}
+                                {{ correction_form.as_p }}
+                            {% empty %}
+                                <p>未找到改错题表单，您可以添加新表单。</p>
+                                {{ correction_formset.empty_form.as_p }}
+                            {% endfor %}
+                        </fieldset>
+
+                        <button type="button" onclick="deleteForm(this)">删除</button>
+                    </div>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <!-- 按钮 -->
+        <button type="button" onclick="addSubQuestionForm()">添加小题</button>
+        <button type="submit">保存</button>
+    </form>
+
+    <!-- 隐藏的空白表单模板 -->
+    <template id="empty-form-template">
+        <div class="form-set">
+            {{ sub_formset.empty_form.as_p }}
+
+            <!-- 空改错题表单 -->
+            <fieldset>
+                <legend>改错题表单</legend>
+                <p>请手动添加改错题表单。</p>
+            </fieldset>
+
+            <button type="button" onclick="deleteForm(this)">删除</button>
+        </div>
+    </template>
+</body>
+</html>

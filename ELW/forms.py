@@ -4,14 +4,16 @@ from django.forms.widgets import ClearableFileInput
 import os
 
 from django.template.context_processors import request
-
+import requests
+from docx import Document as DocxDocument
+from io import BytesIO
 
 
 
 
 from django import forms
 from django.forms import inlineformset_factory
-from .models import MainQuestion, SubQuestion, ChoiceOption, MatchingOption, Correction
+from .models import MainQuestion, SubQuestion, ChoiceOption, MatchingOption, Correction, Document
 
 
 # 大题表单
@@ -36,6 +38,11 @@ class SubQuestionForm(forms.ModelForm):
             'score': forms.NumberInput(),
         }
 
+class DocumentForm(forms.ModelForm):
+    class Meta:
+        model = Document
+        fields = ('document_url',)
+
 # 选择题-选项表单
 class ChoiceOptionForm(forms.ModelForm):
     class Meta:
@@ -48,6 +55,14 @@ class MatchingOptionForm(forms.ModelForm):
         model = MatchingOption
         fields = ['option_label', 'option_content', 'image_url']
 
+    def clean(self):
+        cleaned_data = super().clean()
+        sub_question = cleaned_data.get('sub_question')
+        if not sub_question:
+            raise forms.ValidationError("Sub-question field is required.")
+        return cleaned_data
+
+# 改错题表单
 class CorrectionForm(forms.ModelForm):
     class Meta:
         model = Correction
@@ -55,7 +70,8 @@ class CorrectionForm(forms.ModelForm):
 
 # 创建大题与小题的表单集合
 SubQuestionFormSet = inlineformset_factory(
-    MainQuestion, SubQuestion,  # 父模型和子模型
+    MainQuestion,
+    SubQuestion,  # 父模型和子模型
     form=SubQuestionForm,
     extra=1,  # 默认提供一个空表单
     can_delete=True  # 允许用户删除小题
@@ -79,8 +95,8 @@ MatchingOptionFormset = inlineformset_factory(
     can_delete=True
 )
 
-# 创建小题与改错信息的表单集合
-CorrectionFormset = inlineformset_factory(
+# 创建小题与改错题的表单集合
+CorrectionFormSet = inlineformset_factory(
     SubQuestion,
     Correction,
     form=CorrectionForm,
