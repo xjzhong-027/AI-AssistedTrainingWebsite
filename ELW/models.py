@@ -13,8 +13,8 @@ class Students(models.Model):
 
 # Students.objects.create(username='student', name='student1', password='student')
 class Teachers(models.Model):
-     username = models.CharField(max_length=20)
-     name = models.CharField(max_length=20)
+     username = models.CharField(max_length=20,verbose_name='账号')
+     name = models.CharField(max_length=20, verbose_name='姓名')
      password = models.CharField(max_length=100)
 # Teachers.objects.create(username='teacher', name='teacher1', password='teacher')
 
@@ -26,7 +26,7 @@ class Admins(models.Model):
 class LoginInfo(models.Model):
     username = models.CharField(max_length=20)
     week = models.IntegerField(default=0)
-    action = models.CharField(max_length=10)
+    action = models.CharField(max_length=20)
     action_time = models.DateTimeField()
     last_active_time = models.CharField(max_length=50)
     device_info = models.CharField(max_length=500)
@@ -106,7 +106,7 @@ class ChoiceOption(models.Model):
     def __str__(self):
         return f"{self.option_label}: {self.option_content[:20]}"
 
-# 选择题-右项表
+# 连线题-右项表
 class MatchingOption(models.Model):
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='matchingOptions')
     option_label = models.CharField(max_length=1, verbose_name='选项字母', blank=False, null=False)

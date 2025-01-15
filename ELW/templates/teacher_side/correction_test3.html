@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>correction_test3</title>
+</head>
+<body>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <fieldset>
+        <legend>大题</legend>
+        <p>大题题干：</p><br>
+        <textarea name="MainQuestion" id="MainQuestion" cols="30" rows="10"></textarea>
+    </fieldset>
+    <fieldset>
+        <legend>小题</legend>
+        <textarea name="SubQuestion" id="SubQuestion" cols="100" rows="30"></textarea>
+    </fieldset>
+    <button type="submit">保存</button>
+</form>
+</body>
+</html>
