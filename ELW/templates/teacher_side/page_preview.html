@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Page Preview</title>
+</head>
+<body>
+    <h1>预览试卷 - {{ material.title }}</h1>
+
+    <form method="post" action="{% url 'teacher_page_save' material.id %}">
+    {% csrf_token %}
+    <input type="hidden" name="title" value="预览试卷">
+
+    {% for question_id in selected_questions %}
+    <input type="hidden" name="selected_questions" value="{{ question_id }}">
+    {% endfor %}
+
+    <h2>选中的题目</h2>
+    {% for data in preview_data %}
+    <div>
+
+        {% if data.question.question_type == 'correction' %}
+
+            <h3>{{ forloop.counter }}. {{ data.question.question_text }}</h3>
+            <p>{{ data.sub_questions }}</p>
+
+        {% else %}
+            <h3>{{ forloop.counter }}. {{ data.question.question_text }}</h3>
+        {% if data.sub_questions %}
+
+            {% for sub_question in data.sub_questions %}
+                <p>({{ forloop.counter }}) {{ sub_question.question_text }}</p>
+
+                {% if data.question.question_type == 'choice' %}
+                    {% for choice in sub_question.options.all %}
+                        <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
+                    {% endfor %}
+
+                {% elif data.question.question_type == 'matching' %}
+                    {% for matchingOption in sub_question.matchingOptions.all %}
+                        <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
+                    {% endfor %}
+
+                {% endif %}
+
+            {% endfor %}
+
+        {% else %}
+        <p>未选择具体小题</p>
+        {% endif %}
+        {% endif %}
+
+    </div>
+    {% endfor %}
+
+    <button type="submit">保存组卷</button>
+    <a href="{% url 'teacher_page_create' material.id %}">返回修改</a>
+</form>
+</body>
+</html>

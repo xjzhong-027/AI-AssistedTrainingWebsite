@@ -49,18 +49,24 @@ function updateLastActivity() {
 
 // 定期心跳机制（heartbeat）向服务器报告用户状态，服务器可以通过最后一次心跳时间推断用户是否关闭了浏览器。
 setInterval(function() {
-    const currentTime = new Date();
-    const timeSinceLastRequest = currentTime - lastActivitySentTime;
-    if (timeSinceLastRequest >= 30 * 60000) {
-        console.log('心跳机制生效，未活跃时间大于三十分钟，强制登出。')
-        fetch('/update_last_activity/', {
-            method: 'GET',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        });
-    }
-
+    // const currentTime = new Date();
+    // const timeSinceLastRequest = currentTime - lastActivitySentTime;
+    // if (timeSinceLastRequest >= 30 * 60000) {
+    //     console.log('心跳机制生效，未活跃时间大于三十分钟，强制登出。')
+    //     fetch('/update_last_activity/', {
+    //         method: 'GET',
+    //         headers: {
+    //             'X-CSRFToken': getCookie('csrftoken')
+    //         }
+    //     });
+    // }
+    console.log('心跳机制生效，发送一次验证')
+    fetch('/update_last_activity', {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    });
     // })
     // .then(response => {
     //     return response.json();
@@ -76,7 +82,7 @@ setInterval(function() {
 
 // 将活动时间发送到后端
 function sendActivityToServer(lastActiveTime) {
-    console.log('already sent for 1!');
+    console.log('user active for 1');
     fetch('/update_last_activity/', {
         method:'POST',
         headers: {

@@ -12,6 +12,10 @@ urlpatterns = [
 
     path('question_bank/', views.teacher_question_bank, name='teacher_question_bank'),
 
+    path('page_create/<int:material_id>', views.teacher_page_create, name='teacher_page_create'),
+
+    path('page_save/<int:material_id>', views.teacher_page_save, name='teacher_page_save'),
+
     path('exam_bank/', views.teacher_exam_bank, name='teacher_exam_bank'),
 
     path('exam_management/', views.teacher_exam_management, name='teacher_exam_management'),
@@ -22,12 +26,18 @@ urlpatterns = [
 
     path('task_package_add/', views.teacher_task_package_add, name='teacher_task_package_add'),
 
+    path('media_material_detail/<int:material_id>/', views.teacher_media_material_detail, name='teacher_media_material_detail'),
+
     path('question_add/', views.teacher_question_add, name='teacher_question_add'),
 
     path('question_type/', views.teacher_question_type, name='teacher_question_type'),
 
+    path('choice/', views.teacher_choice, name='teacher_choice'),
+
     path('matching/', views.teacher_matching, name='teacher_matching'),
 
     path('correction/', views.teacher_correction, name='teacher_correction'),
+
+    path('integration/', views.question_integration, name='question_integration'),
 
 ]

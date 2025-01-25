@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ material.title }}-素材详情</title>
+</head>
+<body>
+    <h1 style="text-align: center;">{{ material.title }}</h1>
+    <p><strong>主题:</strong> {{ material.theme }}</p>
+    <p><strong>摘要:</strong> {{ material.abstract }}</p>
+    <p><strong>关键词:</strong> {{ material.keywords }}</p>
+    <p><strong>文本内容:</strong> {{ material.transcript }}</p>
+
+    <h2>关联的大题</h2>
+    {% for main_question in main_questions %}
+        <h3 style="background-color: #cfcaca">
+            {{ forloop.counter }}.
+            {{ main_question.question_text }} ({{ main_question.get_question_type_display }})
+        </h3>
+                    <span>{{ sub_question.question_text }}</span>
+        <!-- 小题展示 -->
+        {% for sub_question in main_question.sub_questions.all %}
+
+            {% if sub_question %}
+                {% if main_question.question_type == 'correction' %}
+                    {% for correction in sub_question.corrections.all %}
+                        {% if correction %}
+                            <span>{{ sub_question.question_text }} </span>
+                            <span style="text-decoration: underline">[{{ correction.type }}: {{ sub_question.answer }}]</span>
+{#                            <span>({{ sub_question.score }})</span>#}
+
+                        {% endif %}
+                    {% endfor %}
+
+                {% else %}
+                    <h4>({{ forloop.counter }}) {{ sub_question.question_text }}
+                        {% if sub_question.score %}
+                            ({{ sub_question.score }})
+                        {% endif %}
+                    </h4>
+
+                    {% if sub_question.image_url %}
+                        <img src="{{ sub_question.image_url.url }}" alt="Image" width="50">
+                    {% endif %}
+
+{#选择题#}
+                    {% if main_question.question_type == 'choice' %}
+                        <div class="choice">
+                            {% for choice in sub_question.options.all %}
+                               {% if choice %}
+                                   <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+{#连线题#}
+                    {% if main_question.question_type == 'matching' %}
+                        <div class="matching">
+                            {% for matchingOption in sub_question.matchingOptions.all %}
+                                {% if matchingOption %}
+                                	<p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
+
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                    {% endif %}
+
+
+
+                    <p>【Answer】: {{ sub_question.answer }}</p>
+
+                    {% if sub_question.tips %}
+                        <div class="tips">
+                            <p>【Tips】: {{ sub_question.tips }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if sub_question.analysis %}
+                        <div class="analysis">
+                            <p>【Analysis】: {{ sub_question.analysis }}</p>
+                        </div>
+                    {% endif %}
+                {% endif %}
+
+
+            {% else %}
+                <p>当前大题暂无小题</p>
+            {% endif %}
+
+
+
+{#                {% empty %}#}
+
+{#                        暂无小题#}
+
+        {% endfor %}
+
+
+
+
+    {% endfor %}
+
+
+</body>
+</html>

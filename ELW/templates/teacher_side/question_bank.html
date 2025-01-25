@@ -6,6 +6,46 @@
     <meta charset="UTF-8">
     <title>question_bank</title>
     <link rel="stylesheet" href="{% static 'css/teacher_side/question_bank.css' %}">
+
+        <style>
+        table {
+            width: 50%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .pagination {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .pagination a, .pagination span {
+            margin: 0 5px;
+            padding: 5px 10px;
+            text-decoration: none;
+            border: 1px solid #ddd;
+            color: #333;
+        }
+        .pagination a:hover {
+            background-color: #f4f4f4;
+        }
+        .pagination .active {
+            background-color: #ddd;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
 {#<p>username: {{ username}}</p>#}
@@ -13,56 +53,59 @@
 {#更新#}
     <div class="header">
         <h2>Question Management</h2>
-
         {#【待添加】文件导入题库功能#}
         <button onclick="window.location.href='{% url 'teacher_task_package_add' %}'">New task package</button> <!-- Assuming a click event to navigate -->
     </div>
     {#待连接数据库，以下为测试数据#}
+
+    <h1 style="text-align: center;">媒体素材列表</h1>
     <table>
         <thead>
             <tr>
-                <th>No.</th>
+                <th>#</th>
                 <th>Title</th>
-                <th>Theme</th>
-                <th>Editor</th>
-                <th>Volume</th>
-                <th>Operation</th>
+                <th>操作</th>
             </tr>
         </thead>
         <tbody>
+            {% for material in page_obj %}
             <tr>
-                <td>1</td>
-                <td>Flight to HK.</td>
-                <td>Transportation</td>
-                <td>T1</td>
-                <td>50</td>
-                <td><a href="{% url 'test_page' %}">Edit</a>&nbsp;&nbsp;<a href="{% url 'test_page' %}">Delete</a></td>
+                <td><a href="{% url 'teacher_media_material_detail' material.id %}">{{ forloop.counter0|add:page_obj.start_index }}</a></td>
+                <td>
+                    <a href="{% url 'teacher_media_material_detail' material.id %}">{{ material.title }}</a>
+{#                    {{ material.title }}#}
+                </td>
+                <td>
+                    <a href="{% url 'teacher_page_create' material.id %}">组卷</a>
+                </td>
             </tr>
+            {% empty %}
             <tr>
-                <td>2</td>
-                <td>Thanksgiving Day</td>
-                <td>Festival</td>
-                <td>T2</td>
-                <td>30</td>
-                <td><a href="{% url 'test_page' %}">Edit</a>&nbsp;&nbsp;<a href="{% url 'test_page' %}">Delete</a></td>
+                <td colspan="2">暂无媒体素材</td>
             </tr>
-            <tr>
-                <td>3</td>
-                <td>Have a good Day.</td>
-                <td>Daily life</td>
-                <td>T2</td>
-                <td>40</td>
-                <td><a href="{% url 'test_page' %}">Edit</a>&nbsp;&nbsp;<a href="{% url 'test_page' %}">Delete</a></td>
-            </tr>
-            <tr>
-                <td>...</td>
-                <td>...</td>
-                <td>...</td>
-                <td>...</td>
-                <td>...</td>
-                <td><a href="{% url 'test_page' %}">Edit</a>&nbsp;&nbsp;<a href="{% url 'test_page' %}">Delete</a></td>
-            </tr>
+            {% endfor %}
         </tbody>
     </table>
+
+
+    <!-- 分页控件 -->
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page=1">首页</a>
+            <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <span class="active">{{ num }}</span>
+            {% else %}
+                <a href="?page={{ num }}">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">下一页</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}">尾页</a>
+        {% endif %}
+    </div>
+
 </body>
 </html>

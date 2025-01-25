@@ -29,7 +29,7 @@ urlpatterns = [
     path(route='login/', view=views.login, name='login'),
     path(route='logout/', view=views.log_out, name='logout'),
     path('update_last_activity/', view=views.update_last_activity, name='update_last_activity'),
-    path('submit_question/', view=views.submit_question, name='submit_question'),
+    # path('submit_question/', view=views.submit_question, name='submit_question'),
 
     # 分发路由
     path('teacher/', include('ELW.urls')),

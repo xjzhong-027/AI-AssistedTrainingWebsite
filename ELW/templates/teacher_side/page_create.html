@@ -1,0 +1,102 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="{% static 'css/teacher_side/page_create.css' %}">
+</head>
+<body>
+
+<form method="post">
+    <div class="container">
+
+        <div class="left-content">
+            <h1>组卷 - {{ material.title }}</h1>
+
+                {% csrf_token %}
+                <label for="title">试卷标题：</label>
+                <input type="text" id="title" name="title" placeholder="请输入试卷标题">
+
+                <h2>选择题目</h2>
+                {% for main_question in main_questions %}
+                    <div>
+                {#        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">#}
+                {#        <label for="main_{{ main_question.id }}">{{ main_question.question_text }}</label>#}
+                {#    如果是改错题，只允许选择一整道大题#}
+                        {% if main_question.question_type == 'correction' %}
+                            <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
+                            <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
+                            <label for="main_{{ main_question.id }}">
+                                {% for sub_question in main_question.sub_questions.all %}
+                                    {% for correction in sub_question.corrections.all %}
+                                        {% if correction %}
+                                            <span>{{ sub_question.question_text }} </span>
+                                            <span style="text-decoration: underline">[{{ correction.type }}: {{ sub_question.answer }}]</span>
+                {#                            <span>({{ sub_question.score }})</span>#}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                            </label>
+
+                        {% else %}
+
+                            <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
+                            {% for sub_question in main_question.sub_questions.all %}
+                                {% if sub_question %}
+                                    <div class="subQuestion">
+                                        <input type="checkbox" id="sub_{{ sub_question.id }}" name="questions" value='sub_{{ sub_question.id }}'>
+                                        <label for="sub_{{ sub_question.id }}">
+                                            ({{ forloop.counter }}) {{ sub_question.question_text }} ({{ sub_question.score }})
+
+                                            {#选择题#}
+                                            {% if main_question.question_type == 'choice' %}
+                                                <div class="choice">
+                                                    {% for choice in sub_question.options.all %}
+                                                       {% if choice %}
+                                                           <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+
+                                        {#连线题#}
+                                            {% if main_question.question_type == 'matching' %}
+                                                <div class="matching">
+                                                    {% for matchingOption in sub_question.matchingOptions.all %}
+                                                        {% if matchingOption %}
+                                                            <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
+
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+
+                                            {% endif %}
+
+                                        </label>
+
+                                    </div>
+                                {% else %}
+                                    <p>No sub_questions.</p>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <button type="submit">确认组卷</button>
+                <button type="submit" name="preview">预览组卷</button>
+                <button type="submit" name="add_page">添加页面</button>
+        </div>
+
+
+        <div class="right-content">
+            <h1>组卷-页面预览</h1>
+
+        </div>
+
+    </div>
+</form>
+</body>
+</html>

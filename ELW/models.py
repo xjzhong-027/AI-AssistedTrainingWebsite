@@ -6,18 +6,49 @@ import os
 
 # Create your models here.
 
-class Students(models.Model):
-    username = models.CharField(max_length=20)
-    name = models.CharField(max_length=20)
-    password = models.CharField(max_length=100)
-
-# Students.objects.create(username='student', name='student1', password='student')
+# 教师表
 class Teachers(models.Model):
-     username = models.CharField(max_length=20,verbose_name='账号')
-     name = models.CharField(max_length=20, verbose_name='姓名')
-     password = models.CharField(max_length=100)
+    username = models.CharField(max_length=20, verbose_name='账号')
+    name = models.CharField(max_length=20, verbose_name='姓名')
+    password = models.CharField(max_length=100)
 # Teachers.objects.create(username='teacher', name='teacher1', password='teacher')
 
+# 课程表
+class Course(models.Model):
+    year = models.IntegerField(verbose_name='开课年份', blank=False, null=False)
+    grade = models.IntegerField(verbose_name='开课年级', blank=False, null=False,
+                                choices=[(1, '大一'), (2, '大二'), (3, '大三'), (4, '大四')])
+    semester = models.IntegerField(verbose_name='开课学期', blank=False, null=False,
+                                   choices=[(1, '上学期'), (2, '下学期')])
+# 班级表
+class Class(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='course_id')
+    teacher = models.ForeignKey(Teachers, on_delete=models.CASCADE, related_name='teacher_id')
+    start_date = models.CharField(verbose_name='开课日期', blank=True, null=True, max_length=20)
+    week = models.IntegerField(verbose_name='周几上课', blank=False, null=False,
+                               choices=[(1, '周一'), (2, '周二'), (3, '周三'), (4, '周四'), (5, '周五'), (6, '周六'), (7, '周日')])
+    start_time = models.CharField(verbose_name='上课时间', blank=False, null=False, max_length=50)
+    end_time = models.CharField(verbose_name='下课时间', blank=False, null=False, max_length=50)
+
+# 学生表
+class Students(models.Model):
+    class_instance = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='class_id')
+    username = models.CharField(verbose_name='学生账号', max_length=20)
+    name = models.CharField(verbose_name='学生姓名', max_length=20)
+    password = models.CharField(verbose_name='学生密码', max_length=100)
+# Students.objects.create(username='student', name='student1', password='student')
+
+# 考勤记录表
+class Attendance(models.Model):
+    student = models.ForeignKey(Students, on_delete=models.CASCADE, related_name='student_id')
+    week = models.IntegerField(verbose_name='周次', blank=False, null=False)
+    status = models.CharField(verbose_name='考勤状况', blank=False, null=False, max_length=20,
+                              choices=[('normal', '正常出勤'), ('absent', '缺勤'), ('late', '迟到'),
+                                       ('early-leave', '早退'), ('abnormal', '异常挂机'), ('late and early-leave', '迟到+早退'),
+                                       ('vacation', '假期')],
+                              default='absent')
+
+# 管理员表
 class Admins(models.Model):
     username = models.CharField(max_length=20)
     password = models.CharField(max_length=100)
@@ -54,24 +85,29 @@ class MediaMaterial(models.Model):
     media_url = models.CharField(max_length=100)
     image_url = models.CharField(max_length=100, default='')
 
+    def __str__(self):
+        return self.title
+
 # 大题表
 class MainQuestion(models.Model):
     QUESTION_TYPES = [
         ('choice', '选择题'),
         ('matching', '连线题'),
         ('correction', '改错题'),
+        ('comprehension', '主观题'),
     ]
     media_material = models.ForeignKey(MediaMaterial, on_delete=models.CASCADE, related_name='main_questions')
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='choice', verbose_name="题目类型")
     question_text = models.TextField(verbose_name="大题题干", blank=False)  # 存储题干
     maximum_play = models.IntegerField(default=3)
     minimum_play = models.IntegerField(default=0)
-    start_time = models.DateTimeField(blank=True, null=True)
-    end_time = models.DateTimeField(blank=True, null=True)
+    start_time = models.TimeField(blank=True, null=True)
+    # mid_time = models.TimeField(blank=True, auto_now_add=True, null=True)
+    end_time = models.TimeField(blank=True, null=True)
     created_at = models.DateTimeField(blank=True, auto_now_add=True, verbose_name="创建时间")
 
     def __str__(self):
-        return self.question_text
+        return self.question_type
 
 
 # 上传的word文件
@@ -92,7 +128,7 @@ class SubQuestion(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     #
     def __str__(self):
-        return f"{self.main_question} - {self.question_text[:20]}"
+        return f"main_question-{self.main_question}"
 
 
 
@@ -104,7 +140,7 @@ class ChoiceOption(models.Model):
     is_answer = models.BooleanField(default=False, verbose_name="是否为答案")
 
     def __str__(self):
-        return f"{self.option_label}: {self.option_content[:20]}"
+        return f"{self.sub_question}-{self.option_label}"
 
 # 连线题-右项表
 class MatchingOption(models.Model):
@@ -114,7 +150,7 @@ class MatchingOption(models.Model):
     image_url = models.ImageField(verbose_name='选项图片', upload_to=images_upload_to, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.option_label}: {self.option_content[:20]}"
+        return f"{self.sub_question}-{self.option_label}"
 
 # 改错题
 class Correction(models.Model):
@@ -123,13 +159,39 @@ class Correction(models.Model):
         ('delete', '删除'),
         ('revise', '修改')
     ]
-    sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='correction')
+    sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='corrections')
     type = models.CharField(max_length=10, choices=CORRECTION_TYPES, default='insert', verbose_name='改错类型')
     index = models.IntegerField(default=0, verbose_name='修改位置')
 
     def __str__(self):
-        return f"{self.type}"
+        return f"{self.sub_question}-{self.type}"
 
+# 单元表
+class Unit(models.Model):
+    TYPES = [
+        ('practice', '练习'),
+        ('exam', '考试'),
+        ('task',' 作业'),
+        ('quiz', '小测')
+    ]
+    class_instance = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='units')
+    order = models.IntegerField(verbose_name='单元序号', blank=False, null=False)
+    title = models.CharField(verbose_name='单元名称', blank=True, null=True, max_length=100)
+    type = models.CharField(verbose_name='题目类型', choices=TYPES, default='practice', blank=False, null=False, max_length=20)
+
+class PaperPage(models.Model):
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='paper_pages')
+    order = models.IntegerField(verbose_name='页面顺序', blank=False, null=False)
+    text = models.TextField(verbose_name='页面文本', blank=True, null=True)
+    created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
+
+class PageMainQuestion(models.Model):
+    page = models.ForeignKey(PaperPage, on_delete=models.CASCADE, related_name='page_main_questions')
+    main_question = models.ForeignKey(MainQuestion, on_delete=models.CASCADE, related_name='selected_main_questions')
+
+class PageSubQuestion(models.Model):
+    page_main_question = models.ForeignKey(PageMainQuestion, on_delete=models.CASCADE, related_name='page_sub_questions')
+    sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='selected_sub_questions')
 
 
 

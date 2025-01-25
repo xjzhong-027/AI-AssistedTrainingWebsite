@@ -20,7 +20,11 @@
     <input type="text" name="question_type" id="question_type" value="correction" style="display: none">
     <button type="submit">改错题</button>
 </form>
-
+<form method="post">
+    {% csrf_token %}
+    <input type="text" name="question_type" id="question_type" value="test" style="display: none">
+    <button type="submit">Comprehension(test整合页面)</button>
+</form>
     <h1>Upload Word Document</h1>
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}

@@ -2,24 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>exam_management</title>
+    <title>Choice</title>
 </head>
 <body>
-<h2>Here are exam_management.</h2>
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <fieldset>
         <legend>大题</legend>
-        <p>
-            <label for="question_type">题目类型:</label>
-            <select id="question_type" name="question_type">
-                <option value="choice">Choice</option>
-                <option value="correction">Correction</option>
-                <option value="matching">Matching</option>
-                <option value="comprehension">Comprehension</option>
-                <option value="others" selected>Others</option>
-            </select>
-        </p>
         <p>大题题干：</p><br>
         <textarea name="MainQuestion" id="MainQuestion" cols="30" rows="10"></textarea>
     </fieldset>
