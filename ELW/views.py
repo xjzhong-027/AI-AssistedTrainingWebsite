@@ -2,6 +2,7 @@
 import os
 import uuid
 import datetime
+import json
 from msilib.schema import Media
 from turtledemo.penrose import start
 
@@ -16,15 +17,16 @@ from django.contrib.auth import logout
 from django.http import JsonResponse
 from django.utils.inspect import method_has_no_args
 from django.views.decorators.csrf import csrf_exempt
+from docx import Document
 
 
 # from django.contrib.auth import authenticate, login
 from English_Listening_Website import settings
-from .forms import UploadMediaForm
+from .forms import UploadMediaForm, WordUploadForm
 from ELW import models
 from django.contrib import messages
 import re
-from . import func
+from . import func, pre_page, doc_func
 
 
 from .models import (
@@ -416,34 +418,43 @@ def teacher_question_bank(request):
 def teacher_page_create(request, material_id):
     material = get_object_or_404(MediaMaterial, id=material_id)
     main_questions = material.main_questions.prefetch_related('sub_questions')
+    pre_selected_questions = [['sub_0', 'sub_0', 'sub_0']]
+
     if request.method == 'POST':
+        print(request.POST)
+        this_selected_questions = request.POST.getlist('questions')
+        print('this_selected_questions: ', this_selected_questions)
+        test_selected_questions = ['sub_1', 'sub_2', 'sub_3']
 
-        selected_questions = request.POST.getlist('questions')
-        print('selected_questions: ', selected_questions)
+        # if request.POST['pre_selected_questions']:
+            # try:
+                # test_pre_selected_questions = request.POST['pre_selected_questions'] #json数据
+                # print('received pre_selected_questions: ', test_pre_selected_questions)
+                # pre_selected_questions = json.loads(pre_selected_questions)
+                # print('test_type: ', pre_selected_questions.__class__)
+                # print(f'pre_selected_questions: {pre_selected_questions}')
+                # pre_selected_questions.append(test_selected_questions)
+            # except json.JSONDecodeError:
+            #     return JsonResponse({'status': 'error', 'message': 'JSON 解码失败'}, status=400)
+        # else:
+        #     pre_selected_questions = []
+        #     pre_selected_questions.append(test_selected_questions)
+        #     print(f'pre_selected_questions: {pre_selected_questions}')
+        # pre_selected_questions.append(test_selected_questions)
         if 'add_page' in request.POST:
-            preview_page = []
-            main_id_list = []
-            for question_id in selected_questions:
-                if question_id.startwith('main_'):
-                    main_id = int(question_id.split('main_')[1])
-                    preview_page.append({'main_id': main_id})
-                    main_id_list.append(main_id)
-                elif question_id.startwith('sub_'):
-                    sub_id = int(question_id.split('sub_')[1])
-                    main_id = SubQuestion.objects.get(id=sub_id).main_question_id
-                    if main_id in main_id_list:
-                        for pre_page in preview_page:
-                            if pre_page['main_id'] == main_id:
-                                pre_page['sub_id_list'].append(sub_id)
-                    else:
-                        preview_page.append({'main_id': main_id, 'sub_id_list': [sub_id]})
+            preview_pages = []
+            preview_page = pre_page.preview_page(this_selected_questions)
+            preview_pages.append(preview_page)
+            print('preview_pages: ', preview_pages)
+            print('receive: ', request.POST['pre_selected_questions'])
 
+            return render(request, 'teacher_side/page_create.html', {
+                'material': material,
+                'main_questions': main_questions,
+                # 'preview_pages': preview_pages,
+                'pre_selected_questions': pre_selected_questions,
 
-
-
-
-
-
+            })
 
 
         if 'preview' in request.POST:  # 如果点击的是“预览组卷”按钮
@@ -451,7 +462,7 @@ def teacher_page_create(request, material_id):
             # 收集预览数据
             preview_data = []
             main_id_list = []
-            for question_id in selected_questions:
+            for question_id in this_selected_questions:
                 if question_id.startswith('main_'):  # 选中整到大题，为改错题
                     main_id = int(question_id.split('_')[1])
                     main_question = MainQuestion.objects.get(id=main_id)
@@ -492,12 +503,15 @@ def teacher_page_create(request, material_id):
             return render(request, 'teacher_side/page_preview.html', {
                 'material': material,
                 'preview_data': preview_data,
-                'selected_questions': selected_questions,  # 将选中的题目传递到预览页面
+                'this_selected_questions': this_selected_questions,  # 将选中的题目传递到预览页面
+                'pre_selected_questions': pre_selected_questions,
+
             })
 
     return render(request, 'teacher_side/page_create.html', {
         'material': material,
         'main_questions': main_questions,
+        'pre_selected_questions': pre_selected_questions,
     })
 
 def teacher_page_save(request, material_id):
@@ -1113,13 +1127,43 @@ def question_integration(request):
     start_datetime = datetime.datetime.combine(current_date, datetime.time.fromisoformat("15:30:00"))
     print(start_datetime.isoformat())
     '''
-    if request.method == 'POST':
+    if request.method == 'POST' and request.FILES.get('word_file'):
+        def extract_text_from_word(doc_file):
+            # 读取Word文档内容
+            doc = Document(doc_file)
+            text = ''
+            for para in doc.paragraphs:
+                text += para.text
+            return text
+
+        form = WordUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            word_file = request.FILES['word_file']
+            # 提取文本内容
+            text_content = extract_text_from_word(word_file)
+            question_data = []
+            questions = doc_func.extract_questions(text_content)
+            for question in questions:
+                main_question = doc_func.parse_main_question(question)
+                question_data.append(main_question)
+                print('main_question: ', main_question)
+            print('question_data: ', question_data)
+            return JsonResponse({'status': 'success', 'text': text_content})
+        else:
+            return JsonResponse({'status': 'error', 'message': '文件上传失败'})
+
+    elif request.method == 'POST':
         question_type = request.POST.get('question_type')
         main_text = request.POST.get('MainQuestion')
         sub_text = request.POST.get('SubQuestion')
+        print('sub_text: ', sub_text)
         main_info = func.extract_main_question(main_text)
+        score = main_info['score']
+        print('main_info: ', main_info)
 
         # 存储大题
+        '''
+
         media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
         main_instance = MainQuestion(
             media_material=media_material_instance,
@@ -1131,6 +1175,9 @@ def question_integration(request):
             end_time=datetime.time.fromisoformat(main_info.get('end')) if main_info.get('end') else None,
         )
         main_instance.save()
+        '''
+
+
 
         # 选择题（单选+多选）
         if question_type == 'choice':
@@ -1142,10 +1189,10 @@ def question_integration(request):
             print('question_info: ', question_info)
 
             # 存储小题
+            '''
             label_list = ['A', 'B', 'C', 'D']
             for sub_info in question_info:
                 question_text = sub_info.get('question_text')
-                score = sub_info.get('score')
                 label_count = sub_info.get('label_count')
                 answer_list = sub_info.get('answer')
                 tips = sub_info.get('tips')
@@ -1153,6 +1200,7 @@ def question_integration(request):
                 answer = ''
                 for asw in answer_list:
                     answer += asw
+                
                 sub_instance = SubQuestion(
                     main_question=main_instance,
                     main_question_id=main_instance.id,
@@ -1177,10 +1225,11 @@ def question_integration(request):
                         is_answer=is_answer,
                     )
                     choice_option_instance.save()
+                '''
 
         # 改错题
         if question_type == 'correction':
-            main_info = func.extract_main_question(main_text)
+
             result = func.parse_text_modifications(sub_text)
             sub_list = result['sub_list']
             text_list = result['text_list']
@@ -1193,6 +1242,7 @@ def question_integration(request):
             print('type_list: ', type_list)
             print('answer_list: ', answer_list)
             print('index_list: ', index_list)
+            '''
             for i in range(len(sub_list)):
                 # 存储小题
                 sub_instance = SubQuestion(
@@ -1208,23 +1258,27 @@ def question_integration(request):
                     index=index_list[i],
                 )
                 correction_instance.save()
+            '''
 
         # 连线题
         if question_type == 'matching':
             questions = func.extract_matching_questions(sub_text)
             print('questions: ', questions)
+
             question_info = []
             for question in questions:
                 question_info.append(func.process_matching_question(question))
+            print('question_info: ', question_info)
+
             for sub_info in question_info:
                 question_text = sub_info.get('question_text')
                 tips = sub_info.get('tips')
                 analysis = sub_info.get('analysis')
                 answer = sub_info.get('option_label')
-                score = sub_info.get('score')
                 option_label = sub_info.get('option_label')
                 option_content = sub_info.get('option_content')
-                # 存储小题
+            # 存储小题
+                '''
                 sub_instance = SubQuestion(
                     main_question=main_instance,
                     main_question_id=main_instance.id,
@@ -1242,6 +1296,8 @@ def question_integration(request):
                     option_content=option_content,
                 )
                 matching_instance.save()
+            '''
+
 
 
         # 简答题
@@ -1254,9 +1310,9 @@ def question_integration(request):
                 sub_list.append(func.process_comprehension_question(question))
                 print(f'process_question: {func.process_comprehension_question(question)}')
             # 保存小题
+            '''
             for sub_info in sub_list:
                 question_text = sub_info.get('question_text')
-                score = sub_info.get('score')
                 answer = sub_info.get('answer')
                 tips = sub_info.get('tips')
                 analysis = sub_info.get('analysis')
@@ -1270,8 +1326,13 @@ def question_integration(request):
                     analysis = analysis,
                 )
                 sub_instance.save()
+            '''
 
-    return render(request, 'teacher_side/question_integration.html')
+
+
+    form = WordUploadForm()
+
+    return render(request, 'teacher_side/question_integration.html', {'form': form})
 
 # 连线题
 '''

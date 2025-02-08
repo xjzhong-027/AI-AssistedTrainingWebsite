@@ -6,10 +6,38 @@
     <meta charset="UTF-8">
     <title>Title</title>
     <link rel="stylesheet" href="{% static 'css/teacher_side/page_create.css' %}">
+{#        <script>#}
+{#        // 从 Django 模板获取数据#}
+{#        const pre_selected_questions = {{ pre_selected_questions|safe }};#}
+{##}
+{#        // 监听表单提交事件#}
+{#        document.getElementById('question_form').addEventListener('submit', function (event) {#}
+{#        try {#}
+{#            // 将数据转换为 JSON 字符串#}
+{#            const exist_pages_input = document.getElementById('pre_selected_questions');#}
+{#            exist_pages_input.value = JSON.stringify(pre_selected_questions);#}
+{#        } catch (error) {#}
+{#            console.error('表单提交出错:', error);#}
+{#            event.preventDefault(); // 阻止表单提交#}
+{#        }#}
+{#        });#}
+{#    </script>#}
+    <script>
+        const pre_selected_questions = {{ pre_selected_questions|safe }}
+        console.log('pre_selected_questions: ', pre_selected_questions)
+        try{
+
+            console.log('json: ', JSON.stringify(pre_selected_questions))
+        }catch (error){
+            console.log(error)
+        }
+        {#document.getElementById('pre_selected_questions').value=JSON.stringify(pre_selected_questions);#}
+        {#console.log(document.getElementById('pre_selected_questions').value)#}
+    </script>
 </head>
 <body>
 
-<form method="post">
+<form method="post" id="question_form">
     <div class="container">
 
         <div class="left-content">
@@ -18,6 +46,7 @@
                 {% csrf_token %}
                 <label for="title">试卷标题：</label>
                 <input type="text" id="title" name="title" placeholder="请输入试卷标题">
+                <input type="text" id="pre_selected_questions" name="pre_selected_questions" value="test">
 
                 <h2>选择题目</h2>
                 {% for main_question in main_questions %}
@@ -85,16 +114,62 @@
                     </div>
                 {% endfor %}
 
-                <button type="submit">确认组卷</button>
-                <button type="submit" name="preview">预览组卷</button>
-                <button type="submit" name="add_page">添加页面</button>
+
         </div>
 
 
         <div class="right-content">
+
             <h1>组卷-页面预览</h1>
+            {% for preview_page in preview_pages %}
+                {% if preview_page %}
+                    <div>
+                    <h3>页面{{ forloop.counter }}</h3>
+                    {% for question in preview_page %}
+                        <h4>{{ forloop.counter }}. {{ question.main_question.question_text }}</h4>
+                        {% if question.main_question.question_type == 'correction' %}
+                            {% for sub_question in question.main_question.sub_questions.all %}
+                                    {% for correction in sub_question.corrections.all %}
+                                        {% if correction %}
+                                            <span>{{ sub_question.question_text }} </span>
+                                            <span style="text-decoration: underline">[{{ correction.type }}: {{ sub_question.answer }}]</span>
+                {#                            <span>({{ sub_question.score }})</span>#}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                            {% else %}
+                                {% for sub_question in question.sub_questions %}
+                                    {% if sub_question %}
+                                        <p>({{ forloop.counter }}) {{ sub_question.question_text }}({{ sub_question.score }})</p>
+                                        {% if question.main_question.question_type == 'choice' %}
+                                            {% for option in sub_question.options.all %}
+                                                {% if option %}
+                                                    <p>{{ option.option_label }}. {{ option.option_content }}</p>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% elif question.main_question.question_type == 'matching' %}
+                                            {% for matching_option in sub_question.matchingOptions.all %}
+                                                {% if matching_option %}
+                                                    <p>{{ matching_option.option_label }}. {{ matching_option.option_content }}</p>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+
+
+
+                                    {% endif %}
+                                {% endfor %}
+                        {% endif %}
+
+                    {% endfor %}
+                    </div>
+                {% endif %}
+            {% endfor %}
 
         </div>
+        <button type="submit">确认组卷</button>
+        <button type="submit" name="preview">预览组卷</button>
+        <button type="submit" name="add_page">添加页面</button>
 
     </div>
 </form>

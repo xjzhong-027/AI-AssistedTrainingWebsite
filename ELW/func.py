@@ -1,7 +1,54 @@
 import re
 
+
+
+
 # 处理大题
 def extract_main_question(text):
+    # 定义正则表达式模式
+    score_pattern = r'\$(\d+(?:\.\d+)?)\$'
+    range_pattern = r'\[(\d+)-(\d+)\]'
+    # time_range_pattern = r'\[(\d{2}:\d{2}:\d{2})-(\d{2}:\d{2}:\d{2})\]'
+    time_range_pattern = r'\[([^-]+)-([^\]]+)\]'
+    # 初始化结果字典
+    result = {
+        'question_text': '',
+        'min': 1,
+        'max': 3,
+        'start': '',
+        'end': '',
+        'score': 1.0
+    }
+    text_match = False
+    # 提取 score
+    score_match = re.search(score_pattern, text)
+    if score_match:
+        result['score'] = float(score_match.group(1))
+        result['question_text'] = text.split(score_match.group(0))[0].strip()
+        text_match = True
+        text = text.replace(score_match.group(0), '')  # 移除 score 部分
+    # 提取 min 和 max
+    range_match = re.search(range_pattern, text)
+    if range_match:
+        result['min'] = int(range_match.group(1))
+        result['max'] = int(range_match.group(2))
+        result['question_text'] = text.split(range_match.group(0))[0].strip()
+        text_match = True
+        text = text.replace(range_match.group(0), '')  # 移除 range 部分
+    # 提取 start 和 end
+    time_range_match = re.search(time_range_pattern, text)
+    if time_range_match:
+        result['start'] = time_range_match.group(1)
+        result['end'] = time_range_match.group(2)
+        result['question_text'] = text.split(time_range_match.group(0))[0].strip()
+        text_match = True
+        text = text.replace(time_range_match.group(0), '')  # 移除 time range 部分
+    # 提取 question_text
+    if not text_match:
+        result['question_text'] = text.strip()
+    return result
+
+    '''
     # 初始化返回字典
     result = {
         'question_text': '',
@@ -26,11 +73,13 @@ def extract_main_question(text):
     result['end'] = end_match.group(1) if end_match else ''
     print('main_question result: ', result)
     return result
+    '''
 
 
 # 处理选择题（单选+多选）
 # 按题号分割题目，返回包含各个题目的列表，题号格式为(1)
 def extract_choice_questions(text):
+    text = text.replace('\n', '').replace('\r', '').replace('\t', '')
     # 使用正则表达式匹配题号，支持中文括号和英文括号，题号格式为(1)
     question_pattern = r'[\(\（]\d+[\)\）]'
     # 找到所有匹配的题号位置
@@ -54,8 +103,57 @@ def extract_choice_questions(text):
 
 # 提取各个问题的信息
 def process_choice_question(question):
+    question_data = {
+        'question_text': '',
+        'label_count': 0,
+        'A': '',
+        'B': '',
+        'C': '',
+        'D': '',
+        'answer': [],
+        'tips': '',
+        'analysis': ''
+    }
+    # 提取tips
+    tips_match = re.search( r'-\*([^*]+)\*-', question)
+    if tips_match:
+        question_data['tips'] = tips_match.group(1).strip()
+        question = question.replace(tips_match.group(0), '')  # 移除 tips 部分
+
+    # 提取analysis
+    analysis_match = re.search(r'-\*\*([^*]+)\*\*-', question)
+    if analysis_match:
+        question_data['analysis'] = analysis_match.group(1).strip()
+        question = question.replace(analysis_match.group(0), '') # 移除 analysis 部分
+
+    # 检查是否存在 '[$A]' 格式
+    option_match = re.search(r'\[\$([A])\]', question)  # 寻找 '[$A]'格式
+    if option_match:
+        # 如果找到 '[$A]' 格式，提取到该选项之前
+        question_data['question_text'] = question[:option_match.start()].strip()
+    else:
+        # 如果没有 '[$A]' 格式，寻找 '[A]' 格式
+        option_match = re.search(r'\[([A-D])\]', question)  # 寻找 '[A]', '[B]' 等格式
+        if option_match:
+            # 提取到第一个 '[A]' 格式选项之前
+            question_data['question_text'] = question[:option_match.start()].strip()
+
+    # 提取选项
+    options = re.findall(r'([A-D])\]([^\[\n]+)', question)
+    for label, option in options:
+        question_data[label] = option.strip()
+        question_data['label_count'] += 1
+
+    # 提取答案 (假设答案是以[$X]格式给出的)
+    answer_match = re.findall(r'\[\$(\w+)\]', question)
+    question_data['answer'] = answer_match
+
+
+    print(f'question_data: {question_data}')
+    return question_data
+    '''
     # 移除转义序列 \r\n\t
-    question = question.replace('\n', '').replace('\r', '').replace('\t', '')
+    # question = question.replace('\n', '').replace('\r', '').replace('\t', '')
     # 默认值
     question_data = {
         'question_text': '',
@@ -109,6 +207,7 @@ def process_choice_question(question):
         question_data['analysis'] = analysis_match.group(1).strip()
     print(f'question_data: {question_data}')
     return question_data
+    '''
 
 
 
@@ -291,6 +390,7 @@ def parse_text_modifications(input_text):
 # 处理连线题
 def extract_matching_questions(text):
     # 正则表达式匹配题号部分（支持中文和英文括号）,匹配的内容是：(1) 或 （1） 这种格式的题号
+    text = text.replace('\r\n', '').replace('\n', '').replace('\r', '').replace('\t', '')
     pattern = r'([（(]\d+[）)])'
     # 按题号进行分割
     question_parts = re.split(pattern, text)
@@ -301,7 +401,7 @@ def extract_matching_questions(text):
         # question_number = question_parts[i].strip()
         # print(f'question_number{i}: {question_number}')
         question_text = question_parts[i + 1].strip()
-        print(f'question_text{i}: {question_text}')
+        # print(f'question_text{i}: {question_text}')
         # 合并题号和题目内容
         # full_question = f"{question_number}{question_text}"
         # print(f'full_question{i}: {full_question}')
@@ -310,6 +410,38 @@ def extract_matching_questions(text):
 
 # 提取各个问题的信息
 def process_matching_question(question_text):
+    # question_text = question_text.replace('\r\n', '').replace('\n', '').replace('\r', '').replace('\t', '')
+    print('question_text: ', question_text)
+    result = {
+        'question_text': '',
+        'option_label': '',
+        'option_content': '',
+        'tips': '',
+        'analysis': ''
+    }
+    # 提取tips
+    tips_match = re.search(r'-\*([^*]+)\*-', question_text)
+    if tips_match:
+        result['tips'] = tips_match.group(1).strip()
+        question_text = question_text.replace(tips_match.group(0), '')  # 移除 tips 部分
+    # 提取analysis
+    analysis_match = re.search(r'-\*\*([^*]+)\*\*-', question_text)
+    if analysis_match:
+        result['analysis'] = analysis_match.group(1).strip()
+        question_text = question_text.replace(analysis_match.group(0), '')  # 移除 analysis 部分
+
+    # 提取到第一个选项[A]或[B]等选项之前的部分作为题干
+    question_text_match = re.match(r'([^\[]+)', question_text)
+    if question_text_match:
+        result['question_text'] = question_text_match.group(1).strip()
+    # 提取选项标签和选项内容 (格式: [A] A website)
+    option_match = re.search(r'\[([A-Z])\](.*?)\s*(?=\[|$)', question_text)
+    if option_match:
+        result['option_label'] = option_match.group(1)
+        result['option_content'] = option_match.group(2).strip()
+    return result
+
+'''
     # 移除转义序列 \r\n\t
     question_text = question_text.replace('\r\n', '').replace('\n', '').replace('\r', '').replace('\t', '')
     print('question_text: ', question_text)
@@ -353,6 +485,7 @@ def process_matching_question(question_text):
     else:
         result['analysis'] = ''  # 若没有分析，返回空值
     return result
+    '''
 
 
 
@@ -376,8 +509,7 @@ def extract_comprehension_questions(text):
     # 确保有题号
     if not question_indices:
         return []
-    # 结果列表
-    questions = []
+    questions = []  # 结果列表
     # 逐一分割题目
     for i in range(len(question_indices)):
         start_index = question_indices[i]
@@ -396,32 +528,23 @@ def extract_comprehension_questions(text):
 def process_comprehension_question(question):
     result = {
         'question_text': "",
-        'score': 1.0,  # 默认分数为 1.0
         'answer': "",
         'tips': "",
         'analysis': "",
     }
-    # 首先使用正则表达式提取题干部分，优先匹配分值格式，即含有 $数字$ 格式的情况
-    # 查找包含 $数字$ 的位置
-    match_score = re.search(r'\$(\d+)\$', question)
-    if match_score:
-        # 如果找到$数字$，提取$数字$之前的部分作为题干
-        result['question_text'] = re.split(r'\$\d+\$', question)[0].strip()
-        result['score'] = float(match_score.group(1))  # 提取分数
-    else:
-        # 如果没有$数字$，则提取第一个[answer: 任意字符]之前的内容
-        match_answer = re.search(r'\[answer:([^\]]+)\]', question)
-        if match_answer:
-            result['question_text'] = question.split('[answer:')[0].strip()
+    # 提取tips
+    tips_match = re.search(r'-\*([^*]+)\*-', question)
+    if tips_match:
+        result['tips'] = tips_match.group(1).strip()
+        question = question.replace(tips_match.group(0), '')  # 移除 tips 部分
+    # 提取analysis
+    analysis_match = re.search(r'-\*\*([^*]+)\*\*-', question)
+    if analysis_match:
+        result['analysis'] = analysis_match.group(1).strip()
+        question = question.replace(analysis_match.group(0), '')  # 移除 analysis 部分
     # 提取答案部分
-    match_answer = re.search(r'\[answer:([^\]]+)\]', question)
+    match_answer = re.search(r'\[\$([^\]]+)\]', question)
     if match_answer:
         result['answer'] = match_answer.group(1).strip()
-    # 提取提示和分析部分
-    match_tips = re.search(r'\[tips:([^\]]+)\]', question)
-    if match_tips:
-        result['tips'] = match_tips.group(1).strip()
-    match_analysis = re.search(r'\[analysis:([^\]]+)\]', question)
-    if match_analysis:
-        result['analysis'] = match_analysis.group(1).strip()
+        result['question_text'] = question.split('[$')[0].strip() #提取第一个[answer: 任意字符]之前的内容作为题干
     return result

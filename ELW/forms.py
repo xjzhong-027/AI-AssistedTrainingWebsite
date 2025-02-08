@@ -16,6 +16,9 @@ from django.forms import inlineformset_factory
 from .models import MainQuestion, SubQuestion, ChoiceOption, MatchingOption, Correction, Document
 
 
+class WordUploadForm(forms.Form):
+    word_file = forms.FileField(label='选择 Word 文件')
+
 # 大题表单
 class MainQuestionForm(forms.ModelForm):
     class Meta:
