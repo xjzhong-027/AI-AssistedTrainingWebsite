@@ -1228,7 +1228,6 @@ def teacher_matching(request):
             matching_instance.save()
     return render(request, 'teacher_side/matching_test1.html')
 
-# question_integration.html (test整合页面)
 def question_integration(request):
     task_package_id = request.GET.get('task_package_id')
     '''
@@ -1263,191 +1262,394 @@ def question_integration(request):
                 question_data.append(main_question)
                 print('main_question: ', main_question)
             print('question_data: ', question_data)
-            return JsonResponse({'status': 'success', 'text': text_content})
+
+            # 将每道改错题的sub_list、type_list、answer_list、index_list合并为一个列表，列表中每个集合包含这四个值
+            for main_question in question_data:
+                if main_question['question_type'] == 'correction':
+                    for sub_question in main_question['sub_questions']:
+                        sub_question['questions'] = []
+                        for i in range(len(sub_question['sub_list'])):
+                            sub_question['questions'].append({
+                                'sub': sub_question['sub_list'][i],
+                                'type': sub_question['type_list'][i],
+                                'answer': sub_question['answer_list'][i],
+                                'index': sub_question['index_list'][i]
+                            })
+            return render(request, 'teacher_side/question_preview.html', {'question_data': question_data})
         else:
             return JsonResponse({'status': 'error', 'message': '文件上传失败'})
 
+
+
+
     elif request.method == 'POST':
         question_type = request.POST.get('question_type')
-        main_text = request.POST.get('MainQuestion')
-        sub_text = request.POST.get('SubQuestion')
-        print('sub_text: ', sub_text)
-        main_info = func.extract_main_question(main_text)
-        score = main_info['score']
-        print('main_info: ', main_info)
 
-        # 存储大题
-        '''
+        # 处理预览
+        if 'preview' in request.POST:
+            main_text = request.POST.get('MainQuestion')
+            sub_text = request.POST.get('SubQuestion')
+            main_info = func.extract_main_question(main_text)
 
-        media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
-        main_instance = MainQuestion(
-            media_material=media_material_instance,
-            question_type=question_type,
-            question_text=main_info.get('question_text'),
-            maximum_play=main_info.get('max') if main_info.get('max') else 3,
-            minimum_play=main_info.get('min') if main_info.get('min') else 1,
-            start_time=datetime.time.fromisoformat(main_info.get('start')) if main_info.get('start') else None,
-            end_time=datetime.time.fromisoformat(main_info.get('end')) if main_info.get('end') else None,
-        )
-        main_instance.save()
-        '''
+            question_data = [{
+                "question_type": question_type,
+                "question_text": main_info.get('question_text'),
+                "score": main_info.get('score'),
+                "min": main_info.get('min'),
+                "max": main_info.get('max'),
+                "start": main_info.get('start'),
+                "end": main_info.get('end'),
+                "sub_questions": []
+            }]
+
+            if question_type == 'choice':
+                question_list = func.extract_choice_questions(sub_text)
+                for question in question_list:
+                    question_data[0]["sub_questions"].append(func.process_choice_question(question))
+
+            if question_type == 'correction':
+                result = func.parse_text_modifications(sub_text)
+                question_data[0]["sub_questions"].append(result)
+                for sub_question in question_data[0]['sub_questions']:
+                    sub_question['questions'] = []
+                    for i in range(len(sub_question['sub_list'])):
+                        sub_question['questions'].append({
+                            'sub': sub_question['sub_list'][i],
+                            'type': sub_question['type_list'][i],
+                            'answer': sub_question['answer_list'][i],
+                            'index': sub_question['index_list'][i]
+                        })
 
 
+            if question_type == 'matching':
+                questions = func.extract_matching_questions(sub_text)
+                for question in questions:
+                    question_data[0]["sub_questions"].append(func.process_matching_question(question))
 
-        # 选择题（单选+多选）
-        if question_type == 'choice':
-            question_list = func.extract_choice_questions(sub_text)
-            print('question_list: ', question_list)
-            question_info = []
-            for question in question_list:
-                question_info.append(func.process_choice_question(question))
-            print('question_info: ', question_info)
+            if question_type == 'comprehension':
+                question_list = func.extract_comprehension_questions(sub_text)
+                for question in question_list:
+                    question_data[0]["sub_questions"].append(func.process_comprehension_question(question))
 
-            # 存储小题
-            '''
-            label_list = ['A', 'B', 'C', 'D']
-            for sub_info in question_info:
-                question_text = sub_info.get('question_text')
-                label_count = sub_info.get('label_count')
-                answer_list = sub_info.get('answer')
-                tips = sub_info.get('tips')
-                analysis = sub_info.get('analysis')
-                answer = ''
-                for asw in answer_list:
-                    answer += asw
-                
-                sub_instance = SubQuestion(
-                    main_question=main_instance,
-                    main_question_id=main_instance.id,
-                    question_text=question_text,
-                    score=score,
-                    answer=answer,
-                    tips=tips,
-                    analysis=analysis,
+            return render(request, 'teacher_side/question_preview.html', {"question_data": question_data})
+
+
+        # 处理保存逻辑
+        if 'save' in request.POST:
+            # 把POST数据转为字典
+            post_data = request.POST.dict()
+
+            main_data = {}
+            for key in post_data:
+                if key.startswith('main['):
+                    parts = key.split('.')
+                    main_idx = int(parts[0][5:-1])
+                    field_path = parts[1:]
+
+                    # 构建嵌套字典结构
+                    current = main_data.setdefault(main_idx, {})
+                    for part in field_path[:-1]:
+                        if '[' in part:
+                            name, idx = part[:-1].split('[')
+                            idx = int(idx)
+                            current = current.setdefault(name, {}).setdefault(idx, {})
+                        else:
+                            current = current.setdefault(part, {})
+                    current[field_path[-1]] = post_data[key]
+
+            # 遍历所有大题
+            for main_idx, main_item in main_data.items():
+                # 保存大题
+                media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+                main_instance = MainQuestion(
+                    media_material=media_material_instance,
+                    question_type=main_item.get('question_type'),
+                    question_text=main_item.get('main_question_text'),
+                    maximum_play=main_item.get('max') if main_item.get('max') else 3,
+                    minimum_play=main_item.get('min') if main_item.get('min') else 1,
+                    start_time=datetime.time.fromisoformat(main_item.get('start')) if main_item.get('start') else None,
+                    end_time=datetime.time.fromisoformat(main_item.get('end')) if main_item.get('end') else None,
+                    allow_pause = str(main_item.get('allow_pause', 'false')).lower() == 'true',
+                    limited_time=datetime.time.fromisoformat(main_item.get('limited_time')) if main_item.get('limited_time') else None
                 )
-                sub_instance.save()
-                for i in range(label_count):
-                    option_label = label_list[i]
-                    if option_label in answer:
-                        is_answer = True
-                    else:
-                        is_answer = False
-                    choice_option_instance = ChoiceOption(
-                        sub_question=sub_instance,
-                        sub_question_id=sub_instance.id,
-                        option_label=option_label,
-                        option_content=sub_info.get(option_label),
-                        is_answer=is_answer,
-                    )
-                    choice_option_instance.save()
-                '''
+                main_instance.save()
 
-        # 改错题
-        if question_type == 'correction':
+                # 保存改错题
+                if main_item['question_type'] == 'correction':
+                    for sub_idx, sub_item in main_item.get('sub', {}).items():
+                        for corr_idx, correction in sub_item.get('corrections', {}).items():
+                            sub_question = SubQuestion(
+                                main_question=main_instance,
+                                question_text=correction.get('question_text'),
+                                score=correction.get('score'),
+                                answer=correction.get('answer'),
+                                tips=correction.get('tips'),
+                                analysis=correction.get('analysis')
+                            )
+                            sub_question.save()
+                            correction_instance = Correction(
+                                sub_question=sub_question,
+                                type=correction.get('correction_type'),
+                                index=correction.get('index'),
+                            )
+                            correction_instance.save()
+                else:
+                    for sub_idx, sub_item in main_item.get('sub', {}).items():
+                        sub_question = SubQuestion(
+                            main_question=main_instance,
+                            question_text=sub_item.get('question_text'),
+                            score=sub_item.get('score'),
+                            answer=sub_item.get('answer'),
+                            tips=sub_item.get('tips'),
+                            analysis=sub_item.get('analysis')
+                        )
+                        sub_question.save()
 
-            result = func.parse_text_modifications(sub_text)
-            sub_list = result['sub_list']
-            text_list = result['text_list']
-            type_list = result['type_list']
-            answer_list = result['answer_list']
-            index_list = result['index_list']
-            # split_texts = result['split_texts']
-            print('sub_list: ', sub_list)
-            print('text_list: ', text_list)
-            print('type_list: ', type_list)
-            print('answer_list: ', answer_list)
-            print('index_list: ', index_list)
-            '''
-            for i in range(len(sub_list)):
-                # 存储小题
-                sub_instance = SubQuestion(
-                    main_question=main_instance,
-                    main_question_id=main_instance.id,
-                    question_text=sub_list[i],
-                    answer=answer_list[i],
-                )
-                sub_instance.save()
-                correction_instance = Correction(
-                    sub_question=sub_instance,
-                    type=type_list[i],
-                    index=index_list[i],
-                )
-                correction_instance.save()
-            '''
+                        # 保存选择题
+                        if main_item['question_type'] == 'choice':
+                            label_list = ['A', 'B', 'C', 'D']
+                            label_count = int(sub_item.get('label_count'))
+                            for i in range(label_count):
+                                option_label = label_list[i]
+                                option_content = sub_item.get(option_label)
 
-        # 连线题
-        if question_type == 'matching':
-            questions = func.extract_matching_questions(sub_text)
-            print('questions: ', questions)
+                                if option_content:
+                                    is_answer = option_label in sub_item.get('answer')  # 判断是否为答案
+                                    choice_option = ChoiceOption(
+                                        sub_question=sub_question,
+                                        option_label=option_label,
+                                        option_content=option_content,
+                                        is_answer=is_answer
+                                    )
+                                    choice_option.save()
 
-            question_info = []
-            for question in questions:
-                question_info.append(func.process_matching_question(question))
-            print('question_info: ', question_info)
-
-            for sub_info in question_info:
-                question_text = sub_info.get('question_text')
-                tips = sub_info.get('tips')
-                analysis = sub_info.get('analysis')
-                answer = sub_info.get('option_label')
-                option_label = sub_info.get('option_label')
-                option_content = sub_info.get('option_content')
-            # 存储小题
-                '''
-                sub_instance = SubQuestion(
-                    main_question=main_instance,
-                    main_question_id=main_instance.id,
-                    question_text=question_text,
-                    tips=tips,
-                    analysis=analysis,
-                    answer=answer,
-                    score=score,
-                )
-                sub_instance.save()
-                # 存储选项
-                matching_instance = MatchingOption(
-                    sub_question=sub_instance,
-                    option_label=option_label,
-                    option_content=option_content,
-                )
-                matching_instance.save()
-            '''
-
-
-
-        # 简答题
-        if question_type == 'comprehension':
-            # 提取文本内容
-            question_list = func.extract_comprehension_questions(sub_text)
-            print('question_list: ', question_list)
-            sub_list = []
-            for question in question_list:
-                sub_list.append(func.process_comprehension_question(question))
-                print(f'process_question: {func.process_comprehension_question(question)}')
-            # 保存小题
-            '''
-            for sub_info in sub_list:
-                question_text = sub_info.get('question_text')
-                answer = sub_info.get('answer')
-                tips = sub_info.get('tips')
-                analysis = sub_info.get('analysis')
-                sub_instance = SubQuestion(
-                    main_question = main_instance,
-                    main_question_id = main_instance.id,
-                    question_text = question_text,
-                    score = score,
-                    answer = answer,
-                    tips = tips,
-                    analysis = analysis,
-                )
-                sub_instance.save()
-            '''
-
-
+                        # 保存连线题
+                        elif main_item['question_type'] == 'matching':
+                            matching_instance = MatchingOption(
+                                sub_question=sub_question,
+                                option_label=sub_item.get('option_label'),
+                                option_content=sub_item.get('option_content'),
+                            )
+                            matching_instance.save()
+            return redirect('teacher_question_bank')
 
     form = WordUploadForm()
 
     return render(request, 'teacher_side/question_integration.html', {'form': form})
+
+# question_integration.html (test整合页面)
+#
+# def question_integration(request):
+#     task_package_id = request.GET.get('task_package_id')
+#     '''
+#     start_time = datetime.time.fromisoformat("00:30:00").isoformat()
+#     end_time = datetime.time.fromisoformat("14:00:00").isoformat()
+#     print(start_time)
+#     print(type(start_time))
+#
+#     current_date = datetime.date.today()
+#     # 创建 datetime 对象，结合当前日期和时间
+#     start_datetime = datetime.datetime.combine(current_date, datetime.time.fromisoformat("15:30:00"))
+#     print(start_datetime.isoformat())
+#     '''
+#     if request.method == 'POST' and request.FILES.get('word_file'):
+#         def extract_text_from_word(doc_file):
+#             # 读取Word文档内容
+#             doc = Document(doc_file)
+#             text = ''
+#             for para in doc.paragraphs:
+#                 text += para.text
+#             return text
+#
+#         form = WordUploadForm(request.POST, request.FILES)
+#         if form.is_valid():
+#             word_file = request.FILES['word_file']
+#             # 提取文本内容
+#             text_content = extract_text_from_word(word_file)
+#             question_data = []
+#             questions = doc_func.extract_questions(text_content)
+#             for question in questions:
+#                 main_question = doc_func.parse_main_question(question)
+#                 question_data.append(main_question)
+#                 print('main_question: ', main_question)
+#             print('question_data: ', question_data)
+#             return JsonResponse({'status': 'success', 'text': text_content})
+#         else:
+#             return JsonResponse({'status': 'error', 'message': '文件上传失败'})
+#
+#     elif request.method == 'POST':
+#         question_type = request.POST.get('question_type')
+#         main_text = request.POST.get('MainQuestion')
+#         sub_text = request.POST.get('SubQuestion')
+#         print('sub_text: ', sub_text)
+#         main_info = func.extract_main_question(main_text)
+#         score = main_info['score']
+#         print('main_info: ', main_info)
+#
+#         # 存储大题
+#         '''
+#
+#         media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+#         main_instance = MainQuestion(
+#             media_material=media_material_instance,
+#             question_type=question_type,
+#             question_text=main_info.get('question_text'),
+#             maximum_play=main_info.get('max') if main_info.get('max') else 3,
+#             minimum_play=main_info.get('min') if main_info.get('min') else 1,
+#             start_time=datetime.time.fromisoformat(main_info.get('start')) if main_info.get('start') else None,
+#             end_time=datetime.time.fromisoformat(main_info.get('end')) if main_info.get('end') else None,
+#         )
+#         main_instance.save()
+#         '''
+#
+#
+#
+#         # 选择题（单选+多选）
+#         if question_type == 'choice':
+#             question_list = func.extract_choice_questions(sub_text)
+#             print('question_list: ', question_list)
+#             question_info = []
+#             for question in question_list:
+#                 question_info.append(func.process_choice_question(question))
+#             print('question_info: ', question_info)
+#
+#             # 存储小题
+#             '''
+#             label_list = ['A', 'B', 'C', 'D']
+#             for sub_info in question_info:
+#                 question_text = sub_info.get('question_text')
+#                 label_count = sub_info.get('label_count')
+#                 answer_list = sub_info.get('answer')
+#                 tips = sub_info.get('tips')
+#                 analysis = sub_info.get('analysis')
+#                 answer = ''
+#                 for asw in answer_list:
+#                     answer += asw
+#
+#                 sub_instance = SubQuestion(
+#                     main_question=main_instance,
+#                     main_question_id=main_instance.id,
+#                     question_text=question_text,
+#                     score=score,
+#                     answer=answer,
+#                     tips=tips,
+#                     analysis=analysis,
+#                 )
+#                 sub_instance.save()
+#                 for i in range(label_count):
+#                     option_label = label_list[i]
+#                     if option_label in answer:
+#                         is_answer = True
+#                     else:
+#                         is_answer = False
+#                     choice_option_instance = ChoiceOption(
+#                         sub_question=sub_instance,
+#                         sub_question_id=sub_instance.id,
+#                         option_label=option_label,
+#                         option_content=sub_info.get(option_label),
+#                         is_answer=is_answer,
+#                     )
+#                     choice_option_instance.save()
+#                 '''
+#
+#         # 改错题
+#         if question_type == 'correction':
+#             result = func.parse_text_modifications(sub_text)
+#             sub_list = result['sub_list']
+#             text_list = result['text_list']
+#             type_list = result['type_list']
+#             answer_list = result['answer_list']
+#             index_list = result['index_list']
+#             # split_texts = result['split_texts']
+#             print('sub_list: ', sub_list)
+#             print('text_list: ', text_list)
+#             print('type_list: ', type_list)
+#             print('answer_list: ', answer_list)
+#             print('index_list: ', index_list)
+#             '''
+#             for i in range(len(sub_list)):
+#                 # 存储小题
+#                 sub_instance = SubQuestion(
+#                     main_question=main_instance,
+#                     main_question_id=main_instance.id,
+#                     question_text=sub_list[i],
+#                     answer=answer_list[i],
+#                 )
+#                 sub_instance.save()
+#                 correction_instance = Correction(
+#                     sub_question=sub_instance,
+#                     type=type_list[i],
+#                     index=index_list[i],
+#                 )
+#                 correction_instance.save()
+#             '''
+#         # 连线题
+#         if question_type == 'matching':
+#             questions = func.extract_matching_questions(sub_text)
+#             print('questions: ', questions)
+#
+#             question_info = []
+#             for question in questions:
+#                 question_info.append(func.process_matching_question(question))
+#             print('question_info: ', question_info)
+#
+#             for sub_info in question_info:
+#                 question_text = sub_info.get('question_text')
+#                 tips = sub_info.get('tips')
+#                 analysis = sub_info.get('analysis')
+#                 answer = sub_info.get('option_label')
+#                 option_label = sub_info.get('option_label')
+#                 option_content = sub_info.get('option_content')
+#             # 存储小题
+#                 '''
+#                 sub_instance = SubQuestion(
+#                     main_question=main_instance,
+#                     main_question_id=main_instance.id,
+#                     question_text=question_text,
+#                     tips=tips,
+#                     analysis=analysis,
+#                     answer=answer,
+#                     score=score,
+#                 )
+#                 sub_instance.save()
+#                 # 存储选项
+#                 matching_instance = MatchingOption(
+#                     sub_question=sub_instance,
+#                     option_label=option_label,
+#                     option_content=option_content,
+#                 )
+#                 matching_instance.save()
+#             '''
+#         # 简答题
+#         if question_type == 'comprehension':
+#             # 提取文本内容
+#             question_list = func.extract_comprehension_questions(sub_text)
+#             print('question_list: ', question_list)
+#             sub_list = []
+#             for question in question_list:
+#                 sub_list.append(func.process_comprehension_question(question))
+#                 print(f'process_question: {func.process_comprehension_question(question)}')
+#             # 保存小题
+#             '''
+#             for sub_info in sub_list:
+#                 question_text = sub_info.get('question_text')
+#                 answer = sub_info.get('answer')
+#                 tips = sub_info.get('tips')
+#                 analysis = sub_info.get('analysis')
+#                 sub_instance = SubQuestion(
+#                     main_question = main_instance,
+#                     main_question_id = main_instance.id,
+#                     question_text = question_text,
+#                     score = score,
+#                     answer = answer,
+#                     tips = tips,
+#                     analysis = analysis,
+#                 )
+#                 sub_instance.save()
+#             '''
+#     form = WordUploadForm()
+#
+#     return render(request, 'teacher_side/question_integration.html', {'form': form})
 
 # 连线题
 '''

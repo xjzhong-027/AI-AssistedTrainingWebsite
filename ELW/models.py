@@ -104,6 +104,8 @@ class MainQuestion(models.Model):
     start_time = models.TimeField(blank=True, null=True)
     # mid_time = models.TimeField(blank=True, auto_now_add=True, null=True)
     end_time = models.TimeField(blank=True, null=True)
+    allow_pause = models.BooleanField(blank=True, null=True, default=False)
+    limited_time = models.TimeField(blank=True, null=True)
     created_at = models.DateTimeField(blank=True, auto_now_add=True, verbose_name="创建时间")
 
     def __str__(self):

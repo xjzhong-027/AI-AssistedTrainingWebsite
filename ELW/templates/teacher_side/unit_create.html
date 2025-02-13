@@ -1,8 +1,11 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Unit Create</title>
+    <link rel="stylesheet" href="{% static 'css/teacher_side/unit_create.css' %}">
 </head>
 <body>
 <form method="post">
@@ -55,7 +58,10 @@
         const examDiv = document.getElementById('time_management');
         if (selectedType.value === 'exam') {
             examDiv.style.display = 'block';
-        } else {
+        }else if (selectedType.value === 'quiz'){
+            examDiv.style.display = 'block';
+        }
+        else {
             examDiv.style.display = 'none';
         }
     }
