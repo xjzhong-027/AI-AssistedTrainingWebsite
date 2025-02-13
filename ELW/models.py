@@ -22,7 +22,7 @@ class Course(models.Model):
                                    choices=[(1, '上学期'), (2, '下学期')])
 # 班级表
 class Class(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='course_id')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='course')
     teacher = models.ForeignKey(Teachers, on_delete=models.CASCADE, related_name='teacher_id')
     start_date = models.CharField(verbose_name='开课日期', blank=True, null=True, max_length=20)
     week = models.IntegerField(verbose_name='周几上课', blank=False, null=False,
@@ -193,6 +193,10 @@ class PageSubQuestion(models.Model):
     page_main_question = models.ForeignKey(PageMainQuestion, on_delete=models.CASCADE, related_name='page_sub_questions')
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='selected_sub_questions')
 
+class TimeManagement(models.Model):
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='time_management')
+    week = models.IntegerField(verbose_name='开放周次', default=0)
+    duration = models.IntegerField(verbose_name='时长限制', blank=True, null=True)
 
 
 

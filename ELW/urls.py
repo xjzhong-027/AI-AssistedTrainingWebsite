@@ -18,6 +18,10 @@ urlpatterns = [
 
     path('exam_bank/', views.teacher_exam_bank, name='teacher_exam_bank'),
 
+    path('exam_detail/<int:unit_id>/', views.teacher_exam_detail, name='teacher_exam_detail'),
+
+    path('exam_delete/<int:unit_id>/', views.teacher_exam_delete, name='teacher_exam_delete'),
+
     path('exam_management/', views.teacher_exam_management, name='teacher_exam_management'),
 
     path('forum/', views.teacher_forum, name='teacher_forum'),
@@ -27,6 +31,8 @@ urlpatterns = [
     path('task_package_add/', views.teacher_task_package_add, name='teacher_task_package_add'),
 
     path('media_material_detail/<int:material_id>/', views.teacher_media_material_detail, name='teacher_media_material_detail'),
+
+
 
     path('question_add/', views.teacher_question_add, name='teacher_question_add'),
 

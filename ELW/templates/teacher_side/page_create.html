@@ -6,34 +6,11 @@
     <meta charset="UTF-8">
     <title>Title</title>
     <link rel="stylesheet" href="{% static 'css/teacher_side/page_create.css' %}">
-{#        <script>#}
-{#        // 从 Django 模板获取数据#}
-{#        const pre_selected_questions = {{ pre_selected_questions|safe }};#}
-{##}
-{#        // 监听表单提交事件#}
-{#        document.getElementById('question_form').addEventListener('submit', function (event) {#}
-{#        try {#}
-{#            // 将数据转换为 JSON 字符串#}
-{#            const exist_pages_input = document.getElementById('pre_selected_questions');#}
-{#            exist_pages_input.value = JSON.stringify(pre_selected_questions);#}
-{#        } catch (error) {#}
-{#            console.error('表单提交出错:', error);#}
-{#            event.preventDefault(); // 阻止表单提交#}
-{#        }#}
-{#        });#}
-{#    </script>#}
-    <script>
-        const pre_selected_questions = {{ pre_selected_questions|safe }}
-        console.log('pre_selected_questions: ', pre_selected_questions)
-        try{
-
-            console.log('json: ', JSON.stringify(pre_selected_questions))
-        }catch (error){
-            console.log(error)
+    <style>
+        .preview_page{
+            border: 1px solid black;
         }
-        {#document.getElementById('pre_selected_questions').value=JSON.stringify(pre_selected_questions);#}
-        {#console.log(document.getElementById('pre_selected_questions').value)#}
-    </script>
+    </style>
 </head>
 <body>
 
@@ -44,9 +21,7 @@
             <h1>组卷 - {{ material.title }}</h1>
 
                 {% csrf_token %}
-                <label for="title">试卷标题：</label>
-                <input type="text" id="title" name="title" placeholder="请输入试卷标题">
-                <input type="text" id="pre_selected_questions" name="pre_selected_questions" value="test">
+                <input type="text" id="pre_selected_questions" name="pre_selected_questions" hidden>
 
                 <h2>选择题目</h2>
                 {% for main_question in main_questions %}
@@ -62,7 +37,9 @@
                                     {% for correction in sub_question.corrections.all %}
                                         {% if correction %}
                                             <span>{{ sub_question.question_text }} </span>
-                                            <span style="text-decoration: underline">[{{ correction.type }}: {{ sub_question.answer }}]</span>
+{#                                            <span style="text-decoration: underline">#}
+{#                                                [{{ correction.type }}: {{ sub_question.answer }}]#}
+{#                                            </span>#}
                 {#                            <span>({{ sub_question.score }})</span>#}
                                         {% endif %}
                                     {% endfor %}
@@ -123,8 +100,10 @@
             <h1>组卷-页面预览</h1>
             {% for preview_page in preview_pages %}
                 {% if preview_page %}
-                    <div>
+                    <div class="preview_page" id="{{ forloop.counter0 }}">
+
                     <h3>页面{{ forloop.counter }}</h3>
+                    <button onclick="removeDiv({{ forloop.counter0 }})">删除页面</button>
                     {% for question in preview_page %}
                         <h4>{{ forloop.counter }}. {{ question.main_question.question_text }}</h4>
                         {% if question.main_question.question_type == 'correction' %}
@@ -132,7 +111,7 @@
                                     {% for correction in sub_question.corrections.all %}
                                         {% if correction %}
                                             <span>{{ sub_question.question_text }} </span>
-                                            <span style="text-decoration: underline">[{{ correction.type }}: {{ sub_question.answer }}]</span>
+{#                                            <span style="text-decoration: underline">[{{ correction.type }}: {{ sub_question.answer }}]</span>#}
                 {#                            <span>({{ sub_question.score }})</span>#}
                                         {% endif %}
                                     {% endfor %}
@@ -167,11 +146,55 @@
             {% endfor %}
 
         </div>
-        <button type="submit">确认组卷</button>
-        <button type="submit" name="preview">预览组卷</button>
+
+{#        <button type="submit" name="preview">预览组卷</button>#}
         <button type="submit" name="add_page">添加页面</button>
 
     </div>
 </form>
+
+<form method="post" id="submit_form" action="{% url 'teacher_page_save' material.id %}">
+    {% csrf_token %}
+    <input type="text" id="preview_datas" name="preview_datas" value="test" hidden>
+    <button type="submit">确认组卷</button>
+</form>
+
+<script>
+    {% if pre_selected_questions %}
+        const pre_selected_questions = {{ pre_selected_questions|safe }}
+        console.log('pre_selected_questions: ', pre_selected_questions)
+
+        document.getElementById('question_form').addEventListener('submit', function (event) {
+            console.log('click "submit". ')
+            try{
+                console.log('json: ', JSON.stringify(pre_selected_questions))
+                document.getElementById('pre_selected_questions').value=JSON.stringify(pre_selected_questions);
+                console.log(document.getElementById('pre_selected_questions').value)
+            }catch (error){
+                console.log(error)
+                {#event.preventDefault();#}
+            }
+        });
+        document.getElementById('submit_form').addEventListener('submit', function (event) {
+            console.log('click save.')
+            try{
+                document.getElementById('preview_datas').value=JSON.stringify(pre_selected_questions);
+            }catch(error){
+                console.log(error)
+                event.preventDefault(); //阻止表单提交
+            }
+        });
+        function removeDiv(id){
+            const divToRemove = document.getElementById(id);
+            if (divToRemove){
+                console.log('before: ', pre_selected_questions)
+                pre_selected_questions.splice(parseInt(id), 1)
+                divToRemove.remove()
+                console.log('after: ', pre_selected_questions)
+            }
+        }
+    {% endif %}
+
+</script>
 </body>
 </html>

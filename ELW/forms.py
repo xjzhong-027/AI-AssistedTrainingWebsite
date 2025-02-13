@@ -17,7 +17,7 @@ from .models import MainQuestion, SubQuestion, ChoiceOption, MatchingOption, Cor
 
 
 class WordUploadForm(forms.Form):
-    word_file = forms.FileField(label='选择 Word 文件')
+    word_file = forms.FileField(label='文件导入')
 
 # 大题表单
 class MainQuestionForm(forms.ModelForm):

@@ -13,10 +13,12 @@ body, html {
 
 .sidebar {
     width: 20%;
-    background-color: #333;
+    background-color: #2b7db6;
     color: white;
     padding: 20px;
     box-sizing: border-box;
+    font-size: larger;
+    font-weight: bold;
 }
 
 .sidebar ul {

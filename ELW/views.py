@@ -1,8 +1,8 @@
 #导入要用的模块
-import os
-import uuid
-import datetime
-import json
+import os,uuid,datetime,json,re
+# import uuid
+# import datetime
+# import json
 from msilib.schema import Media
 from turtledemo.penrose import start
 
@@ -25,7 +25,7 @@ from English_Listening_Website import settings
 from .forms import UploadMediaForm, WordUploadForm
 from ELW import models
 from django.contrib import messages
-import re
+# import re
 from . import func, pre_page, doc_func
 
 
@@ -45,6 +45,7 @@ from .models import (
     PaperPage,
     PageMainQuestion,
     PageSubQuestion,
+    TimeManagement,
 )
 from .forms import (
     MainQuestionForm,
@@ -403,7 +404,7 @@ def teacher_question_bank(request):
         username = request.session.get('username', None)
         media_materials = MediaMaterial.objects.all()
         print('media_materials: ', media_materials)
-        paginator = Paginator(media_materials, 10)  # 每页展示 10 条
+        paginator = Paginator(media_materials, 15)  # 每页展示 15 条
         page_number = request.GET.get('page')  # 获取当前页码
         page_obj = paginator.get_page(page_number)  # 获取当前页对象
         # print((datetime.datetime.now() - datetime.datetime.fromisoformat(request.session.get('last_active_time'))).total_seconds() > 60)
@@ -418,14 +419,24 @@ def teacher_question_bank(request):
 def teacher_page_create(request, material_id):
     material = get_object_or_404(MediaMaterial, id=material_id)
     main_questions = material.main_questions.prefetch_related('sub_questions')
-    pre_selected_questions = [['sub_0', 'sub_0', 'sub_0']]
+    pre_selected_questions = []
+    # pre_selected_questions = [['sub_0', 'sub_0', 'sub_0']]
 
     if request.method == 'POST':
         print(request.POST)
         this_selected_questions = request.POST.getlist('questions')
         print('this_selected_questions: ', this_selected_questions)
-        test_selected_questions = ['sub_1', 'sub_2', 'sub_3']
 
+        # test_selected_questions = ['sub_1', 'sub_2', 'sub_3']
+        if request.POST['pre_selected_questions']:
+            pre_selected_questions_json = request.POST.get('pre_selected_questions')
+            try:
+                # 将 JSON 字符串还原为 Python 对象
+                pre_selected_questions = json.loads(pre_selected_questions_json)
+                print('成功还原pre_selected_questions: ', pre_selected_questions)
+            except json.JSONDecodeError:
+                print("JSON 解析出错")
+        '''
         # if request.POST['pre_selected_questions']:
             # try:
                 # test_pre_selected_questions = request.POST['pre_selected_questions'] #json数据
@@ -441,17 +452,28 @@ def teacher_page_create(request, material_id):
         #     pre_selected_questions.append(test_selected_questions)
         #     print(f'pre_selected_questions: {pre_selected_questions}')
         # pre_selected_questions.append(test_selected_questions)
-        if 'add_page' in request.POST:
+        '''
+        if 'add_page' in request.POST:      #如果点击的是“添加组卷”按钮
+            print('add_page')
+            print('this_selected_questions: ', this_selected_questions)
+            if this_selected_questions:
+                print('列表不为空，增加this_selected_questions至pre_selected_questions.')
+                pre_selected_questions.append(this_selected_questions)
+                print('增加后pre_selected_questions: ', pre_selected_questions)
+            else:
+                print('列表为空')
+
             preview_pages = []
-            preview_page = pre_page.preview_page(this_selected_questions)
-            preview_pages.append(preview_page)
+            for pre_selected_question in pre_selected_questions:
+                preview_page = pre_page.preview_page(pre_selected_question)
+                preview_pages.append(preview_page)
             print('preview_pages: ', preview_pages)
-            print('receive: ', request.POST['pre_selected_questions'])
+            # print('receive: ', request.POST['pre_selected_questions'])
 
             return render(request, 'teacher_side/page_create.html', {
                 'material': material,
                 'main_questions': main_questions,
-                # 'preview_pages': preview_pages,
+                'preview_pages': preview_pages,
                 'pre_selected_questions': pre_selected_questions,
 
             })
@@ -516,6 +538,109 @@ def teacher_page_create(request, material_id):
 
 def teacher_page_save(request, material_id):
     if request.method == 'POST':
+
+        username = request.session.get('username')
+        teacher_instance = Teachers.objects.get(username=username)
+        classes = Class.objects.filter(teacher_id=teacher_instance.id)
+        if request.POST.get('selected_class'):
+            preview_datas_json = request.POST.get('preview_datas')
+            preview_datas = json.loads(preview_datas_json)
+            print('data: ', request.POST)
+
+            class_id = int(request.POST.get('selected_class'))
+            order = request.POST.get('week')
+            title = request.POST.get('title')
+            type = request.POST.get('selected_type')
+            duration = int(request.POST.get('exam_time'))
+
+
+
+
+            # 创建试卷
+            class_instance = Class.objects.get(pk=class_id)
+            unit_instance = Unit.objects.create(
+                class_instance=class_instance,
+                order=order,
+                title=title,
+                type=type,
+            )
+            unit_instance.save()
+            print('unit_instance: ', unit_instance)
+            # 如果为考试，则创建时间管理表
+            if type == 'exam':
+                time_management_instance = TimeManagement.objects.create(
+                    unit=unit_instance,
+                    week=order,
+                    duration=duration,
+                )
+                time_management_instance.save()
+            # 遍历所有待创建页面
+            for order, preview_data in enumerate(preview_datas):
+                # 创建页面
+                page_instance = PaperPage.objects.create(
+                    unit=unit_instance,
+                    order=order,
+                    text=f'第{order+1}个页面',
+                )
+                page_instance.save()
+                main_id_list = []
+                page_main_list = []
+                for question_id in preview_data:
+                    print('question_id: ', question_id)
+                    if question_id.startswith('main_'):  # 大题,则为改错题
+                        # 保存大题信息
+                        main_id = int(question_id.split('_')[1])
+                        main_instance = MainQuestion.objects.get(id=main_id)
+                        page_main_instance = PageMainQuestion.objects.create(
+                            page=page_instance,
+                            main_question=main_instance,
+                        )
+                        page_main_instance.save()
+                        main_id_list.append(main_instance.id)
+                        page_main_list.append({'page_main_id': page_main_instance.id, 'main': main_id})
+                        # 保存改错题小题
+                        for sub_instance in SubQuestion.objects.filter(main_question_id=main_id):
+                            page_sub_instance = PageSubQuestion.objects.create(
+                                page_main_question=page_main_instance,
+                                sub_question=sub_instance,
+                            )
+                            page_sub_instance.save()
+                    elif question_id.startswith('sub_'):  # 小题
+                        sub_id = int(question_id.split('_')[1])
+                        sub_instance = SubQuestion.objects.get(id=sub_id)
+                        main_instance = MainQuestion.objects.get(pk=sub_instance.main_question_id)
+                        main_id = main_instance.id
+                        if main_id in main_id_list:  # 已存在大题
+                            for page_main in page_main_list:
+                                if main_id == page_main['main']:
+                                    page_main_instance = PageMainQuestion.objects.get(id=page_main['page_main_id'])
+                                    page_sub_instance = PageSubQuestion.objects.create(
+                                        page_main_question=page_main_instance,
+                                        sub_question=sub_instance,
+                                    )
+                                    page_sub_instance.save()
+                        else:
+                            page_main_instance = PageMainQuestion.objects.create(
+                                page=page_instance,
+                                main_question=main_instance,
+                            )
+                            page_main_instance.save()
+                            main_id_list.append(main_instance.id)
+                            page_main_list.append({'page_main_id': page_main_instance.id, 'main': main_id})
+                            page_sub_instance = PageSubQuestion.objects.create(
+                                page_main_question=page_main_instance,
+                                sub_question=sub_instance,
+                            )
+                            page_sub_instance.save()
+            return redirect('teacher_question_bank')
+        else:
+            preview_datas_json = request.POST.get('preview_datas')
+            return render(request, 'teacher_side/unit_create.html', {
+                'preview_datas_json': preview_datas_json,
+                'classes': classes,
+            })
+
+'''
         selected_questions = request.POST.getlist('selected_questions')  # 从预览页面获取选中的题目
         print('teacher_page_save receive selected_questions.')
         print('selected_questions: ', selected_questions)
@@ -536,7 +661,6 @@ def teacher_page_save(request, material_id):
             print('question_id: ', question_id)
             if question_id.startswith('main_'):  # 大题,则为改错题
                 # 为大题创建页面
-
                 page_instance = PaperPage.objects.create(
                     unit=unit_instance,
                     order=order,
@@ -596,13 +720,14 @@ def teacher_page_save(request, material_id):
                         sub_question=sub_instance,
                     )
                     page_sub_instance.save()
-        return redirect('teacher_question_bank')
+        '''
+        # return redirect('teacher_question_bank')
 
 
         # 保存题目到试卷
 
 
-        return redirect('exam_paper_list')  # 重定向到试卷列表页
+        # return redirect('exam_paper_list')  # 重定向到试卷列表页
 
 # 查看素材包
 def teacher_media_material_detail(request, material_id):
@@ -1669,7 +1794,49 @@ def teacher_class(request):
     return render(request, 'teacher_side/class.html')
 
 def teacher_exam_bank(request):
+    if request.session.get('is_login', None):
+        year = datetime.datetime.now().year
+        month = int(datetime.datetime.now().month)
+        if 1<=month<=8:
+            semester = 1
+        else:
+            semester = 2
+
+        username = request.session.get('username', None)
+        teacher_instance = Teachers.objects.get(username=username)
+        classes = Class.objects.filter(teacher=teacher_instance)
+        units = Unit.objects.all()
+
+        # 处理筛选查询
+        class_id = request.GET.get('class_id', '')
+        if class_id:
+            class_instance = Class.objects.get(id=int(class_id))
+            units = Unit.objects.filter(class_instance=class_instance)
+
+        paginator = Paginator(units, 15)  # 每页展示 15 条
+        page_number = request.GET.get('page')  # 获取当前页码
+        page_obj = paginator.get_page(page_number)  # 获取当前页对象
+        return render(request, 'teacher_side/exam_bank.html',
+                      {
+                          'username': username,
+                          'classes': classes,
+                          'units': units,
+                          'page_obj': page_obj,
+                      })
     return render(request, 'teacher_side/exam_bank.html')
+
+def teacher_exam_detail(request, unit_id):
+    # 根据 unit_id 获取对应的 Unit 实例，并预取关联的 PaperPage、PageMainQuestion 和 PageSubQuestion 信息
+    unit = Unit.objects.prefetch_related(
+        'paper_pages__page_main_questions__page_sub_questions'
+    ).get(id=unit_id)
+    return render(request, 'teacher_side/exam_detail.html', {
+        'unit': unit,
+    })
+
+def teacher_exam_delete(request, unit_id):
+    Unit.objects.get(id=unit_id).delete()
+    return redirect(teacher_exam_bank)
 
 def teacher_exam_management(request):
     # 处理改错题

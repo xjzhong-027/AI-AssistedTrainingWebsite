@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unit Create</title>
+</head>
+<body>
+<form method="post">
+    {% csrf_token %}
+    <input type="text" id="preview_datas" name="preview_datas" value="{{ preview_datas_json }}" hidden>
+
+    <h1>{{ teacher.name }}</h1>
+    <label for="selected_class">班级：</label>
+    <select name="selected_class" id="selected_class">
+        {% for class in classes %}
+            {% if class %}
+                <option value="{{ class.id }}">周{{ class.week }}: {{ class.start_time }}-{{ class.end_time }}</option>
+            {% else %}
+                <p style="color: red">您当前没有正在教授的班级，无法进行组卷！</p>
+            {% endif %}
+        {% endfor %}
+    </select>
+
+    <label for="title">单元名称</label>
+    <input type="text" name="title" id="title">
+    <label for="selected_type">组卷类型：</label>
+    <select name="selected_type" id="selected_type" onchange="toggleExamTimeInput()">
+        <option value="practice">练习</option>
+        <option value="exam">考试</option>
+        <option value="task">作业</option>
+        <option value="quiz">小测</option>
+    </select>
+
+    <div class="time_management" id="time_management" style="display: none">
+        <label for="exam_time" id="exam_time_label">考试时长: </label>
+        <input type="number" name="exam_time" id="exam_time"><span>分钟</span>
+    </div>
+
+
+
+    <label for="week">开放周次</label>
+    <input type="number" name="week" id="week">
+
+
+    <button type="submit">确认组卷</button>
+</form>
+</body>
+<script>
+    {% if preview_datas_json %}
+        const preview_datas = {{ preview_datas_json|safe }}
+        console.log('preview_datas', preview_datas)
+    {% endif %}
+    function toggleExamTimeInput() {
+        const selectedType = document.getElementById('selected_type');
+        const examDiv = document.getElementById('time_management');
+        if (selectedType.value === 'exam') {
+            examDiv.style.display = 'block';
+        } else {
+            examDiv.style.display = 'none';
+        }
+    }
+</script>
+</html>

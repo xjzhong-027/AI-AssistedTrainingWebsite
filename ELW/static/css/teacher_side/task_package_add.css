@@ -1,4 +1,3 @@
-/* 基本样式重置 */
 body, html {
     margin: 0;
     padding: 0;
@@ -6,55 +5,23 @@ body, html {
     background-color: #f4f4f4;
     color: #333;
     display: flex;
+    justify-content: center;
     min-height: 100vh; /* 确保容器高度至少为视口高度 */
 }
 
-/* 页面布局容器 */
-.container {
-    display: flex;
-    width: 100%; /* 确保容器宽度为100% */
-}
-
-/* 侧边栏样式 */
-.sidebar {
-    width: 25%; /* 侧边栏占据20%宽度 */
-    background-color: #333;
-    color: white;
-    padding: 20px;
-    box-sizing: border-box; /* 包括内边距和边框在内计算宽度 */
-}
-
-/* 侧边栏表格样式 */
-.sidebar table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.sidebar th, .sidebar td {
-    padding: 10px;
-    text-align: left;
-    border-bottom: 1px solid #555;
-}
-
-.sidebar th {
-    background-color: #444;
-}
-
-/* 主内容区域样式 */
 .main {
-    width: 80%; /* 主内容区域占据剩余80%宽度 */
-    background-color: white;
-    padding: 20px;
-    box-sizing: border-box; /* 包括内边距和边框在内计算宽度 */
-    display: flex; /* 可选，用于内部布局调整 */
-    flex-direction: column; /* 可选，如果需要在主内容区域内进行垂直布局 */
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 800px;
 }
 
 /* 表单样式 */
 .main form {
-    max-width: 100%; /* 确保表单不会超出主内容区域宽度 */
-    margin: 0 auto; /* 水平居中（如果需要的话） */
-    background-color: #f9f9f9;
+    max-width: 95%; /* 确保表单不会超出主内容区域宽度 */
+    margin: 0 auto; /* 水平居中 */
+    background-color: #fff;
     padding: 20px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
@@ -69,13 +36,16 @@ body, html {
 .main form input[type="text"],
 .main form textarea {
     width: 100%;
+    height: 30px;
     padding: 10px;
     margin-bottom: 15px;
     border: 1px solid #ccc;
     border-radius: 4px;
+    font-size: large;
 }
 
 .main form textarea {
+    height: 250px;
     resize: vertical; /* 允许垂直调整大小 */
 }
 
