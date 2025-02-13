@@ -1,0 +1,666 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Page</title>
+    <style>
+        .nav-circle {
+            width: 20px;
+            height: 20px;
+            background-color: #ccc;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .nav-circle.active {
+            background-color: #ff9292;
+            /* 当前页面红色 */
+        }
+
+        .nav-circle.submitted {
+            background-color: #93e5ff;
+            /* 已提交页面蓝色 */
+        }
+
+        .nav-circle.modifiable {
+            background-color: #97dc97;
+            /* 可修改页面绿色 */
+        }
+
+        .question {
+            margin-top: 20px;
+        }
+
+        .sub-question {
+            margin-left: 20px;
+        }
+
+        .media-player {
+            margin-top: 10px;
+        }
+    </style>
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-dialog {
+            position: relative;
+            max-width: 500px;
+            margin: 10% auto;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .close {
+            cursor: pointer;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="exam-navigation">
+        <div id="page-nav">
+            {% for p in exam.pages.all %}
+            <div class="nav-circle" data-page-number="{{ p.page_number }}"></div>
+            {% endfor %}
+        </div>
+        <div id="timer"> <span id="time-remaining"></span></div>
+        <!-- 交卷按钮 -->
+        <form id="submit-exam-form" method="post" action="{% url 'accessment:submit_exam' %}">
+            {% csrf_token %}
+            <input type="hidden" name="student_exam_record_id" value="{{ student_exam_record.id }}">
+            <input type="hidden" name="still_submit" value="false">    
+            <input type="hidden" name="finish_submit" value="false">
+            <input type="hidden" name="current_page_record_id" value="{{ current_page_record_id }}">
+            <button id="submit-exam-btn" type="button">交卷</button>
+        </form>
+    </div>
+
+    <!-- 页面未完成弹窗 -->
+    <div id="ExamunfinishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">提示</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="ExamunfinishedConfirmationMessage">有未完成的页面，是否仍然交卷？</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="gotofinishButton">去完成</button>
+                <button type="button" class="btn btn-primary" id="ExamunfinishedConfirmSubmit">仍然提交</button>
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- 是否确认提交？ -->
+    <div id="ExamfinishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">确认提交</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="ExamfinishedConfirmationMessage">是否确认提交？</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" id="ExamfinishedConfirmSubmit">确认</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 页面 -->
+        <form id="save-answers-form" method="post" action="{% url 'accessment:save_page' exam.id page.page_number %}">
+            {% csrf_token %}
+            <input type="hidden" name="page_record_id" value="{{ current_page_record_id }}">
+            <input type="hidden" name="is_manual_submit" value="false">
+        <input type="hidden" name="manual_save" value="false">
+            <div id="exam-content">
+                {% for main_question in main_questions %}
+                <div class="question" data-main-question-id="{{ main_question.id }}">
+                    <h3>{{ main_question.question_text }}</h3>
+                    {% if main_question.media_material %}
+                    <div class="media-player">
+                        <audio controls>
+                            <source src="{{ main_question.media_material.media_url }}" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                        <p>Maximum plays: {{ main_question.maximum_play }}</p>
+                    </div>
+                    {% endif %}
+                    {% for sub_question in sub_questions %}
+                    {% if sub_question.main_question == main_question %}
+                    <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
+                        <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
+                        <textarea name="answer_{{ sub_question.id }}" id="answer_{{ sub_question.id }}" rows="4"
+                            cols="50">{{ answers|get_item:sub_question.id|default:"" }}</textarea>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        <button type="button" onclick="manualSave()">保存</button>
+        <button type="button" onclick="manualSubmit()">提交</button>
+        </form>
+
+        <!-- 下一页显示 -->
+        {% if is_last_page %}
+        <p>已经是最后一页了。</p>
+        {% endif %}
+
+        <!-- 有未完成的题目，是否仍然提交？ -->
+        <div id="unfinishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">确认提交</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="unfinishedConfirmationMessage">有未完成的题目，是否仍然提交？</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">继续完成</button>
+                        <button type="button" class="btn btn-primary" id="unfinishedConfirmSubmit">仍然提交</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 是否确认提交？ -->
+        <div id="finishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">确认提交</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="finishedConfirmationMessage">是否确认提交？</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" id="finishedConfirmSubmit">确认</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 答案保存成功的模态框 -->
+        <div id="successModal" class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <p id="successMessage">答案保存成功</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+    
+        <!-- 自动手动保存 提交当前页面 -->
+        <script>
+    // 手动保存：将答案暂存到缓存
+    function manualSave() {
+    const examForm = document.getElementById('save-answers-form');
+    const formData = new FormData(examForm);
+
+    // 直接在 FormData 中设置值
+    formData.set('manual_save', 'true');
+    formData.set('is_manual_submit', 'false');
+
+    // 调用 submitForm 提交表单
+    submitForm(formData);
+}
+
+    // 提交：将答案保存到数据库
+    function manualSubmit() {
+    const examForm = document.getElementById('save-answers-form');
+    const formData = new FormData(examForm);
+
+    // 直接在 FormData 中设置值
+    formData.set('manual_save', 'false');
+    formData.set('is_manual_submit', 'true');
+
+    // 调用 submitForm 提交表单
+    submitForm(formData);
+}
+    
+    // 提交表单的通用函数
+    function submitForm(formData) {
+        const examForm = document.getElementById('save-answers-form');
+                const unfinishedConfirmationModal = document.getElementById('unfinishedConfirmationModal');
+                const finishedConfirmationModal = document.getElementById('finishedConfirmationModal');
+                const unfinishedConfirmationMessage = document.getElementById('unfinishedConfirmationMessage');
+                const finishedConfirmationMessage = document.getElementById('finishedConfirmationMessage');
+                const unfinishedConfirmSubmitButton = document.getElementById('unfinishedConfirmSubmit');
+                const finishedConfirmSubmitButton = document.getElementById('finishedConfirmSubmit');
+
+        for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+    }
+        fetch(examForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+                            if (data.status === 'unfinished') {
+                                // 有未完成的题目，显示模态框
+                                unfinishedConfirmationMessage.textContent = data.message;
+                                unfinishedConfirmationModal.style.display = 'block';
+                                unfinishedConfirmSubmitButton.onclick = addForceSubmitAndSubmitForm;
+                            } else if (data.status === 'finished') {
+                                // 没有未完成的题目，提示用户“是否确认提交？”
+                                finishedConfirmationMessage.textContent = data.message;
+                                finishedConfirmationModal.style.display = 'block';
+                                finishedConfirmSubmitButton.onclick = addForceSubmitAndSubmitForm;
+                            } else if (data.status === 'saved') {   // 可以修改的页面但有未完成的页面
+                                successMessage.textContent = data.message;
+                                successModal.style.display = 'block';
+                                setTimeout(() => {
+                                    successModal.style.display = 'none';
+                                    canModify();
+                                }, 500);
+
+                            } else {
+                                // 其他情况，显示返回的消息
+                                alert(data.message);
+                            }
+                        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('保存答案时出错，请检查网络连接或稍后再试。');
+        });
+    }
+
+    // 强制提交：将答案保存到数据库并跳转到下一页
+    function addForceSubmitAndSubmitForm() {
+        const examForm = document.getElementById('save-answers-form');
+        const forceSubmitInput = document.createElement('input');
+        forceSubmitInput.type = 'hidden';
+        forceSubmitInput.name = 'force_submit';
+        forceSubmitInput.value = 'true';
+        examForm.appendChild(forceSubmitInput);
+        examForm.submit();
+    }
+function canModify() {
+                const examForm = document.getElementById('save-answers-form');
+                const canModifyInput = document.createElement('input');
+                canModifyInput.type = 'hidden';
+                canModifyInput.name = 'saved';
+                canModifyInput.value = 'true';
+                examForm.appendChild(canModifyInput);
+                examForm.submit();
+            }
+    // 自动保存逻辑：每隔一段时间将答案暂存到缓存
+    function autoSaveAnswers() {
+        const examForm = document.getElementById('save-answers-form');
+        const formData = new FormData(examForm);
+
+        // 设置 manual_save 为 true，表示自动保存
+        document.querySelector('input[name="manual_save"]').value = "true";
+        document.querySelector('input[name="is_manual_submit"]').value = "false";
+
+        fetch(examForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+            }
+        }).then(response => {
+            if (response.ok) {
+                console.log('Auto-save successful');
+            } else {
+                console.error('Auto-save failed');
+            }
+        }).catch(error => {
+            console.error('Error during auto-save:', error);
+        });
+    }
+
+    // 每隔30秒自动保存一次
+    setInterval(autoSaveAnswers, 30000);
+
+    // 页面加载完成后绑定事件
+    document.addEventListener('DOMContentLoaded', function () {
+        // 关闭模态框
+        document.querySelector('.modal .close').onclick = function () {
+            document.getElementById('unfinishedConfirmationModal').style.display = 'none';
+            document.getElementById('finishedConfirmationModal').style.display = 'none';
+        };
+
+        // 继续完成按钮的点击事件
+        document.querySelector('#unfinishedConfirmationModal .btn-secondary').onclick = function () {
+            document.getElementById('unfinishedConfirmationModal').style.display = 'none';
+        };
+
+        // 取消按钮的点击事件
+        document.querySelector('#finishedConfirmationModal .btn-secondary').onclick = function () {
+            document.getElementById('finishedConfirmationModal').style.display = 'none';
+        };
+    });
+</script>
+
+        <!-- 倒计时 -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const timerElement = document.getElementById('time-remaining');
+                const examId = {{ exam.id | safe}};
+            const startedAt = new Date("{{ student_exam_record.started_at|date:'Y-m-d H:i:s' }}");
+            const endedAt = new Date("{{ student_exam_record.ended_at|date:'Y-m-d H:i:s' }}");
+
+            // 计算剩余时间
+            function calculateRemainingTime(startedAt, endedAt) {
+                const now = new Date();
+                const endTime = new Date(endedAt);
+                const remainingTime = endTime - now;
+
+                if (remainingTime <= 0) {
+                    return '00:00:00';
+                }
+
+                const hours = Math.floor((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+
+            // 更新倒计时显示
+            function updateTimer() {
+                const remainingTime = calculateRemainingTime(startedAt, endedAt);
+                timerElement.textContent = remainingTime;
+
+                if (remainingTime === '00:00:00') {
+                    // 倒计时结束，自动提交表单
+                    document.getElementById('submit-exam-form').submit();
+                }
+            }
+
+            // 每秒更新倒计时
+            setInterval(updateTimer, 1000);
+
+            // 初始更新
+            updateTimer();
+});
+        </script>
+        <!-- 页面导航 -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const examId = {{ exam.id | safe}};
+            const currentPageNumber = {{ page.page_number | safe }};
+            const pageNavCircles = document.querySelectorAll('.nav-circle');
+
+            // 更新页面导航圆点的状态
+            function updateNavCircles() {
+                pageNavCircles.forEach(circle => {
+                    const pageNumber = parseInt(circle.getAttribute('data-page-number'));
+                    if (pageNumber === currentPageNumber) {
+                        circle.classList.add('active');
+                    } else {
+                        circle.classList.remove('active');
+                    }
+
+                    // 获取页面记录
+                    fetch(`/accessment/exams/${examId}/page/${pageNumber}/`, {
+                        method: 'GET',
+                    }).then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                const pageRecord = data.page_record;
+                                if (pageRecord.submitted) {
+                                    circle.classList.add('submitted');
+                                } else {
+                                    circle.classList.remove('submitted');
+                                }
+                            } else {
+                                alert(data.message);
+                            }
+                        });
+                });
+            }
+
+            // 页面导航圆点点击事件
+            pageNavCircles.forEach(circle => {
+                circle.addEventListener('click', function () {
+                    const pageNumber = this.getAttribute('data-page-number');
+                    if (this.classList.contains('modifiable') && !this.classList.contains('submitted')) {
+                        window.location.href = `/accessment/exams/${examId}/page/${pageNumber}/`;
+                    }
+                });
+            });
+
+            // 初始化页面导航圆点状态
+            updateNavCircles();
+});
+        </script>
+
+        <!-- 交卷 -->
+    
+{#        <script>#}
+{#          document.getElementById('submit-exam-btn').addEventListener('click', function () {#}
+{#    const studentExamRecordId = document.querySelector('input[name="student_exam_record_id"]').value;#}
+{#    const formData = new FormData();#}
+{#    formData.append('student_exam_record_id', studentExamRecordId);#}
+{##}
+{#    fetch('{% url "accessment:submit_exam" %}', {#}
+{#        method: 'POST',#}
+{#        body: formData,#}
+{#        headers: {#}
+{#            'X-CSRFToken': '{{ csrf_token }}'#}
+{#        }#}
+{#    })#}
+{#    .then(response => response.json())#}
+{#    .then(data => {#}
+{#        if (data.status === 'exam_unfinished') {#}
+{#            // 显示未完成页面的模态框#}
+{#            document.getElementById('ExamunfinishedConfirmationMessage').textContent = data.message;#}
+{#            document.getElementById('ExamunfinishedConfirmationModal').style.display = 'block';#}
+{#            document.getElementById('ExamunfinishedConfirmSubmit').onclick = function () {#}
+{#                // 用户选择“仍然交卷”#}
+{#                stillSubmitExam(studentExamRecordId);#}
+{#            };#}
+{#            document.getElementById('gotofinishButton').onclick = function () {#}
+{#                // 用户选择“去完成未完成的页面”#}
+{#                goToIncompletePage(data.unsubmitted_pages);#}
+{#            };#}
+{#        } else if (data.status === 'exam_finished') {#}
+{#            // 显示确认交卷的模态框#}
+{#            document.getElementById('ExamfinishedConfirmationMessage').textContent = data.message;#}
+{#            document.getElementById('ExamfinishedConfirmationModal').style.display = 'block';#}
+{#            document.getElementById('ExamfinishedConfirmSubmit').onclick = function () {#}
+{#                // 用户选择“确认交卷”#}
+{#                finishSubmitExam(studentExamRecordId);#}
+{#            };#}
+{#        } else {#}
+{#            alert(data.message);#}
+{#        }#}
+{#    })#}
+{#    .catch(error => {#}
+{#        console.error('Error:', error);#}
+{#        alert('提交考试时出错，请检查网络连接或稍后再试。');#}
+{#    });#}
+{#});#}
+{#          function stillSubmitExam(studentExamRecordId) {#}
+{#    const formData = new FormData();#}
+{#    formData.append('student_exam_record_id', studentExamRecordId);#}
+{#    formData.append('still_submit', 'true');#}
+{##}
+{#    fetch('{% url "accessment:submit_exam" %}', {#}
+{#        method: 'POST',#}
+{#        body: formData,#}
+{#        headers: {#}
+{#            'X-CSRFToken': '{{ csrf_token }}'#}
+{#        }#}
+{#    })#}
+{#    .then(response => response.json())#}
+{#    .then(data => {#}
+{#        if (data.status === 'submitted') {#}
+{#            alert('考试已成功提交');#}
+{#            window.location.href = '/exam-result';#}
+{#        } else {#}
+{#            alert(data.message);#}
+{#        }#}
+{#    })#}
+{#    .catch(error => {#}
+{#        console.error('Error:', error);#}
+{#        alert('提交考试时出错，请检查网络连接或稍后再试。');#}
+{#    });#}
+{#}#}
+{##}
+{#function finishSubmitExam(studentExamRecordId) {#}
+{#    const formData = new FormData();#}
+{#    formData.append('student_exam_record_id', studentExamRecordId);#}
+{#    formData.append('finish_submit', 'true');#}
+{##}
+{#    fetch('{% url "accessment:submit_exam" %}', {#}
+{#        method: 'POST',#}
+{#        body: formData,#}
+{#        headers: {#}
+{#            'X-CSRFToken': '{{ csrf_token }}'#}
+{#        }#}
+{#    })#}
+{#    .then(response => response.json())#}
+{#    .then(data => {#}
+{#        if (data.status === 'submitted') {#}
+{#            alert('考试已成功提交');#}
+{#            window.location.href = '/exam-result';#}
+{#        } else {#}
+{#            alert(data.message);#}
+{#        }#}
+{#    })#}
+{#    .catch(error => {#}
+{#        console.error('Error:', error);#}
+{#        alert('提交考试时出错，请检查网络连接或稍后再试。');#}
+{#    });#}
+{#}#}
+{#        </script>#}
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const examForm = document.getElementById('submit-exam-form');
+    const ExamunfinishedConfirmationModal = document.getElementById('ExamunfinishedConfirmationModal');
+    const ExamunfinishedConfirmationMessage = document.getElementById('ExamunfinishedConfirmationMessage');
+    const ExamunfinishedConfirmSubmitButton = document.getElementById('ExamunfinishedConfirmSubmit');
+    const gotofinishButton = document.getElementById('gotofinishButton');
+    const ExamfinishedConfirmationModal = document.getElementById('ExamfinishedConfirmationModal');
+    const ExamfinishedConfirmationMessage = document.getElementById('ExamfinishedConfirmationMessage');
+    const ExamfinishedConfirmSubmitButton = document.getElementById('ExamfinishedConfirmSubmit');
+
+    examForm.addEventListener('submit', function (event) {
+        event.preventDefault(); // 阻止表单默认提交行为
+
+        const formData = new FormData(this);
+
+        fetch(this.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'exam_unfinished') {
+                // 显示未完成提示模态框
+                ExamunfinishedConfirmationMessage.textContent = data.message;
+                ExamunfinishedConfirmationModal.style.display = 'block';
+                ExamunfinishedConfirmSubmitButton.onclick = stillSubmitForm;
+                gotofinishButton.onclick = () => goToIncompletePage(data.unsubmitted_pages);
+            } else if (data.status === 'exam_finished') {
+                // 显示确认提交模态框
+                ExamfinishedConfirmationMessage.textContent = data.message;
+                ExamfinishedConfirmationModal.style.display = 'block';
+                ExamfinishedConfirmSubmitButton.onclick = function () {
+                    const finishSubmitInput = document.createElement('input');
+                    finishSubmitInput.type = 'hidden';
+                    finishSubmitInput.name = 'finish_submit';
+                    finishSubmitInput.value = 'true';
+                    examForm.appendChild(finishSubmitInput);
+                    examForm.submit();
+                };
+            } else {
+                // 其他情况，显示返回的消息
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('提交出错，请检查网络连接或稍后再试。');
+        });
+    });
+
+    function stillSubmitForm() {
+        // 添加 still_submit 标志并提交表单
+        const stillSubmitInput = document.createElement('input');
+        stillSubmitInput.type = 'hidden';
+        stillSubmitInput.name = 'still_submit';
+        stillSubmitInput.value = 'true';
+        examForm.appendChild(stillSubmitInput);
+        examForm.submit();
+    }
+
+    function goToIncompletePage(unsubmittedPages) {
+        // 跳转到第一个未完成的页面
+        const firstIncompletePage = Math.min(...unsubmittedPages);
+        window.location.href = "{% url 'accessment:exam_page' exam_id=exam.id page_number=1 %}".replace(/1/, firstIncompletePage);
+    }
+
+    // 关闭模态框
+    document.querySelector('.modal .close').onclick = function () {
+        ExamunfinishedConfirmationModal.style.display = 'none';
+        ExamfinishedConfirmationModal.style.display = 'none';
+    };
+});
+</script>
+
+
+</body>
+
+</html>

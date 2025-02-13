@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ post.title }}</title>
+</head>
+<body>
+    <h1>{{ post.title }}</h1>
+    <p>{{ post.content }}</p>
+    <p>By: {{ post.name }}</p>
+    <p>发布时间: {{ post.created_at |date:"Y/m/d H:i"}}</p>
+    {% if request.session.role == 'teacher' or post.author == request.session.username %}
+                    <a href="{% url 'forum:post_delete' post.id %}">delete</a>
+                    {% endif %}
+    <h2>评论</h2>
+    <div>
+{% for comment in comments %}
+     {% include 'forum/_comment.html' with comment=comment form=reply_form %}
+{% endfor %}
+    </div>
+
+    <!-- 分页 -->
+    {% if comments.paginator.num_pages > 1 %}
+        <div>
+            {% if comments.has_previous %}
+                <a href="?page={{ comments.previous_page_number }}">Previous</a>
+            {% endif %}
+            <span>Page {{ comments.number }} of {{ comments.paginator.num_pages }}.</span>
+            {% if comments.has_next %}
+                <a href="?page={{ comments.next_page_number }}">Next</a>
+            {% endif %}
+        </div>
+    {% endif %}
+     <button id="show-comment-form">添加新评论</button>
+    <div id="comment-form-container" style="display: none;">
+        <form id="comment-form" method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">提交评论</button>
+        </form>
+    </div>
+    <a href="{% url 'forum:forum' %}">返回论坛</a>
+<script>
+    var ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    var ws_path = ws_scheme + '://' + window.location.host + '/ws/notifications/';
+    var socket = new WebSocket(ws_path);
+
+    socket.onopen = function(e) {
+        console.log('WebSocket is open now.');
+    };
+
+    socket.onmessage = function(e) {
+        console.log('Message from server ', e.data);
+        // 处理消息，例如显示通知
+    };
+
+    socket.onclose = function(e) {
+        console.log('WebSocket is closed now.');
+    };
+
+    socket.onerror = function(e) {
+        console.error('WebSocket error observed:', e);
+    };
+    </script>
+    <script>
+        document.getElementById('show-comment-form').addEventListener('click', function () {
+            document.getElementById('comment-form-container').style.display = 'block';
+        });
+
+        document.getElementById('comment-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            fetch('{% url "forum:add_comment" post.id %}', {
+                method: 'POST',
+                body: formData,
+            }).then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 评论成功，可以在这里更新页面或显示成功消息
+                        alert('评论成功');
+                        // 重新加载页面或更新评论列表
+                        window.location.reload();
+                    } else {
+                        // 评论失败，显示错误消息
+                        alert('评论失败: ' + data.message);
+                    }
+                });
+        });
+    </script>
+    <script>
+    document.querySelectorAll('.reply-link').forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault();
+            const formContainer = this.closest('.comment').querySelector('.reply-form-container');
+            if (formContainer) {
+                formContainer.style.display = 'block';
+            } else {
+                console.error('未找到表单容器');
+            }
+        });
+    });
+
+    document.querySelectorAll('.reply-form').forEach(form => {
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const commentContainer = this.closest('.comment');
+            const button = commentContainer.querySelector('.reply-link'); // 获取按钮元素
+            if (button) {
+                const postId = button.getAttribute('data-post-id');
+                const parentCommentId = button.getAttribute('data-parent-comment-id');
+                const formData = new FormData(this);
+                const url = `/forum/post/${postId}/comment/${parentCommentId}/`; // 动态生成 URL
+                fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                }).then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error('Network response was not ok.');
+                    }
+                }).then(data => {
+                    if (data.success) {
+                        // 回复成功，可以在这里更新页面或显示成功消息
+                        alert('回复成功');
+                        // 重新加载页面或更新评论列表
+                        window.location.reload();
+                    } else {
+                        // 回复失败，显示错误消息
+                        alert('回复失败: ' + data.message);
+                    }
+                }).catch(error => {
+                    // 处理网络请求错误
+                    console.error('请求失败:', error);
+                });
+            } else {
+                console.error('未找到按钮元素');
+            }
+        });
+    });
+
+    document.querySelectorAll('.toggle-replies').forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault();
+            const target = this.getAttribute('data-target');
+            const repliesContainer = document.querySelector(target);
+            if (repliesContainer) {
+                repliesContainer.style.display = repliesContainer.style.display === 'none' ? 'block' : 'none';
+                this.textContent = repliesContainer.style.display === 'none' ? '加载更多回复' : '折叠回复';
+            } else {
+                console.error('未找到回复容器');
+            }
+        });
+    });
+</script>
+
+</body>
+
+</html>
+
+{#    <script>#}
+{#        document.querySelectorAll('.reply-link').forEach(button => {#}
+{#            button.addEventListener('click', function(event) {#}
+{#                event.preventDefault();#}
+{#                const formContainer = this.nextElementSibling;#}
+{#                if (formContainer) {#}
+{#                    formContainer.style.display = 'block';#}
+{#                } else {#}
+{#                    console.error('未找到表单容器');}});});#}
+{##}
+{#        // 提交回复子评论表单#}
+{#document.querySelectorAll('.reply-form').forEach(form => {#}
+{#    form.addEventListener('submit', function(event) {#}
+{#        event.preventDefault();#}
+{#        const button = this.closest('.reply-form-container').previousElementSibling; // 获取按钮元素#}
+{#        if (button) {#}
+{#            const postId = button.getAttribute('data-post-id');#}
+{#            const parentCommentId = button.getAttribute('data-parent-comment-id');#}
+{#            const formData = new FormData(this);#}
+{#            const url = `/forum/post/${postId}/comment/${parentCommentId}/`; // 动态生成 URL#}
+{#            fetch(url, {#}
+{#                method: 'POST',#}
+{#                body: formData,#}
+{#            }).then(response => {#}
+{#                if (response.ok) {#}
+{#                    return response.json();#}
+{#                } else {#}
+{#                    throw new Error('Network response was not ok.');}#}
+{#            }).then(data => {#}
+{#                if (data.success) {#}
+{#                    // 回复成功，可以在这里更新页面或显示成功消息#}
+{#                    alert('回复成功');#}
+{#                    // 重新加载页面或更新评论列表#}
+{#                    window.location.reload();#}
+{#                } else {#}
+{#                    // 回复失败，显示错误消息#}
+{#                    alert('回复失败: ' + data.message);}#}
+{#            }).catch(error => {#}
+{#                // 处理网络请求错误#}
+{#                console.error('请求失败:', error);#}
+{#            });#}
+{#        } else {#}
+{#            console.error('未找到按钮元素');}});});#}
+{#    </script>#}

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>receivers</title>
+</head>
+<body>
+{% for receiver in receivers %}
+    <div class="checkbox">
+        <label>
+            <input type="checkbox" name="receivers" value="{{ receiver.id }}">
+            {{ receiver.name }}
+        </label>
+    </div>
+{% endfor %}
+</body>
+</html>

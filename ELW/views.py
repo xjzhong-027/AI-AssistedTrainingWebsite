@@ -1,13 +1,6 @@
 #导入要用的模块
 import os,uuid,datetime,json,re
-# import uuid
-# import datetime
-# import json
-from msilib.schema import Media
-from turtledemo.penrose import start
 
-# from Tools.scripts.patchcheck import status
-from django.template.context_processors import request, media
 from django.urls import reverse
 from urllib.parse import urlencode
 from django.http import HttpResponseRedirect
@@ -15,19 +8,16 @@ from django.shortcuts import render, HttpResponse, redirect, get_object_or_404
 from django.core.paginator import Paginator, Page
 from django.contrib.auth import logout
 from django.http import JsonResponse
-from django.utils.inspect import method_has_no_args
 from django.views.decorators.csrf import csrf_exempt
 from docx import Document
 
 
-# from django.contrib.auth import authenticate, login
 from English_Listening_Website import settings
 from .forms import UploadMediaForm, WordUploadForm
 from ELW import models
 from django.contrib import messages
-# import re
-from . import func, pre_page, doc_func
 
+from . import func, pre_page, doc_func
 
 from .models import (
     MediaMaterial,
@@ -342,7 +332,7 @@ def login(request):
                         print(f'week{week}-{username}: late attendance')
 
                 # 【待替换学生端页面】
-                return render(request, 'students/index.html')
+                return redirect('student_ELW:student_index')
         # 验证教师登录
         if role == 'teacher':
             if models.Teachers.objects.filter(username=username,password=password).exists():
@@ -1830,8 +1820,14 @@ def teacher_exam_detail(request, unit_id):
     unit = Unit.objects.prefetch_related(
         'paper_pages__page_main_questions__page_sub_questions'
     ).get(id=unit_id)
+    try:
+        # 获取该 Unit 实例关联的所有 TimeManagement 实例
+        time_management = unit.time_management.get(unit=unit)
+    except TimeManagement.DoesNotExist:
+        time_management = None
     return render(request, 'teacher_side/exam_detail.html', {
         'unit': unit,
+        'time_management': time_management,
     })
 
 def teacher_exam_delete(request, unit_id):
@@ -1937,4 +1933,20 @@ def teacher_exam_management(request):
     return render(request, 'teacher_side/exam_management.html')
 
 def teacher_forum(request):
-    return render(request, 'teacher_side/forum.html')
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        role = request.POST.get('role')
+        request.session['username'] = username
+        request.session['role'] = role
+        request.session['is_login'] = True
+    return redirect('forum:forum')
+def teacher_announce(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        role = request.POST.get('role')
+        request.session['username'] = username
+        request.session['role'] = role
+        request.session['is_login'] = True
+    return redirect('announce:announcements')

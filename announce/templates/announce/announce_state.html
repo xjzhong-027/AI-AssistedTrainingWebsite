@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+    <h2>公告阅读状态</h2>
+    <div>
+        <h3>{{ announcement.a_title }}</h3>
+        <p><strong>发布时间：</strong>{{ announcement.created_at }}</p>
+        <p>内容：{{ announcement.a_content }}</p>
+    </div>
+    <div>
+        <h4>阅读状态</h4>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>接收者</th>
+                    <th>是否已读</th>
+                    <th>阅读时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for receiver, messages in messages_by_receiver.items %}
+                    {% with messages|first as message %}
+                        <tr>
+                            <td>{{ receiver }}</td>
+                            <td>{{ message.is_read|yesno:"已读,未读" }}</td>
+                            <td>{{ message.read_at }}</td>
+                        </tr>
+                    {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

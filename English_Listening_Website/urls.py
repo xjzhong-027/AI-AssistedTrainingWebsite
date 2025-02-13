@@ -23,6 +23,17 @@ from ELW import views, urls
 from django.conf import settings
 from django.conf.urls.static import static
 
+from django.contrib import admin
+from django.core.asgi import get_asgi_application
+from django.urls import include, path
+
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.auth import AuthMiddlewareStack
+import announce.routing
+from django.conf import settings
+from django.conf.urls.static import static
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
 
@@ -30,16 +41,24 @@ urlpatterns = [
     path(route='logout/', view=views.log_out, name='logout'),
     path('update_last_activity/', view=views.update_last_activity, name='update_last_activity'),
     # path('submit_question/', view=views.submit_question, name='submit_question'),
-
     # 分发路由
     path('teacher/', include('ELW.urls')),
-
-
+    path('student/', include('student_ELW.urls')),
     path('create-big-question/', views.create_big_question_with_small_questions, name='create_big_question_with_small_questions'),
 
-
+#forum announce accessment
+path('forum/', include('forum.urls')),
+    path('announce/', include('announce.urls')),
+                  path('accessment/', include('accessment.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)   #添加对媒体文件的访问路由
 
 
-
+application = ProtocolTypeRouter({
+    'http': get_asgi_application(),
+    'websocket': AuthMiddlewareStack(
+        URLRouter(
+            announce.routing.websocket_urlpatterns
+        )
+    ),
+})
 

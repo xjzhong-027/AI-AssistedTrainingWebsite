@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>add_comment</title>
+</head>
+<body>
+<h1>在帖子中添加评论</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    {% if parent_comment_id %}
+        <input type="hidden" name="parent_comment_id" value="{{ parent_comment_id }}">
+    {% endif %}
+    <button type="submit">提交评论</button>
+</form>
+</body>
+</html>

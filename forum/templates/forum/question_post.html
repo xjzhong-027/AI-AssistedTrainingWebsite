@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>question_post</title>
+</head>
+<body>
+<div>
+    {% for post in posts %}
+        <div>
+            <h2>{{ post.title }}</h2>
+            <p>{{ post.content }}</p>
+                    {% if post.is_anonymous %}
+    <p>已匿名   {{ post.anonymous_name }}</p>
+{% endif %}
+            <p>posted at: {{ post.created_at }}</p>
+            <p>{{ post.top_score }}条评论</p>
+            <a href="{% url 'forum:post_detail' post.id %}">check</a>
+            {% if request.session.role == 'teacher' or post.author == request.session.username %}
+            <a href="{% url 'forum:post_delete' post.id %}">delete</a>
+                <a href="{% url 'forum:post_edit' post.id %}">edit</a>
+                 {% if post.is_public %}
+            <a href="{% url 'forum:change_public' post.id %}">Hide</a>
+        {% else %}
+            <a href="{% url 'forum:change_public' post.id %}">Show</a>
+        {% endif %}
+        {% endif %}
+        </div>
+        <hr>
+    {% endfor %}
+    <a href="{% url 'forum:forum' %}">返回论坛</a>
+</div>
+</body>
+</html>

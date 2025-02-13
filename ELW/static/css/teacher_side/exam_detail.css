@@ -1,0 +1,89 @@
+/* 全局样式 */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+/* 内容容器 */
+.container {
+    width: calc(100% * 0.5);
+    padding: 20px;
+}
+/* 单元信息部分 */
+.unit_info {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.unit_info h2 {
+    margin-top: 0;
+    color: #007BFF;
+}
+.unit_info p {
+    margin: 5px 0;
+}
+/* 试卷页面部分 */
+.paper_page {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.paper_page h2 {
+    margin-top: 0;
+    color: #007BFF;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+/* 大题部分 */
+.page_main_question {
+    margin-bottom: 20px;
+}
+p.main {
+    font-weight: bold;
+}
+.page_main_question p {
+    margin: 5px 0;
+    /*font-weight: bold;*/
+}
+/* 小题部分 */
+/*.page_sub_question {*/
+/*    margin-left: 20px;*/
+/*    margin-bottom: 10px;*/
+/*}*/
+/*.page_sub_question p {*/
+/*    margin: 5px 0;*/
+/*}*/
+/* 选择题选项部分 */
+.choice {
+    margin-left: 20px;
+}
+.choice p {
+    margin: 3px 0;
+}
+/* 连线题选项部分 */
+.matching {
+    margin-left: 20px;
+}
+.matching p {
+    margin: 3px 0;
+}
+/* 图片样式 */
+img {
+    display: block;
+    margin-top: 5px;
+}
+/* 无信息提示样式 */
+p:contains("没有关联的") {
+    color: #999;
+    font-style: italic;
+}

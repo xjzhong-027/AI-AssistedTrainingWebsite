@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Message Form</title>
+</head>
+<body>
+    <h1>Send a Message</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}  <!-- 表单字段以段落方式显示 -->
+        <button type="submit">Submit</button>
+    </form>
+</body>
+</html>

@@ -34,17 +34,40 @@ ALLOWED_HOSTS = []
 
 # Application definition
 
+#需要配置
+# pip install channels channels_redis
+# pip install daphne
+# pip install Django-filter
+
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "daphne",
+    'channels',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    'django_filters',
     # 注册app'ELW'
     'ELW.apps.ElwConfig',
+    "forum",
+    "announce",
+    "accessment",
+    'student_ELW'
 ]
-
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+ASGI_APPLICATION= 'English_Listening_Website.asgi.application'
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -130,7 +153,6 @@ USE_I18N = True
 
 # 不激活Django的时区支持,即没有时区信息的日期时间
 USE_TZ = False
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/

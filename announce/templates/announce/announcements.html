@@ -1,0 +1,384 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Announcements</title>
+    <link rel="stylesheet" href="{% static 'plugins/bootstrap-3.4.1/css/bootstrap.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        #announcementContent {
+            max-height: 400px;
+            overflow-y: auto; /* 内容超长时显示滚动条 */
+        }
+        .toggle-button {
+
+    background-color: #6dac6d;
+    color: white;
+    border: none;
+    border-radius: 50%; /* 圆形按钮 */
+    cursor: pointer;
+    transition: background-color 0.3s ease; /* 平滑过渡效果 */
+    font-size: 10px; /* 进一步减小字体大小 */
+    width: 25px; /* 进一步减小按钮宽度 */
+    height: 25px; /* 进一步减小按钮高度 */
+    }
+        .select-all-button{
+            margin-left: 10px;
+            border: none;
+    border-radius: 10px;
+            font-size: 10px; /* 进一步减小字体大小 */
+    width: 35px; /* 进一步减小按钮宽度 */
+    height: 35px;
+        }
+.select-all-button:hover {
+    background-color: #dddddd;
+}
+        .toggle-button:hover {
+        background-color: #457345;
+    }
+    </style>
+
+
+
+</head>
+<body>
+    <ol class="breadcrumb">
+      <li><a href="/teacher/index">Home</a></li>
+      <li class="active">公告管理</li>
+    </ol>
+    <!-- 公告列表 -->
+    <div>
+        <div class="container">
+            <div class="panel panel-default">
+                  <div class="panel-heading">公告列表</div>
+
+                  <!-- Table -->
+                  <table class="table table-bordered">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>标题</th>
+                        <th>发布时间</th>
+                        <th>操作</th>
+                          <th>接收者</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for announcement in page_obj %}
+                            <tr>
+                                <td>{{ announcement.id }}</td>
+                                <td>{{ announcement.a_title }}</td>
+                                <td>{{ announcement.created_at }}</td>
+                                <td>
+                                    <button class="btn btn-primary btn-xs"
+                                            data-id="{{ announcement.id }}"
+                                            data-title="{{ announcement.a_title }}"
+                                            data-content="{{ announcement.a_content }}"
+                                            onclick="showAnnouncement(this)">
+                                        查看公告详情
+                                    </button>
+                                    <button class="btn btn-danger btn-xs"
+                                            data-id="{{ announcement.id }}"
+                                            data-title="{{ announcement.a_title }}"
+                                            onclick="confirmDelete(this)">删除
+                                    </button>
+                                    <a href="{% url 'announce:announcement_state' announcement.id %}" class="btn btn-info btn-xs">查看阅读状态</a>
+                                </td>
+                            <td>
+                                {% for receiver in announcement.receivers.all %}
+                                    <span>{{ receiver.username }}</span>
+                                    <br/>
+                                {% endfor %}
+                            </td>
+
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4">暂无公告</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                  </table>
+
+                <!-- 分页控件 -->
+                <div class="pagination">
+                    <span class="step-links">
+                        {% if page_obj.has_previous %}
+                            <a href="?page=1">&laquo; 第一页</a>
+                            <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
+                        {% endif %}
+
+                        <span class="current">
+                            第 {{ page_obj.number }} 页，共 {{ page_obj.paginator.num_pages }} 页
+                        </span>
+
+                        {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}">下一页</a>
+                            <a href="?page={{ page_obj.paginator.num_pages }}">最后一页 &raquo;</a>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 发布公告 -->
+    <form class="form-horizontal form-material" method="POST" action="{% url 'announce:announcements' %}">
+        {% csrf_token %}
+<input type="hidden" name="type" value="create">
+        <div class="form-group" style="margin-top: 10px">
+            <label class="col-md-12">标题</label>
+            <div class="col-md-12">
+                <input id="a_title" type="text" placeholder="请输入公告标题："
+                       class="form-control form-control-line" name="a_title">
+            </div>
+        </div>
+    
+<label class="col-md-12">请选择接收学生：（按班级选择）</label>
+<div class="col-md-12">
+    <div id="receivers-container">
+        {% for class, students in students_by_class %}
+            <div class="class-group">
+                <h4>
+                    {{ class.id }}
+
+                    <button class="toggle-button" type="button" onclick="toggleStudents(this)">
+    <i class="fas fa-plus"></i>
+                        <button class="select-all-button" type="button" onclick="selectAllStudents(this)">
+                        全选
+                    </button>
+</button>
+                </h4>
+
+                <div class="student-list" style="display: none;">
+                    {% for student in students %}
+                        <div class="student">
+                            <label>
+                                <input type="checkbox" name="receivers" value="{{ student.id }}">
+                                {{ student.name }}（{{ student.username }}）
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+<div class="col-md-12">
+        发送给所有人<input type="checkbox" class="select-all" onclick="toggleSelectAll(this)">
+</div>
+        <div class="form-group">
+            <label class="col-md-12">公告内容</label>
+            <div class="col-md-12">
+                <textarea id="a_content" rows="5" placeholder="请输入公告内容："
+                          class="form-control form-control-line" name="a_content"></textarea>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-sm-12">
+                <button id="publish" class="btn btn-success" type="submit">发布公告</button>
+            </div>
+        </div>
+    </form>
+
+
+
+  <script>
+
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const classField = document.querySelector('#id_class_field');
+        classField.addEventListener('change', function () {
+            const classId = this.value;  //  获取选中的班级 ID
+            if (classId) {
+                fetch(`/announce/load_receivers/?class_id=${classId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('receivers-container').innerHTML = data.receiversHtml;
+                    })
+                    .catch(error => {
+                        console.error('Error loading receivers:', error);
+                    });
+            } else {
+                document.getElementById('receivers-container').innerHTML = '';
+            }
+        });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    const toggleButtons = document.querySelectorAll('.toggle-button');
+    toggleButtons.forEach(button => {
+        button.addEventListener('click', toggleStudents);
+    });
+});
+
+function toggleStudents(button) {
+        const classGroup = button.closest('.class-group');
+        const studentList = classGroup.querySelector('.student-list');
+        if (studentList.style.display === 'none') {
+            studentList.style.display = 'block';
+            button.innerHTML = '<i class="fas fa-minus"></i>'; // 折叠图标
+        } else {
+            studentList.style.display = 'none';
+            button.innerHTML = '<i class="fas fa-plus"></i>'; // 展开图标
+        }
+    }
+    function selectAllStudents(button) {
+        const classGroup = button.closest('.class-group');
+        const studentCheckboxes = classGroup.querySelectorAll('.student-list input[type="checkbox"]');
+
+        // 检查当前按钮的文本，决定是全选还是取消全选
+        if (button.textContent.trim() === '全选') {
+            studentCheckboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            button.textContent = '取消全选';
+        } else {
+            studentCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            button.textContent = '全选';
+        }
+    }
+</script>
+<script>
+function filterStudents() {
+    const classId = document.getElementById('id_class_instance').value;
+    fetch(`/filter_students/?class_id=${classId}`)
+        .then(response => response.json())
+        .then(data => {
+            const receiversContainer = document.getElementById('receivers-container');
+            receiversContainer.innerHTML = '';
+            data.forEach(student => {
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.name = 'receivers';
+                checkbox.value = student.id;
+                checkbox.id = `id_receivers_${student.id}`;
+                const label = document.createElement('label');
+                label.htmlFor = `id_receivers_${student.id}`;
+                label.appendChild(document.createTextNode(student.name));
+                receiversContainer.appendChild(checkbox);
+                receiversContainer.appendChild(label);
+                receiversContainer.appendChild(document.createElement('br'));
+            });
+        });
+}
+
+document.getElementById('id_class_instance').addEventListener('change', filterStudents);
+</script>
+<script>
+function toggleSelectAll(source) {
+  var checkboxes = document.querySelectorAll('input[type="checkbox"]:not(.select-all)');
+  for(var i=0; i<checkboxes.length; i++) {
+    checkboxes[i].checked = source.checked;
+  }
+}
+</script>
+
+    <!--  查看公告具体信息 -->
+    <div id="announcementModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalTitle">公告详情</h5>
+          </div>
+          <div class="modal-body">
+            <h4 id="announcementTitle"></h4>
+            <p id="announcementContent"></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    
+
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="{% static 'plugins/bootstrap-3.4.1/js/bootstrap.js' %}"></script>
+    <script>
+        // 获取 CSRF token
+        var csrf_token = $('input[name="csrfmiddlewaretoken"]').val();
+
+        // 点击“删除”时弹出确认框
+        function confirmDelete(ths) {
+            var announcementTitle = ths.getAttribute('data-title');
+
+            // 弹出确认框
+            var confirmation = window.confirm("确定要删除公告: " + announcementTitle + " 吗？");
+
+            // 如果用户确认删除，执行删除操作
+            if (confirmation) {
+                deleteAnnouncement(ths);
+            }
+        }
+
+        // 删除公告
+        function deleteAnnouncement(ths) {
+            var announcementId = ths.getAttribute("data-id");
+            $.ajax({
+                url: window.location.href,
+                type: "POST",
+                data: {
+                    'type': 'delete',
+                    'a_id': announcementId,
+                    'csrfmiddlewaretoken': csrf_token
+                },
+                success: function(response) {
+                    // 删除成功后删除当前行
+                    $(ths).closest('tr').remove();
+                },
+                error: function() {
+                    alert('删除失败');
+                }
+            });
+        }
+
+        // 添加新公告
+        $('#publish').click(function () {
+            var a_title = $('#a_title').val();
+            var a_content = $('#a_content').val();
+            if (!a_title || !a_content) {
+                alert('标题和内容不能为空！');
+                return;
+            }
+
+            $.ajax({
+                url: window.location.href,
+                type: "POST",
+                data: {
+                    'type': 'create',
+                    'a_content': a_content,
+                    'a_title': a_title,
+                    'csrfmiddlewaretoken': csrf_token
+                },
+                success: function(response) {
+                    // 在成功后刷新页面
+                    location.reload();
+                }
+            });
+        });
+
+        // 查看公告
+        function showAnnouncement(ths) {
+            var title = ths.getAttribute('data-title');
+            var content = ths.getAttribute('data-content');
+
+            // 将标题和内容填充到模态框中
+            document.getElementById('announcementTitle').textContent = title;
+            document.getElementById('announcementContent').textContent = content;
+
+            // 显示模态框
+            $('#announcementModal').modal('show');
+        }
+    </script>
+</body>
+</html>

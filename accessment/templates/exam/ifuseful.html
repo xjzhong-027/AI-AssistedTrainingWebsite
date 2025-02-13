@@ -1,0 +1,91 @@
+ <!--  页面导航 -->
+        <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const examId = {{ exam.id | safe }};
+    const currentPageNumber = {{ page.page_number | safe }};
+    const pageNavCircles = document.querySelectorAll('.nav-circle');
+
+    // 获取所有页面的状态
+    function fetchAllPageStatus() {
+        return fetch(`/accessment/exams/${examId}/all_pages_status/`, {
+            method: 'GET',
+        }).then(response => response.json());
+    }
+
+    // 更新页面导航圆点的状态
+    async function updateNavCircles() {
+        const response = await fetchAllPageStatus();
+        if (response.status === 'success') {
+            const allPagesStatus = response.pages;
+
+            pageNavCircles.forEach(circle => {
+                const pageNumber = parseInt(circle.getAttribute('data-page-number'));
+                if (pageNumber === currentPageNumber) {
+                    circle.classList.add('active');
+                } else {
+                    circle.classList.remove('active');
+                }
+
+                const pageStatus = allPagesStatus.find(page => page.page_number === pageNumber);
+                if (pageStatus) {
+                    if (pageStatus.submitted) {
+                        circle.classList.add('submitted');
+                    } else {
+                        circle.classList.remove('submitted');
+                    }
+                    if (pageStatus.can_modify) {
+                        circle.classList.add('modifiable');
+                    } else {
+                        circle.classList.remove('modifiable');
+                    }
+                    if (!pageStatus.can_jump) {
+                        circle.classList.add('disabled'); // 不可跳转的页面
+                    } else {
+                        circle.classList.remove('disabled');
+                    }
+                } else {
+                    alert('Error fetching page status');
+                }
+            });
+        } else {
+            alert('Error fetching page status: ' + response.message);
+        }
+    }
+
+    // 页面导航圆点点击事件
+    pageNavCircles.forEach(circle => {
+        circle.addEventListener('click', function () {
+            const pageNumber = parseInt(this.getAttribute('data-page-number'));
+            if (this.classList.contains('disabled')) {
+                alert('请按顺序完成前面的页面');
+            } else if (this.classList.contains('modifiable') && !this.classList.contains('submitted')) {
+                window.location.href = `/accessment/exams/${examId}/page/${pageNumber}/`;
+            } else if (this.classList.contains('submitted')) {
+                alert('该页面已提交，无法返回修改');
+            }
+        });
+    });
+
+    // 初始化页面导航圆点状态
+    updateNavCircles();
+});       
+        </script>
+ 
+ 
+ @login_required
+def all_pages_status(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    student_exam_record = get_object_or_404(StudentExamRecord, user=request.user, exam=exam)
+    pages = exam.pages.all()
+
+    pages_status = []
+    for page in pages:
+        page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
+        pages_status.append({
+            'page_number': page.page_number,
+            'submitted': page_record.submitted,
+            'can_modify': page.can_modify,
+            'can_jump': page_record.submitted or page.page_number == 1  # 只有提交了的页面或第一页可以跳转
+        })
+
+    return JsonResponse({'status': 'success', 'pages': pages_status})

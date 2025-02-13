@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body>
+<div class="container mt-4">
+    <h2>{{ announcement.a_title }}</h2>
+    <p>发布于: {{ announcement.created_at|date:"Y-m-d H:i" }}</p>
+    <div class="announcement-content">
+      {{ announcement.a_content|linebreaksbr }}
+    </div>
+{#    <div>#}
+{#        <form method="post" action="{% url 'announce:announcement_detail' announcement.id %}">#}
+{#        {% csrf_token %}#}
+{#        <div class="form-group">#}
+{#            <label for="content">您的疑问:</label>#}
+{#            <textarea id="content" name="content" class="form-control" rows="3"></textarea>#}
+{#        </div>#}
+{#        <button type="submit" name="ask_question" class="btn btn-primary">有疑问去询问</button>#}
+{#    </form>#}
+{#    </div>#}
+{#    <button onclick="showQuestionForm()" class="btn btn-primary">有疑问去询问</button>#}
+{#    <div id="questionForm" style="display:none;">#}
+{#        <form method="post" action="{% url 'announce:announcement_detail' announcement.id %}">#}
+{#            {% csrf_token %}#}
+{#            <div class="form-group">#}
+{#                <label for="content">您的疑问:</label>#}
+{#                <textarea id="content" name="content" class="form-control" rows="3"></textarea>#}
+{#            </div>#}
+{#            <button type="submit" class="btn btn-primary" name="ask_question">发送</button>#}
+{#        </form>#}
+{#    </div>#}
+{#  </div>#}
+ <a href="{% url 'forum:post_new' %}?announcement_id={{ announcement.id }}&preset_title=关于公告《{{ announcement.a_title }}》的疑问" class="btn btn-primary">
+     有疑问去询问</a>
+    <div>
+{#         <form action="{% url 'announce:mark_unread' announcement_id=announcement.id %}" method="post" style="display:inline;">#}
+{#        {% csrf_token %}#}
+{#        <button type="submit" class="btn btn-secondary">设为未读</button>#}
+{#    </form>#}
+{#        <form action="{% url 'announce:mark_unread' announcement_id=announcement.id %}" method="post" style="display:inline;">#}
+{#        {% csrf_token %}#}
+{#        <label for="reminder_minutes">稍后提醒（min）:</label>#}
+{#        <input type="number" id="reminder_minutes" name="reminder_minutes" min="1" required>#}
+{#        <button type="submit" class="btn btn-secondary">设为未读并稍后提醒</button>#}
+{#    </form>#}
+{#        <form action="{% url 'announce:mark_unread' announcement_id=announcement.id %}" method="post" style="display:inline;">#}
+{#    {% csrf_token %}#}
+{#    <button type="submit" class="btn btn-secondary">设为未读</button>#}
+{#</form>#}
+
+<form action="{% url 'announce:reminder' announcement_id=announcement.id %}" method="post" style="display:inline;">
+    {% csrf_token %}
+    <label for="reminder_minutes">稍后提醒（min）:</label>
+    <input type="number" id="reminder_minutes" name="reminder_minutes" min="1" required>
+    <button type="submit" class="btn btn-secondary">稍后提醒</button>
+</form>
+    </div>
+
+</div>
+
+<script>
+    var ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    var ws_path = ws_scheme + '://' + window.location.host + '/ws/notifications/';
+    var socket = new WebSocket(ws_path);
+
+    socket.onopen = function(e) {
+        console.log('WebSocket is open now.');
+    };
+
+    socket.onmessage = function(e) {
+        console.log('Message from server ', e.data);
+        // 解析服务器发送的消息
+        var message = JSON.parse(e.data).message;
+        console.log('New message:', message);
+
+        // 将消息添加到页面上
+        var messagesContainer = document.getElementById('notifications');
+        if (messagesContainer) {
+            var newMessage = document.createElement('div');
+            newMessage.textContent = message;
+            messagesContainer.appendChild(newMessage);
+        }
+    };
+
+    socket.onclose = function(e) {
+        console.log('WebSocket is closed now.');
+    };
+
+    socket.onerror = function(e) {
+        console.error('WebSocket error observed:', e);
+    };
+</script>
+</body>
+</html>

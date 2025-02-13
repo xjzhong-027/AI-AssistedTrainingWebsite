@@ -1,27 +1,40 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Exam_detail</title>
+    <link rel="stylesheet" href="{% static 'css/teacher_side/exam_detail.css' %}">
 </head>
 <body>
+<div class="container">
     {% if unit.paper_pages.all %}
+        <div class="unit_info">
+            <h2>{{ unit.title }}</h2>
+            <p>试卷类型：{{ unit.type }}</p>
+            {% if unit.type == 'exam' or unit.type == 'quiz' %}
+                {% if time_management %}
+                    <p>时长限制： {{ time_management.duration }}分钟</p>
+                {% endif %}
+
+            {% endif %}
+        </div>
+
         {% for paper_page in unit.paper_pages.all %}
-            <div class="paper_page" style="border: 1px solid black;">
+            <div class="paper_page">
                <h2>Page{{ forloop.counter }}</h2>
                 {#展示大题#}
                 {% if paper_page.page_main_questions.all %}
                     {% for page_main_question in paper_page.page_main_questions.all %}
                         <div class="page_main_question">
-                            <p>{{ forloop.counter }}. {{ page_main_question.main_question.question_text }}</p>
+                            <h3 class="main">{{ forloop.counter }}. {{ page_main_question.main_question.question_text }}</h3>
                         {#展示小题#}
                             {% if page_main_question.page_sub_questions.all %}
                                 {% for page_sub_question in page_main_question.page_sub_questions.all %}
                                     {#改错题#}
                                     {% if page_main_question.main_question.question_type == 'correction' %}
-                                        <div class='page_sub_question'>
-                                            <span>{{ page_sub_question.sub_question.question_text }}</span>
-                                        </div>
+                                        <span class='page_sub_question'>{{ page_sub_question.sub_question.question_text }}</span>
                                     {% else %}
                                     {#除改错题外的其他类型题目#}
                                         <div class="page_sub_question">
@@ -70,6 +83,8 @@
     {% else %}
         <p>没有找到与该 Unit 关联的 PaperPage 信息。</p>
     {% endif %}
+
+</div>
 
 </body>
 </html>

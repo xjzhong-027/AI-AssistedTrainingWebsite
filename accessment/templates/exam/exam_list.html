@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Exams</title>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #343a40;
+            margin-bottom: 30px;
+        }
+        .exam-list {
+            list-style-type: none; /* 去掉默认的列表样式 */
+            padding: 0;
+        }
+        .exam-list li {
+            background-color: #e9ecef; /* 浅灰色背景 */
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6; /* 边框 */
+        }
+        .exam-list a {
+            color: #457345; /* 链接颜色 */
+            text-decoration: none; /* 去掉下划线 */
+            font-weight: bold;
+        }
+        .exam-list a:hover {
+            text-decoration: underline; /* 鼠标悬停时显示下划线 */
+        }
+        .exam-time {
+            color: #6c757d; /* 时间文字颜色 */
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Available Exams</h1>
+        <ul class="exam-list">
+            {% for exam in exams %}
+                <li>
+                    <a href="{% url 'accessment:start_exam' exam.id %}">{{ exam.name }}</a>
+                    <span class="exam-time"> - {{ exam.start_time }} to {{ exam.end_time }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>

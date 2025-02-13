@@ -1,0 +1,36 @@
+.breadcrumb {
+  padding: 8px 15px;
+  margin-bottom: 20px;
+  list-style: none;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+.breadcrumb > li {
+  display: inline-block;
+}
+.breadcrumb > li + li:before {
+  padding: 0 5px;
+  color: #ccc;
+  content: "/\00a0";
+}
+.breadcrumb > .active {
+  color: #777777;
+}
+
+/* 学生公告栏特定样式 */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table {
+    margin-bottom: 2rem;
+}
+
+.badge {
+    font-size: 0.875em;
+    padding: 0.35em 0.65em;
+}
+
+.pagination {
+    margin-top: 2rem;
+}

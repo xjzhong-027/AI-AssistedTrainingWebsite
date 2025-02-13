@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>私聊</title>
+</head>
+<body>
+ {% for post in posts %}
+            <h1>{{ post.title }}</h1>
+    <p>{{ post.content }}</p>
+    <p>By: {{ post.name }}</p>
+    <p>发布时间: {{ post.created_at }}</p>
+    <h2>评论</h2>
+    <div>
+{% for comment in comments %}
+     {% include 'forum/_comment.html' with comment=comment %}
+{% endfor %}
+    </div>
+    <a href="{% url 'forum:add_comment' post.id %}">回复</a>
+     {% if post.is_public %}
+            <a href="{% url 'forum:change_public' post.id %}">隐藏</a>
+        {% else %}
+            <a href="{% url 'forum:change_public' post.id %}">公开</a>
+        {% endif %}
+    {% endfor %}
+<a href="{% url 'forum:forum' %}">返回论坛</a>
+</body>
+</html>

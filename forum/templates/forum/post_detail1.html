@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ post.title }}</title>
+</head>
+<body>
+    <h1>{{ post.title }}</h1>
+    <p>{{ post.content }}</p>
+    <p>By: {{ post.name }}</p>
+    <p>发布时间: {{ post.created_at |date:"Y/m/d H:i"}}</p>
+    <h2>评论</h2>
+    <div>
+{% for comment in comments %}
+            {% include 'forum/_comment.html' with comment=comment reply_form=reply_form %}
+        {% endfor %}
+    </div>
+    
+    
+    <!-- 分页导航 -->
+    {% if comments.paginator.num_pages > 1 %}
+        <div>
+            {% if comments.has_previous %}
+                <a href="?page={{ comments.previous_page_number }}">Previous</a>
+            {% endif %}
+            <span>Page {{ comments.number }} of {{ comments.paginator.num_pages }}.</span>
+            {% if comments.has_next %}
+                <a href="?page={{ comments.next_page_number }}">Next</a>
+            {% endif %}
+        </div>
+    {% endif %}
+    <a href="{% url 'forum:add_comment' post.id %}">添加新评论</a>
+    <a href="{% url 'forum:forum' %}">返回论坛</a>
+     <button id="show-comment-form">添加新评论</button>
+    <div id="comment-form-container" style="display: none;">
+        <form id="comment-form" method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">提交评论</button>
+        </form>
+    </div>
+    
+<script>
+    var ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    var ws_path = ws_scheme + '://' + window.location.host + '/ws/notifications/';
+    var socket = new WebSocket(ws_path);
+
+    socket.onopen = function(e) {
+        console.log('WebSocket is open now.');
+    };
+    
+    socket.onmessage = function(e) {
+        console.log('Message from server ', e.data);
+        // 处理消息，例如显示通知
+    };
+    
+    socket.onclose = function(e) {
+        console.log('WebSocket is closed now.');
+    };
+    
+    socket.onerror = function(e) {
+        console.error('WebSocket error observed:', e);
+    };
+
+    </script>
+<script>
+        document.getElementById('show-comment-form').addEventListener('click', function() {
+            document.getElementById('comment-form-container').style.display = 'block';
+        });
+
+        document.getElementById('comment-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            fetch('{% url "forum:add_comment" post.id %}', {
+                method: 'POST',
+                body: formData,
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      // 评论成功，可以在这里更新页面或显示成功消息
+                      alert('评论成功');
+                      // 重新加载页面或更新评论列表
+                      window.location.reload();
+                  } else {
+                      // 评论失败，显示错误消息
+                      alert('评论失败: ' + data.message);
+                  }
+              });
+        });
+    </script>
+</body>
+
+</html>

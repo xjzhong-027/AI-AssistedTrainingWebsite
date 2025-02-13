@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>forum</title>
+</head>
+<body>
+<h1>forum teacher</h1>
+    <p>欢迎, {{ username }}!</p>
+<!-- 分类 -->
+<ul>
+    <li><a href="{% url 'forum:forum' %}">全部</a></li>
+    <li><a href="{% url 'forum:forum_by_category' category='question' %}">题目</a></li>
+    <li><a href="{% url 'forum:forum_by_category' category='private' %}">非公开</a></li>
+    <li><a href="{% url 'forum:my_post' %}">我发出的</a></li>
+    <li><a href="{% url 'forum:non_public' %}">学生私聊</a></li>
+</ul>
+<!-- 搜索 -->
+<form method="get" action="{% url 'forum:search_posts' %}">
+    <input type="text" name="q" placeholder="Search posts...">
+    <button type="submit">Search</button>
+</form>
+<a href="{% url 'forum:post_new' %}">add new post</a>
+<h1><a href="{% url 'announce:announcements' %}">发公告</a></h1>
+<!-- 置顶帖子显示 -->
+<h2>——已置顶帖子——</h2>
+<div>
+    {% for post in top_posts %}
+        <div>
+            <h2>{{ post.title }}</h2>
+            <p>{{ post.content }}</p>
+         是否匿名：{{ post.is_anonymous }}
+             <p>匿名名称 {{ post.anonymous_name }}</p>
+            <p>学生姓名： {{ post.author.username }}</p>
+            <p>posted at: {{ post.created_at }}</p>
+            <p>{{ post.top_score }}条评论</p>
+            <a href="{% url 'forum:post_detail' post.id %}">check</a>
+            <a href="{% url 'forum:post_delete' post.id %}">delete</a>
+            <form method="post" action="{% url 'forum:post_top' post.id %}">
+                {% csrf_token %}
+                {% if post.is_top %}
+                    <button type="submit" name="action" value="unsticky">Not Sticky</button>
+                {% else %}
+                    <button type="submit" name="action" value="sticky">Sticky</button>
+                {% endif %}
+            </form>
+        </div>
+        <hr>
+    {% endfor %}
+</div>
+
+<!-- 精选帖子显示 -->
+<h2>——精选帖子——</h2>
+<div>
+    {% for post in star_posts %}
+        <div>
+            <h2>{{ post.title }}</h2>
+            <p>{{ post.content }}</p>
+        
+         是否匿名：{{ post.is_anonymous }}
+         {% if post.is_anonymous %}
+             <p>学生姓名： {{ post.author.username }}</p>
+             <p>匿名名称 {{ post.anonymous_name }}</p>
+        {% else %}
+            <p>学生姓名： {{ post.author.username }}</p>
+        {% endif %}
+            <p>posted at: {{ post.created_at }}</p>
+            <p>{{ post.top_score }}条评论</p>
+            <a href="{% url 'forum:post_detail' post.id %}">check</a>
+            <a href="{% url 'forum:post_delete' post.id %}">delete</a>
+            <form method="post" action="{% url 'forum:post_top' post.id %}">
+                {% csrf_token %}
+                {% if post.is_top %}
+                    <button type="submit" name="action" value="unsticky">Not Sticky</button>
+                {% else %}
+                    <button type="submit" name="action" value="sticky">Sticky</button>
+                {% endif %}
+            </form>
+        </div>
+        <hr>
+    {% endfor %}
+</div>
+
+<!-- 其他帖子显示 -->
+<h2>——帖子——</h2>
+<div>
+    {% for post in rest_posts %}
+        <div>
+            <h2>{{ post.title }}</h2>
+            <p>{{ post.content }}</p>
+        
+         是否匿名：{{ post.is_anonymous }}
+         {% if post.is_anonymous %}
+             <p>学生姓名： {{ post.author.username }}</p>
+             <p>匿名名称 {{ post.anonymous_name }}</p>
+        {% else %}
+            <p>学生姓名： {{ post.author.username }}</p>
+        {% endif %}
+            <p>posted at: {{ post.created_at }}</p>
+            <p>{{ post.top_score }}条评论</p>
+            <a href="{% url 'forum:post_detail' post.id %}">check</a>
+            <a href="{% url 'forum:post_delete' post.id %}">delete</a>
+            <form method="post" action="{% url 'forum:post_top' post.id %}">
+                {% csrf_token %}
+                {% if post.is_top %}
+                    <button type="submit" name="action" value="unsticky">Not Sticky</button>
+                {% else %}
+                    <button type="submit" name="action" value="sticky">Sticky</button>
+                {% endif %}
+            </form>
+        </div>
+        <hr>
+    {% endfor %}
+</div>
+</body>
+</html>

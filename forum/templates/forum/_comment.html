@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body>
+
+<div class="comment">
+    <strong>{{ comment.content }}</strong>
+        <p>By: {{ comment.name }}</p>
+    <p>评论时间：{{ comment.created_at |date:"Y/m/d H:i"}}</p>
+
+
+         {% if request.session.role == 'teacher' or comment.author == request.session.username %}
+            <a href="{% url 'forum:comment_delete' comment.id %}">delete</a>
+    {% endif %}
+    <button class="reply-link" 
+        data-post-id="{{ comment.post.id }}" 
+        data-parent-comment-id="{{ comment.id }}">
+    回复</button>
+
+    <div class="reply-form-container" style="display: none;">
+        <form class="reply-form" method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
+            <button type="submit">发送</button>
+        </form>
+    </div>
+</div>
+
+{% if comment.replies.exists %}
+     <button class="toggle-replies" data-target="#replies-{{ comment.id }}">加载更多回复</button>
+        <ul class="replies" id="replies-{{ comment.id }}" style="display: none;">
+            {% for reply in comment.replies.all %}
+                <li>
+                    {% include 'forum/_comment.html' with comment=reply form=reply_form %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</body>
+</html>
+</html>
+
+
+{#<script>#}
+{#    document.querySelectorAll('.toggle-replies').forEach(function(button) {#}
+{#        button.addEventListener('click', function(event) {#}
+{#            event.preventDefault();#}
+{#            const target = this.getAttribute('data-target');#}
+{#            const repliesContainer = document.querySelector(target);#}
+{#            #}
+{#            if (repliesContainer) {#}
+{#                repliesContainer.style.display = repliesContainer.style.display === 'none' ? 'block' : 'none';#}
+{#                this.textContent = repliesContainer.style.display === 'none' ? '加载更多回复' : '折叠回复';#}
+{#            } else {#}
+{#                console.error('未找到回复容器');#}
+{#            }#}
+{#        });#}
+{#    });#}
+{#</script>#}
+{#    <a href="{% url 'forum:add_reply' post_id=comment.post.id parent_comment_id=comment.id %}">回复</a>#}
+{#        <button class="toggle-replies" data-target="#replies-{{ comment.id }}">加载更多回复...</button>#}
+{#     style="display: none;"#}
+{#<script>#}
+{#    document.querySelectorAll('.toggle-replies').forEach(function(button) {#}
+{#        button.addEventListener('click', function(event) {#}
+{#            event.preventDefault();#}
+{#            const targetId = this.getAttribute('data-target');#}
+{#            const repliesList = document.querySelector(targetId);#}
+{#            if (repliesList) {#}
+{#                if (repliesList.style.display === 'none') {#}
+{#                    repliesList.style.display = 'block';#}
+{#                    this.textContent = '折叠回复';#}
+{#                } else {#}
+{#                    repliesList.style.display = 'none';#}
+{#                    this.textContent = '加载更多回复...';#}
+{#                }#}
+{#            } else {#}
+{#                console.error('未找到子评论列表');#}
+{#            }#}
+{#        });#}
+{#    });#}
+{##}
+{#    document.querySelectorAll('.reply-link').forEach(function(button) { // 修改这里，使用传统的函数表达式#}
+{#        button.addEventListener('click', function(event) {#}
+{#            event.preventDefault();#}
+{#            const formContainer = this.nextElementSibling; // 在这里，this 现在正确地指向了 button 元素#}
+{#            if (formContainer) {#}
+{#                formContainer.style.display = 'block';#}
+{#            } else {#}
+{#                console.error('未找到表单容器');#}
+{#            }#}
+{#        });#}
+{#    });#}
+{#</script>#}

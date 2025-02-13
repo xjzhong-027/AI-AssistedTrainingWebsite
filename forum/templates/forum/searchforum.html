@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Posts</title>
+</head>
+<body>
+<h1>Search Posts</h1>
+<form method="get" action="{% url 'forum:search_posts' %}">
+    <input type="text" name="title" placeholder="Search posts by title...">
+    <input type="text" name="content" placeholder="Search posts by content...">
+    <input type="text" name="name" placeholder="Search posts by author name...">
+    <p>Search by time</p>
+    <label for="id_created_at__gte">From:</label>
+    <input type="date" id="id_created_at__gte" name="created_at__gte">
+    <label for="id_created_at__lte">To:</label>
+    <input type="date" id="id_created_at__lte" name="created_at__lte">
+    <button type="submit">Search</button>
+</form>
+
+<h2>Search Results</h2>
+{% for post in filter.qs %}
+    <div>
+        <h2>{{ post.title }}</h2>
+        <p>{{ post.content|truncatewords:20 }}</p>
+        <p>By: {{ post.name }}</p>
+        <p>Posted at: {{ post.created_at|date:"Y/m/d H:i" }}</p>
+        <p>{{ post.top_score }}条评论</p>
+        <a href="{% url 'forum:post_detail' post.id %}">Check</a>
+    </div>
+    <hr>
+{% empty %}
+    <p>No posts found.</p>
+{% endfor %}
+</body>
+</html>

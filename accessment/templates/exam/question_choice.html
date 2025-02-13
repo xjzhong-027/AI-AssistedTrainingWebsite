@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>choice</title>
+</head>
+<body>
+<div class="choice-question">
+    {% for option in sub_question.options.all %}
+    <div class="option">
+        <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.id }}">
+        <label>{{ option.option_label }}. {{ option.option_content }}</label>
+    </div>
+    {% endfor %}
+</div>
+</body>
+</html>
