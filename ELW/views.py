@@ -557,7 +557,7 @@ def teacher_page_save(request, material_id):
             unit_instance.save()
             print('unit_instance: ', unit_instance)
             # 如果为考试，则创建时间管理表
-            if type == 'exam':
+            if type == 'exam' or type == 'quiz':
                 time_management_instance = TimeManagement.objects.create(
                     unit=unit_instance,
                     week=order,
