@@ -9,7 +9,7 @@
     <script>
         function filterUnits(){
             const classQuery = document.getElementById('selected_class').value;
-            if (classQuery !== "" || classQuery !== null){
+            if (classQuery !== "" && classQuery !== null){
                 console.log(classQuery)
                 const url = new URL(window.location.href);
                 url.searchParams.set('class_id', classQuery);
@@ -39,7 +39,7 @@
 <body>
 <div>
     <select name="selected_class" id="selected_class" onchange='filterUnits()'>
-        <option value=""></option>
+        <option value="All">全部班级</option>
         {% for class in classes %}
 
             <option value="{{ class.id }}">

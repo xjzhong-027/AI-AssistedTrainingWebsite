@@ -132,8 +132,6 @@ class SubQuestion(models.Model):
     def __str__(self):
         return f"main_question-{self.main_question}"
 
-
-
 # 选择题-选项表
 class ChoiceOption(models.Model):
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='options')
@@ -167,6 +165,11 @@ class Correction(models.Model):
 
     def __str__(self):
         return f"{self.sub_question}-{self.type}"
+
+class Blank(models.Model):
+    sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='blanks')
+    index = models.IntegerField(default=0, verbose_name='填空位置')
+
 
 # 单元表
 class Unit(models.Model):

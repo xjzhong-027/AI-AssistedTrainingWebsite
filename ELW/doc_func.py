@@ -1,10 +1,10 @@
 import re
 from . import func
 
+# 分割各道大题
 def extract_questions(text):
     # 使用正则表达式匹配各个部分，注意匹配的是带有数字和括号的章节标题
     sections = re.split(r'(\([一二三四五六七八九十]+\))', text)
-
     # 清理分割结果，去除空字符串并合并标题和内容
     result = []
     for i in range(1, len(sections), 2):
@@ -15,6 +15,7 @@ def extract_questions(text):
         result.append(content)
     print('result: ', result)
     return result
+
 
 def parse_main_question(text):
     # 定义一个字典来存储所有提取的内容
@@ -74,6 +75,7 @@ def parse_main_question(text):
             main_question['question_text'] = text[:qt_match.start()].strip()
             text_match = True
             text = text.replace(text[:qt_match.start()].strip(), '') # 移除 question_text 部分
+    print('text: ', text)
     parse_sub_question(text, main_question)
 
     return main_question
@@ -86,8 +88,8 @@ def parse_sub_question(text, main_question):
     # 确保有题号
     if not question_indices:
         return []
-    questions = []  # 结果列表
-    # 逐一分割题目
+    questions = []  # 小题题目文本分割结果列表
+    # 逐一分割小题题目
     for i in range(len(question_indices)):
         start_index = question_indices[i]
         # 如果是最后一个题目，取到文本结束
@@ -107,4 +109,6 @@ def parse_sub_question(text, main_question):
             main_question['sub_questions'].append(func.process_matching_question(question))
         elif main_question['question_type'] == 'comprehension':
             main_question['sub_questions'].append(func.process_comprehension_question(question))
+        elif main_question['question_type'] == 'blank':
+            main_question['sub_questions'].append(func.extract_subtext_and_answers(question))
 

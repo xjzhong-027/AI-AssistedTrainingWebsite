@@ -1241,6 +1241,7 @@ def question_integration(request):
     start_datetime = datetime.datetime.combine(current_date, datetime.time.fromisoformat("15:30:00"))
     print(start_datetime.isoformat())
     '''
+    # word文档导入
     if request.method == 'POST' and request.FILES.get('word_file'):
         def extract_text_from_word(doc_file):
             # 读取Word文档内容
@@ -1261,7 +1262,7 @@ def question_integration(request):
                 main_question = doc_func.parse_main_question(question)
                 question_data.append(main_question)
                 print('main_question: ', main_question)
-            print('question_data: ', question_data)
+
 
             # 将每道改错题的sub_list、type_list、answer_list、index_list合并为一个列表，列表中每个集合包含这四个值
             for main_question in question_data:
@@ -1275,16 +1276,14 @@ def question_integration(request):
                                 'answer': sub_question['answer_list'][i],
                                 'index': sub_question['index_list'][i]
                             })
+            print('question_data: ', question_data)
             return render(request, 'teacher_side/question_preview.html', {'question_data': question_data})
         else:
             return JsonResponse({'status': 'error', 'message': '文件上传失败'})
 
-
-
-
+    # 传统表单导入
     elif request.method == 'POST':
         question_type = request.POST.get('question_type')
-
         # 处理预览
         if 'preview' in request.POST:
             main_text = request.POST.get('MainQuestion')
@@ -1301,6 +1300,7 @@ def question_integration(request):
                 "end": main_info.get('end'),
                 "sub_questions": []
             }]
+            
 
             if question_type == 'choice':
                 question_list = func.extract_choice_questions(sub_text)
@@ -1338,6 +1338,7 @@ def question_integration(request):
         if 'save' in request.POST:
             # 把POST数据转为字典
             post_data = request.POST.dict()
+            print(request.POST)
 
             main_data = {}
             for key in post_data:
@@ -2005,6 +2006,7 @@ def teacher_exam_bank(request):
             class_instance = Class.objects.get(id=int(class_id))
             units = Unit.objects.filter(class_instance=class_instance)
 
+
         paginator = Paginator(units, 15)  # 每页展示 15 条
         page_number = request.GET.get('page')  # 获取当前页码
         page_obj = paginator.get_page(page_number)  # 获取当前页对象
@@ -2037,98 +2039,17 @@ def teacher_exam_delete(request, unit_id):
     return redirect(teacher_exam_bank)
 
 def teacher_exam_management(request):
-    # 处理改错题
-    def parse_text_modifications(input_text):
-        # 正则匹配 [text:type:answer]
-        pattern = r'\[([^:]*):([^:]*):([^]]+)\]'
-        matches = re.finditer(pattern, input_text)
-        print('matches: ', matches)
-        # 初始化结果变量
-        sub_list = []  # 小题题干
-        text_list = []  # 需要改错的原小题文本
-        type_list = []  # 改错类型
-        answer_list = []  # 答案
-        index_list = []  # 修订部分在原文本中的单词索引，以空格为分隔符
-        last_end = 0  # 分割点初始化
-        word_index = 0  # 当前单词索引
-
-        # 遍历匹配
-        for match in matches:
-            text, op_type, answer = match.groups()
-            start, end = match.span()
-            # before_text = input_text[last_end:start]
-            # sub_list.append(before_text)
-            # 处理 type, answer 和 index
-            text_list.append(text.strip())
-            type_list.append(op_type.strip())
-            answer_list.append(answer.strip())
-            last_end = end  # 更新 last_end
-
-        # 提取原文本中修订文本的前缀和后缀
-        def extract_prefix_suffix(input_string):
-            pattern = re.compile(r'(.*?)\[(.*?)\](.*)')
-            match = pattern.match(input_string)
-            if match:
-                prefix = match.group(1).strip()
-                suffix = match.group(3).strip()
-            else:
-                prefix = ''
-                suffix = ''
-            return prefix, suffix
-
-        split_texts = input_text.split()
-        print('split_texts: ', split_texts)
-        before_text = ''
-        index = 0
-        ignore_count = 0  # 当修改类型为insert时，修订部分在原文本中的单词索引为插入位置的前一个单词的索引，因此在原文中不占据索引位置
-        match_count = 0
-        insert_pattern = r'.*:insert:.*'  # 判断修订类型为insert的题目
-        for i, split_text in enumerate(split_texts):
-            print(f"{i}: {split_text}")
-            if re.search(pattern, split_text):
-                match_count += 1
-                prefix = extract_prefix_suffix(split_text)[0]
-                suffix = extract_prefix_suffix(split_text)[1]
-                if re.search(insert_pattern, split_text):
-                    print('find insert')
-                    ignore_count += 1
-                    index_list.append(index - 1)
-                    before_text = before_text + prefix + suffix + ' '
-                    sub_list.append(before_text)
-                    before_text = ''
-                    index = 0
-                else:
-                    before_text = before_text + prefix + text_list[match_count - 1] + suffix + ' '
-                    print('test: ', text_list[match_count - 1])
-                    index_list.append(index)
-                    print('match example: ', split_texts[index + ignore_count])
-                    sub_list.append(before_text)
-                    before_text = ''
-                    index = 0
-            else:
-                before_text = before_text + split_text + ' '
-                index += 1
-        # 处理最后一段普通文本
-        if last_end < len(input_text):
-            sub_list[-1] = sub_list[-1] + input_text[last_end:]
-            # sub_list.append(input_text[last_end:])
-        # 返回结果
-        return {
-            'sub_list': sub_list,
-            'text_list': text_list,
-            'type_list': type_list,
-            'answer_list': answer_list,
-            'index_list': index_list
-            # 'split_texts': split_texts,
-        }
-
     if request.method == 'POST':
         main_text = request.POST['MainQuestion']
         sub_text = request.POST['SubQuestion']
-        text = parse_text_modifications(sub_text)
-        print('sub_text: ', sub_text)
-        print('text: ', text)
-
+        main_data = func.extract_main_question(main_text)
+        print('main_data: ', main_data)
+        if request.POST['question_type'] == 'blank':
+            questions = func.extract_blank_questions(sub_text)
+            print('questions: ', questions)
+            for question in questions:
+                question_datas = func.extract_subtext_and_answers(question)
+                print('question_datas: ', question_datas)
 
 
 

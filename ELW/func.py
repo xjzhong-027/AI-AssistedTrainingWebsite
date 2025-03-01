@@ -1,8 +1,5 @@
 import re
 
-
-
-
 # 处理大题
 def extract_main_question(text):
     # 定义正则表达式模式
@@ -74,7 +71,6 @@ def extract_main_question(text):
     print('main_question result: ', result)
     return result
     '''
-
 
 # 处理选择题（单选+多选）
 # 按题号分割题目，返回包含各个题目的列表，题号格式为(1)
@@ -208,7 +204,6 @@ def process_choice_question(question):
     print(f'question_data: {question_data}')
     return question_data
     '''
-
 
 
 
@@ -386,7 +381,6 @@ def parse_text_modifications(input_text):
 
 
 
-
 # 处理连线题
 def extract_matching_questions(text):
     # 正则表达式匹配题号部分（支持中文和英文括号）,匹配的内容是：(1) 或 （1） 这种格式的题号
@@ -489,16 +483,6 @@ def process_matching_question(question_text):
 
 
 
-
-
-
-
-
-
-
-
-
-
 # 处理简答题
 # 按题号分割题目，返回包含各个题目的列表，题号格式为(1)
 def extract_comprehension_questions(text):
@@ -522,7 +506,6 @@ def extract_comprehension_questions(text):
         question_text = question_text.replace('\n', '').replace('\r', '').replace('\t', '')
         questions.append(question_text)
     return questions
-
 
 # 对各个题目的内容进行信息提取
 def process_comprehension_question(question):
@@ -548,3 +531,120 @@ def process_comprehension_question(question):
         result['answer'] = match_answer.group(1).strip()
         result['question_text'] = question.split('[$')[0].strip() #提取第一个[answer: 任意字符]之前的内容作为题干
     return result
+
+
+# 处理填空题
+def extract_blank_questions(text):
+    # 使用正则表达式匹配题号，支持中文括号和英文括号，题号格式为(1)
+    question_pattern = r'[\(\（]\d+[\)\）]'
+    # 找到所有匹配的题号位置
+    question_indices = [m.start() for m in re.finditer(question_pattern, text)]
+    # 确保有题号
+    if not question_indices:
+        return []
+    questions = []  # 结果列表
+    # 逐一分割题目
+    for i in range(len(question_indices)):
+        start_index = question_indices[i]
+        # 如果是最后一个题目，取到文本结束
+        end_index = question_indices[i + 1] if i + 1 < len(question_indices) else len(text)
+        # 获取题目的文本
+        question_text = text[start_index:end_index].strip()
+        # 移除题号
+        question_text = re.sub(r'^[\(\（]\d+[\)\）]', '', question_text).strip()
+        question_text = question_text.replace('\n', '').replace('\r', '').replace('\t', '')
+        questions.append(question_text)
+    return questions
+
+# 对填空题小题各个题目信息进行提取
+def extract_subtext_and_answers(question):
+    # 使用正则表达式匹配 [1] 之前的内容和剩余内容
+    pattern = r'^(.*?)(\[1\].*)$'
+    match = re.match(pattern, question, re.DOTALL)
+    if match:
+        sub_texts = match.group(1).strip()  # 提取 [1] 之前的内容
+        sub_answers = match.group(2).strip()  # 提取剩余内容
+    else:
+        sub_texts = question  # 如果没有匹配到，整个文本作为 sub_texts
+        sub_answers = ""  # sub_answers 为空
+    # result = {
+    #     'sub_texts': sub_texts,
+    #     'sub_answers': sub_answers
+    # }
+    # print('result: ', result)
+
+
+    # 提取sub_questions和sub_index
+    def extract_sub_questions(sub_text):
+        pattern = r'__\d+__'
+        split_texts = sub_texts.split()
+        print('split_texts: ', split_texts)
+        last_index = 0
+        index = -1
+        sub_question = ''
+        sub_questions = []
+        index_list = []
+        for i, split_text in enumerate(split_texts):
+            if re.search(pattern, split_text):
+                sub_questions.append(sub_question)
+                index_list.append(index)
+                sub_question = ''
+                index = -1
+                last_index = i
+            else:
+                index += 1
+                sub_question = sub_question + split_text + ' '
+        if last_index < len(split_texts):
+            for i in range(last_index + 1, len(split_texts)):
+                sub_questions[-1] = sub_questions[-1] + ' ' + split_texts[i]
+        result = {
+            'sub_questions': sub_questions,
+            'index_list': index_list,
+        }
+        # print('result2: ', result)
+        return result
+
+    sub_results = extract_sub_questions(sub_texts)
+    sub_questions = sub_results['sub_questions']
+    index_list = sub_results['index_list']
+    # print('sub_answers: ', sub_answers)
+    question_datas = [{'question_text': sub_questions[i],
+                      'index': index_list[i],
+                      'answer_list': [],
+                      'tips': '',
+                      'analysis': ''}
+                     for i in range(len(sub_questions))]
+    # print('question_datas: ', question_datas)
+
+    # 提取sub_texts中的信息
+    def extract_sub_answers(sub_answers):
+        # 使用正则表达式匹配
+        pattern = r'\[\d+\]'
+        parts = re.split(pattern, sub_answers)
+        # 去掉第一个空字符串（如果存在）
+        if parts[0].strip() == '':
+            parts = parts[1:]
+        answer_texts = [part.strip() for part in parts]
+        # print('answer_texts: ', answer_texts)
+        return answer_texts
+    answer_texts = extract_sub_answers(sub_answers)
+    for i, answer_text in enumerate(answer_texts):
+        # print('answer_text: ', answer_text)
+        # 提取tips
+        tips_match = re.search(r'-\*([^*]+)\*-', answer_text)
+        if tips_match:
+            question_datas[i]['tips'] = tips_match.group(1).strip()
+            answer_text = answer_text.replace(tips_match.group(0), '')  # 移除 tips 部分
+        # 提取analysis
+        analysis_match = re.search(r'-\*\*([^*]+)\*\*-', answer_text)
+        if analysis_match:
+            question_datas[i]['analysis'] = analysis_match.group(1).strip()
+            answer_text = answer_text.replace(analysis_match.group(0), '')  # 移除 analysis 部分
+
+        answers = answer_text.strip().split(';')
+        for answer in answers:
+            if answer:
+                question_datas[i]['answer_list'].append(answer)
+    # print('question_datas: ', question_datas)
+    return question_datas
+
