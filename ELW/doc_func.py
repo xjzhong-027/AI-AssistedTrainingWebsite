@@ -110,5 +110,6 @@ def parse_sub_question(text, main_question):
         elif main_question['question_type'] == 'comprehension':
             main_question['sub_questions'].append(func.process_comprehension_question(question))
         elif main_question['question_type'] == 'blank':
+            print('blank_question: ', question)
             main_question['sub_questions'].append(func.extract_subtext_and_answers(question))
 

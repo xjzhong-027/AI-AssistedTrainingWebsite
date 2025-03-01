@@ -212,7 +212,7 @@ def parse_text_modifications(input_text):
     # 正则匹配 [text:type:answer]
     pattern = r'\[([^:]*):([^:]*):([^]]+)\]'
     matches = re.finditer(pattern, input_text)
-    print('matches: ', matches)
+    # print('matches: ', matches)
     # 初始化结果变量
     sub_list = []  # 小题题干
     text_list = []  # 需要改错的原小题文本
@@ -254,13 +254,13 @@ def parse_text_modifications(input_text):
     match_count = 0
     insert_pattern = r'.*:insert:.*'  # 判断修订类型为insert的题目
     for i, split_text in enumerate(split_texts):
-        print(f"{i}: {split_text}")
+        # print(f"{i}: {split_text}")
         if re.search(pattern, split_text):
             match_count += 1
             prefix = extract_prefix_suffix(split_text)[0]
             suffix = extract_prefix_suffix(split_text)[1]
             if re.search(insert_pattern, split_text):
-                print('find insert')
+                # print('find insert')
                 ignore_count += 1
                 index_list.append(index - 1)
                 before_text = before_text + prefix + suffix + ' '
@@ -269,9 +269,9 @@ def parse_text_modifications(input_text):
                 index = 0
             else:
                 before_text = before_text + prefix + text_list[match_count - 1] + suffix + ' '
-                print('test: ', text_list[match_count - 1])
+                # print('test: ', text_list[match_count - 1])
                 index_list.append(index)
-                print('match example: ', split_texts[index + ignore_count])
+                # print('match example: ', split_texts[index + ignore_count])
                 sub_list.append(before_text)
                 before_text = ''
                 index = 0
@@ -563,7 +563,9 @@ def extract_subtext_and_answers(question):
     match = re.match(pattern, question, re.DOTALL)
     if match:
         sub_texts = match.group(1).strip()  # 提取 [1] 之前的内容
+        print('blank_subtexts: ', sub_texts)
         sub_answers = match.group(2).strip()  # 提取剩余内容
+        print('blank_subanswers: ', sub_answers)
     else:
         sub_texts = question  # 如果没有匹配到，整个文本作为 sub_texts
         sub_answers = ""  # sub_answers 为空

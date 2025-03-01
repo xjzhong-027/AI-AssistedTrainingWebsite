@@ -166,6 +166,7 @@ class Correction(models.Model):
     def __str__(self):
         return f"{self.sub_question}-{self.type}"
 
+
 class Blank(models.Model):
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='blanks')
     index = models.IntegerField(default=0, verbose_name='填空位置')
@@ -201,6 +202,9 @@ class PageSubQuestion(models.Model):
 class TimeManagement(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='time_management')
     week = models.IntegerField(verbose_name='开放周次', default=0)
+    exam_date = models.DateField(verbose_name='考试日期', blank=True, null=True)
+    start_time = models.TimeField(blank=True, null=True)
+    end_time = models.TimeField(blank=True, null=True)
     duration = models.IntegerField(verbose_name='时长限制', blank=True, null=True)
 
 

@@ -542,9 +542,9 @@ def teacher_page_save(request, material_id):
             title = request.POST.get('title')
             type = request.POST.get('selected_type')
             duration = int(request.POST.get('exam_time'))
-
-
-
+            exam_date = datetime.date.fromisoformat(request.POST.get('exam_date'))
+            start_time = datetime.time.fromisoformat(request.POST.get('start_time'))
+            end_time = datetime.time.fromisoformat(request.POST.get('end_time'))
 
             # 创建试卷
             class_instance = Class.objects.get(pk=class_id)
@@ -562,6 +562,9 @@ def teacher_page_save(request, material_id):
                     unit=unit_instance,
                     week=order,
                     duration=duration,
+                    exam_date=exam_date,
+                    start_time=start_time,
+                    end_time=end_time,
                 )
                 time_management_instance.save()
             # 遍历所有待创建页面
@@ -2050,8 +2053,6 @@ def teacher_exam_management(request):
             for question in questions:
                 question_datas = func.extract_subtext_and_answers(question)
                 print('question_datas: ', question_datas)
-
-
 
     return render(request, 'teacher_side/exam_management.html')
 
