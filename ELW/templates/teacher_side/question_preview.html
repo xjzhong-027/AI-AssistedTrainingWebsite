@@ -69,15 +69,23 @@
         }
 
         fieldset {
-            margin-bottom: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f7f7f7;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         legend {
             width: 100%;
             margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .question-divider {
+            width: 100%;
+            border-top: 2px solid #ccc;
+            margin: 20px 0;
         }
     </style>
 </head>
@@ -98,7 +106,7 @@
                         <input type="checkbox" style="width:20px;" name="main[{{ forloop.counter0 }}].allow_pause" value="true">允许手动暂停媒体播放
 
                         <label>页面限制时间：</label>
-                        <input type="text" name="main[{{ forloop.counter0 }}].limited_time"><br>
+                        <input type="text" name="main[{{ forloop.counter0 }}].limited_time" value="00:30:00"><br>
 
                         <label>最小播放次数：</label>
                         <input type="number" name="main[{{ forloop.counter0 }}].min"  value="{{ main_question.min }}"><br>
@@ -123,7 +131,7 @@
                                 <!-- 选择题 -->
                                 <fieldset class="choice-question-container">
                                     <legend>
-                                        <label for="question_text">题目{{ forloop.counter }}：</label>
+                                        <label for="question_text">选择题{{ forloop.counter }}：</label>
                                         <input type="text" name="main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].question_text" value="{{ sub.question_text }}" required>
                                     </legend>
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -164,16 +172,16 @@
                                 <fieldset class="correction-question-container">
                                     <legend>改错题{{ forloop.counter }}</legend>
                                     {% for question in sub.questions %}
-                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px">
                                             <div>
                                                 <label for="question_text">文本：</label>
                                                 <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].question_text" required>{{ question.sub }}</textarea><br>
 
-{#                                                <label for="tips">提示：</label>#}
-{#                                                <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].tips">{{ question.tips }}</textarea><br>#}
-{##}
-{#                                                <label for="analysis">解析：</label>#}
-{#                                                <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].analysis">{{ question.analysis }}</textarea>#}
+                                                <label for="tips">提示：</label>
+                                                <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].tips">{{ question.tips }}</textarea><br>
+
+                                                <label for="analysis">解析：</label>
+                                                <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].analysis">{{ question.analysis }}</textarea>
                                             </div>
                                             <div>
                                                 <label for="score">分值：</label>
@@ -191,9 +199,9 @@
 
                                                 <label for="tips">原文位置索引：</label>
                                                 <input type="text" name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].index" value="{{ question.index }}" required>
-                                                <hr>
                                             </div>
                                         </div>
+                                        <hr class="question-divider">
                                     {% endfor %}
                                 </fieldset>
 
@@ -201,7 +209,7 @@
                                 <!-- 连线题 -->
                                 <fieldset class="matching-question-container">
                                     <legend>
-                                        <label for="question_text">题目：</label>
+                                        <label for="question_text">连线题{{ forloop.counter }}：</label>
                                         <input type="text" name="main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].question_text" value="{{ sub.question_text }}" required>
                                     </legend>
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -229,8 +237,9 @@
                             {% elif main_question.question_type == 'comprehension' %}
                                 <!-- 简答题 -->
                                 <fieldset class="comprehension-question-container">
+                                    <legend>简答题{{ forloop.counter }}</legend>
                                     <div>
-                                        <label for="question_text">题目{{ forloop.counter }}：</label>
+                                        <label for="question_text">题目：</label>
                                         <textarea name="main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].question_text" required>{{ sub.question_text }}</textarea><br>
 
                                         <label for="score">分值：</label>
@@ -245,6 +254,37 @@
                                         <label for="analysis">解析：</label>
                                         <textarea name="main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].analysis">{{ sub.analysis }}</textarea>
                                     </div>
+                                </fieldset>
+
+                            {% elif main_question.question_type == 'blank' %}
+                                <!-- 填空题 -->
+                                <fieldset class="blank-question-container">
+                                    <legend>填空题{{ forloop.counter }}</legend>
+                                    {% for question in sub %}
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px">
+                                            <div>
+                                                <label for="question_text">文本{{ forloop.counter }}：</label>
+                                                <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].question_text" required>{{ question.question_text }}</textarea><br>
+
+                                                <label for="tips">提示：</label>
+                                                <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].tips">{{ question.tips }}</textarea><br>
+
+                                                <label for="analysis">解析：</label>
+                                                <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].analysis">{{ question.analysis }}</textarea>
+                                            </div>
+                                            <div>
+                                                <label for="score">分值：</label>
+                                                <input type="number" name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].score" value="{{ main_question.score }}" min="0" step="0.5" required>
+
+                                                <label for="answer">答案：</label>
+                                                <input type="text" name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].answer" id="blank_answer" value="{{ question.answer_list }}" required>
+
+                                                <label for="tips">原文位置索引：</label>
+                                                <input type="text" name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].index" value="{{ question.index }}" required>
+                                            </div>
+                                        </div>
+                                        <hr class="question-divider">
+                                    {% endfor %}
                                 </fieldset>
                             {% endif %}
                         {% endfor %}

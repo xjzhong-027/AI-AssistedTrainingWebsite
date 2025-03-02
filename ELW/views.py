@@ -35,7 +35,7 @@ from .models import (
     PaperPage,
     PageMainQuestion,
     PageSubQuestion,
-    TimeManagement,
+    TimeManagement, Blank,
 )
 from .forms import (
     MainQuestionForm,
@@ -1279,6 +1279,8 @@ def question_integration(request):
                                 'answer': sub_question['answer_list'][i],
                                 'index': sub_question['index_list'][i]
                             })
+
+
             print('question_data: ', question_data)
             return render(request, 'teacher_side/question_preview.html', {'question_data': question_data})
         else:
@@ -1333,6 +1335,12 @@ def question_integration(request):
                 question_list = func.extract_comprehension_questions(sub_text)
                 for question in question_list:
                     question_data[0]["sub_questions"].append(func.process_comprehension_question(question))
+
+            if question_type == 'blank':
+                questions = func.extract_blank_questions(sub_text)
+                for question in questions:
+                    question_data[0]["sub_questions"].append(func.extract_subtext_and_answers(question))
+
 
             return render(request, 'teacher_side/question_preview.html', {"question_data": question_data})
 
@@ -1397,6 +1405,24 @@ def question_integration(request):
                                 index=correction.get('index'),
                             )
                             correction_instance.save()
+                # 保存填空题
+                elif main_item.get('question_type') == 'blank':
+                    for sub_idx, sub_item in main_item.get('sub', {}).items():
+                        for blank_idx, blank in sub_item.get('blanks', {}).items():
+                            sub_question = SubQuestion(
+                                main_question=main_instance,
+                                question_text=blank.get('question_text'),
+                                score=blank.get('score'),
+                                answer=blank.get('answer'),
+                                tips=blank.get('tips'),
+                                analysis=blank.get('analysis')
+                            )
+                            sub_question.save()
+                            blank_instance = Blank(
+                                sub_question=sub_question,
+                                index=blank.get('index')
+                            )
+                            blank_instance.save()
                 else:
                     for sub_idx, sub_item in main_item.get('sub', {}).items():
                         sub_question = SubQuestion(
