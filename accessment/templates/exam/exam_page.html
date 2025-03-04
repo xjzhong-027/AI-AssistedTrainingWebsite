@@ -7,161 +7,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exam Page</title>
-    <style>
-        .nav-circle {
-            width: 20px;
-            height: 20px;
-            background-color: #ccc;
-            border-radius: 50%;
-            display: inline-block;
-            margin: 5px;
-            cursor: pointer;
-        }
-.nav-circle.disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-}
-
-        .nav-circle.active {
-            background-color: #ff9292;
-            /* 当前页面红色 */
-        }
-        
-
-        .question {
-            margin-top: 20px;
-        }
-
-        .sub-question {
-            margin-left: 20px;
-        }
-
-        /* 视频播放器样式 */
-.media-player {
-    margin: 10px 0;
-    text-align: center;
-}
-
-.media-player video {
-    max-width: 50%;
-    height: auto;
-    border-radius: 4px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.media-player p {
-    margin-top: 5px;
-    font-size: 0.9em;
-    color: #000000;
-}
-    </style>
-    <style>
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-
-        .modal-dialog {
-            position: relative;
-            max-width: 500px;
-            margin: 10% auto;
-        }
-
-        .modal-content {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 5px;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-footer {
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .close {
-            cursor: pointer;
-        }
-        .play-button {
-    padding: 5px 10px;
-    margin-top: 10px;
-    background-color: #2ecc71;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.play-button:disabled {
-    background-color: #bdc3c7;
-    cursor: not-allowed;
-}
-    </style>
-    <style>
-        .sub-question {
-    margin-bottom: 20px;
-}
-
-.matching {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-}
-
-.left-item, .right-item {
-    width: 45%;
-}
-
-.left-item .question {
-    margin-bottom: 5px;
-}
-
-.right-item .option {
-    margin-bottom: 5px;
-}
-
-.answer-input {
-    margin-top: 10px;
-}
-
-.answer-input input {
-    width: 100%;
-    padding: 0;
-    margin: 0;
-    border: none;
-    border-bottom: 2px solid #ccc;
-    font-size: 16px;
-    text-align: center;
-    outline: none;
-    background: transparent;
-    margin-bottom: 5px;
-}
-
-/* 聚焦时的样式 */
-.answer-input input:focus {
-    border-bottom: 2px solid #000;
-}
-    </style>
-    <link rel="stylesheet" href="{% static 'styles.css' %}">
-
+    <link rel="stylesheet" href="{% static 'css/exampage.css' %}">
 </head>
 
 <body>
     <div id="exam-navigation">
         <div id="page-nav">
-            {% for p in exam.pages.all %}
-            <div class="nav-circle" data-page-number="{{ p.page_number }}" ></div>
+            {% for p in exam.paper_pages.all %}
+            <div class="nav-circle" data-page-number="{{ p.order }}" ></div>
             {% endfor %}
         </div>
         <div id="timer"> <span id="time-remaining"></span></div>
@@ -196,7 +49,7 @@
         </div>
     </div>
 </div>
-        <!-- 是否确认提交？ -->
+    <!-- 是否确认提交？ -->
     <div id="ExamfinishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -217,58 +70,69 @@
             </div>
         </div>
 
-    <!-- 播放器  -->
-     {% for main_question in main_questions %}
-    <div class="question" data-main-question-id="{{ main_question.id }}">
-        {% if main_question.media_material %}
-            <div class="media-player">
-                <video id="media-video_{{ main_question.id }}" width="640" height="360">
-                    <source src="{{ MEDIA_URL }}{{ main_question.media_material.media_url }}" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>
-                <button id="play-button_{{ main_question.id }}">Play</button>
+     <!-- 播放器 -->
+{% for main_question in main_questions %}
+<div class="question" data-main-question-id="{{ main_question.id }}">
+    {% if main_question.media_material %}
+        <div class="media-player">
+            <video id="media-video_{{ main_question.id }}" width="640" height="360">
+                <source src="{{ MEDIA_URL }}{{ main_question.media_material.media_url }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <button id="play-button_{{ main_question.id }}">Play</button>
+            {% if main_question.allow_pause %}
                 <button id="pause-button_{{ main_question.id }}" disabled>Pause</button>
-                <p>Maximum plays: {{ main_question.maximum_play }}</p>
-                <p>Current plays: <span id="play_count_{{ main_question.id }}">{{ play_records|get_item:main_question.id|default:"0" }}</span></p>
-            </div>
-        {% endif %}
-    </div>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const videoId = "{{ main_question.id }}";
-            const studentExamRecordId = "{{ student_exam_record.id }}";
-            const mainQuestionId = "{{ main_question.id }}";
-            const mediaMaterialId = "{{ main_question.media_material.id }}";
-            const maxPlays = "{{ main_question.maximum_play }}"; // 获取最大播放次数
+            {% endif %}
+            <p>Maximum plays: {{ main_question.maximum_play }}</p>
+            <p>Current plays: <span id="play_count_{{ main_question.id }}">{{ play_records|get_item:main_question.id|default:"0" }}</span></p>
+        </div>
+    {% endif %}
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const videoId = "{{ main_question.id }}";
+        const studentExamRecordId = "{{ student_exam_record.id }}";
+        const mainQuestionId = "{{ main_question.id }}";
+        const mediaMaterialId = "{{ main_question.media_material.id }}";
+        const maxPlays = "{{ main_question.maximum_play }}"; // 获取最大播放次数
+        const allowPause = "{{ main_question.allow_pause }}" === "True"; // 检查是否允许暂停
 
-            const video = document.getElementById(`media-video_${videoId}`);
-            const playButton = document.getElementById(`play-button_${videoId}`);
-            const pauseButton = document.getElementById(`pause-button_${videoId}`);
-            const playCountSpan = document.getElementById(`play_count_${videoId}`);
+        const video = document.getElementById(`media-video_${videoId}`);
+        const playButton = document.getElementById(`play-button_${videoId}`);
+        const pauseButton = document.getElementById(`pause-button_${videoId}`);
+        const playCountSpan = document.getElementById(`play_count_${videoId}`);
 
-            // 检查当前播放次数是否达到最大值
+        // 如果不允许暂停，禁用暂停按钮
+        if (!allowPause && pauseButton) {
+            pauseButton.style.display = "none"; // 隐藏暂停按钮
+        }
+
+        // 检查当前播放次数是否达到最大值
+        const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+        if (currentPlayCount >= maxPlays) {
+            pauseButton.disabled = true;
+            playButton.disabled = true;
+            playButton.textContent = "Cannot play anymore";
+        }
+
+        playButton.addEventListener("click", () => {
+            // 再次检查播放次数是否达到最大值
             const currentPlayCount = parseInt(playCountSpan.textContent, 10);
             if (currentPlayCount >= maxPlays) {
-                pauseButton.disabled = true;
-                playButton.disabled = true; 
-                playButton.textContent = "Cannot play anymore";
+                alert("Maximum play count reached. Cannot play anymore.");
+                return; // 阻止播放
             }
 
-            playButton.addEventListener("click", () => {
-                // 再次检查播放次数是否达到最大值
-                const currentPlayCount = parseInt(playCountSpan.textContent, 10);
-                if (currentPlayCount >= maxPlays) {
-                    alert("Maximum play count reached. Cannot play anymore.");
-                    return; // 阻止播放
-                }
-
-                if (video.paused) {
-                    video.play();
+            if (video.paused) {
+                video.play();
+                if (pauseButton) {
                     pauseButton.disabled = false;
-                    playButton.disabled = true;
                 }
-            });
+                playButton.disabled = true;
+            }
+        });
 
+        if (pauseButton) {
             pauseButton.addEventListener("click", () => {
                 if (!video.paused) {
                     video.pause();
@@ -276,78 +140,96 @@
                     pauseButton.disabled = true;
                 }
             });
+        }
 
-            video.addEventListener("ended", () => {
-                const currentPlayCount = parseInt(playCountSpan.textContent, 10);
-                playCountSpan.textContent = currentPlayCount + 1;
+        video.addEventListener("ended", () => {
+            const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+            playCountSpan.textContent = currentPlayCount + 1;
 
-                fetch("{% url 'accessment:update_play_count' %}", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRFToken": "{{ csrf_token }}",
-                    },
-                    body: JSON.stringify({
-                        student_exam_record_id: studentExamRecordId,
-                        main_question_id: mainQuestionId,
-                        media_material_id: mediaMaterialId,
-                    }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        console.log("Play count updated successfully!");
-                    } else {
-                        console.error("Failed to update play count:", data.message);
-                    }
+            fetch("{% url 'accessment:update_play_count' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}",
+                },
+                body: JSON.stringify({
+                    student_exam_record_id: studentExamRecordId,
+                    main_question_id: mainQuestionId,
+                    media_material_id: mediaMaterialId,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("Play count updated successfully!");
+                } else {
+                    console.error("Failed to update play count:", data.message);
+                }
 
-                    // 检查是否达到最大播放次数
-                    const updatedPlayCount = parseInt(playCountSpan.textContent, 10);
-                    if (updatedPlayCount >= maxPlays) {
-                        playButton.disabled = true; // 禁用播放按钮
-                        playButton.textContent = "Cannot play anymore"; // 提示用户
+                // 检查是否达到最大播放次数
+                const updatedPlayCount = parseInt(playCountSpan.textContent, 10);
+                if (updatedPlayCount >= maxPlays) {
+                    playButton.disabled = true; // 禁用播放按钮
+                    playButton.textContent = "Cannot play anymore"; // 提示用户
+                    if (pauseButton) {
                         pauseButton.disabled = true;
-                    } else {
-                        // 恢复按钮状态
-                        playButton.disabled = false; // 启用播放按钮
-                        pauseButton.disabled = true; // 禁用暂停按钮
                     }
-                })
-                .catch(error => {
-                    console.error("Error updating play count:", error);
-                });
+                } else {
+                    // 恢复按钮状态
+                    playButton.disabled = false; // 启用播放按钮
+                    if (pauseButton) {
+                        pauseButton.disabled = true; // 用暂停按钮
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("Error updating play count:", error);
             });
         });
-    </script>
+    });
+</script>
 {% endfor %}
-    
-    
-        <!-- 页面 -->
-        <form id="save-answers-form" method="post" action="{% url 'accessment:save_page' exam.id page.page_number %}">
+
+
+    <!-- 页面 -->
+        <form id="save-answers-form" method="post" action="{% url 'accessment:save_page' exam.id order %}">
             {% csrf_token %}
             <input type="hidden" name="page_record_id" value="{{ current_page_record_id }}">
             <input type="hidden" name="is_manual_submit" value="false">
-        <input type="hidden" name="manual_save" value="false">
+            <input type="hidden" name="manual_save" value="false">
             <div id="exam-content">
                 {% for main_question in main_questions %}
                 <div class="question" data-main-question-id="{{ main_question.id }}">
                     <h3>{{ main_question.question_text }}</h3>
+                <!-- 填空题 -->
+                {% if main_question.question_type == 'comprehension' %}
+                    <div class="comprehension-paragraph">
+                        {{ comprehension_data|get_item:main_question.id|safe }}
+                    </div>
+
+                {% elif main_question.question_type == 'choice' %}
                     {% for sub_question in sub_questions %}
                     {% if sub_question.main_question == main_question %}
-                <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
-                    {% if sub_question.main_question.question_type == 'choice' %}
-<!-- 选择题 -->
-<div class="choices">
-    <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
-    {% for option in sub_question.shuffled_options %}
-        <label>
-            <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.option_label }}">
-            {{ option.option_label }}. {{ option.option_content }}
-        </label>
-    {% endfor %}
-</div>
-                    {% elif sub_question.main_question.question_type == 'matching' %}
-                        <!-- 连线题 -->
+                    <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
+                    <!-- 选择题 -->
+                    <div class="choices">
+                        <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
+                        {% for option in sub_question.shuffled_options %}
+                        <label>
+                            <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.option_label }}"
+                                {% if answers|get_item:sub_question.id == option.option_label %} checked {% endif %}>
+                            {{ option.option_label }}. {{ option.option_content }}
+                        </label>
+                    {% endfor %}
+                    </div>
+                    </div>
+                        {% endif %}
+                        {% endfor %}
+                    {% elif main_question.question_type == 'matching' %}
+                {% for sub_question in sub_questions %}
+                    {% if sub_question.main_question == main_question %}
+                    <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
+                        <!--连线题 -->
                        <div class="matching">
                        <div class="left-item">
                     <!-- 题目列表 -->
@@ -363,62 +245,105 @@
                        <div class="answer-input">
                 <!-- 输入框列表 -->
                 {% for option in sub_question.matchingOptions.all %}
-                    <input type="text" name="answer_{{ sub_question.id }}" id="answer_{{ sub_question.id }}" placeholder="填写答案" />
+                    <input type="text" name="answer_{{ sub_question.id }}" id="answer_{{ sub_question.id }}"
+           placeholder="填写答案" value="{{ answers|get_item:sub_question.id|default:"" }}">
                 {% endfor %}
             </div>
                         </div>
-                   {% elif sub_question.main_question.question_type == 'correction' %}
+</div>
+                    {% endif %}
+                 {% endfor %}
+                   {% elif main_question.question_type == 'correction' %}
+                    {% for sub_question in sub_questions %}
+                    {% if sub_question.main_question == main_question %}
+                    <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
                     <!-- 改错题 -->
                     <div class="corrections" data-sub-question-id="{{ sub_question.id }}">
+                    <div class="correction-container">
                         <div class="form-group">
+                        <div class="sentence">
                             <div class="word-container">
                                 {% for word in sub_question.words %}
                                     <span class="clickable-word" data-index="{{ forloop.counter }}" data-word="{{ word }}">{{ word }}</span>
                                 {% endfor %}
                             </div>
                         </div>
+                        </div>
+                    <div class="correction-content">
                         <div class="form-group">
-                            <label for="correction_type_{{ sub_question.id }}">选择错误类型：</label>
-                            <select name="correction_type_{{ sub_question.id }}" id="correction_type_{{ sub_question.id }}" class="form-control">
-                                <option value="none">无错误</option>
-                                <option value="insert">插入</option>
-                                <option value="delete">删除</option>
-                                <option value="revise">修改</option>
-                            </select>
+
+                          {% with answers|get_item:sub_question.id as answer_text %}
+            {% with answer_text|parse_correction_answer as answer %}
+                <select name="correction_type_{{ sub_question.id }}"
+                        id="correction_type_{{ sub_question.id }}"
+                        class="form-control error-type-select">
+                    <option value="none" {% if answer.text == "right" %} selected {% endif %}>无错误</option>
+                    <option value="insert" {% if answer.type == "insert" %} selected {% endif %}>插入</option>
+                    <option value="delete" {% if answer.type == "delete" %} selected {% endif %}>删除</option>
+                    <option value="revise" {% if answer.type == "revise" %} selected {% endif %}>修改</option>
+                </select>
+            {% endwith %}
+        {% endwith %}
                         </div>
                         <div class="form-group">
-                            <label for="correction_index_{{ sub_question.id }}">错误位置：</label>
-                            <input type="hidden" name="correction_index_{{ sub_question.id }}" id="correction_index_{{ sub_question.id }}" class="form-control">
-                            <span id="selected_word_{{ sub_question.id }}"></span>
+                            <label for="correction_index_{{ sub_question.id }}"></label>
+                            {% with answers|get_item:sub_question.id as answer_text %}
+                {% with answer_text|parse_correction_answer as answer %}
+                    <input type="hidden" name="correction_index_{{ sub_question.id }}" id="correction_index_{{ sub_question.id }}" class="form-control" value="{{ answer.index|default:"" }}">
+                {% endwith %}
+        {% endwith %}
+
+                            <span id="selected_word_{{ sub_question.id }}" style="display: none"></span>
                         </div>
                         <div class="answer-input">
-                            <label for="correction_text_{{ sub_question.id }}">修改内容：</label>
-                            <input type="text" name="correction_text_{{ sub_question.id }}" id="correction_text_{{ sub_question.id }}" class="form-control" placeholder="输入修改内容">
+                            {% with answers|get_item:sub_question.id as answer_text %}
+                {% with answer_text|parse_correction_answer as answer %}
+                    <input type="text" name="correction_text_{{ sub_question.id }}" id="correction_text_{{ sub_question.id }}" class="form-control" placeholder="输入修改内容" value="{{ answer.text|default:"" }}">
+                {% endwith %}
+        {% endwith %}
                         </div>
                     </div>
-                    {% else %}
-                        <!-- 主观题 -->
-                        <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
-                        <div class="answer-input">
-                        <input name="answer_{{ sub_question.id }}" id="answer_{{ sub_question.id }}" rows="4" cols="50">{{ answers|get_item:sub_question.id|default:"" }}
                         </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+
+
+{#                        <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>#}
+{#                        <div class="answer-input">#}
+{#                        <input name="answer_{{ sub_question.id }}"#}
+{#                               id="answer_{{ sub_question.id }}"#}
+{#                               value="{{ answers|get_item:sub_question.id|default:'' }}"#}
+{#                               placeholder="{{ forloop.counter }}"/>#}
+{#                        </div>#}
+
                     {% endif %}
                 </div>
-            {% endif %}
         {% endfor %}
+
     </div>
-{% endfor %}
-            </div>
+
+    <!-- 页面底部 -->
+<div id="page-footer">
+    <!-- 页面倒计时 -->
+    <div id="page-timer">
+        <span id="page-time-remaining">{{ remaining_time }}</span>
+    </div>
+    <!-- 页面按钮 -->
+    <div id="footer-buttons">
         <button type="button" onclick="manualSave()">保存</button>
         <button type="button" onclick="manualSubmit()">提交</button>
+    </div>
+</div>
         </form>
 
-        <!-- 下一页显示 -->
+    <!-- 下一页显示 -->
         {% if is_last_page %}
         <p>已经是最后一页了。</p>
         {% endif %}
 
-        <!-- 有未完成的题目，是否仍然提交？ -->
+    <!-- 有未完成的题目，是否仍然提交？-->
         <div id="unfinishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -439,7 +364,7 @@
             </div>
         </div>
 
-        <!-- 是否确认提交？ -->
+    <!-- 是否确认提交 -->
         <div id="finishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -460,7 +385,7 @@
             </div>
         </div>
 
-        <!-- 答案保存成功的模态框 -->
+    <!-- 答案保存成功的模态框 -->
         <div id="successModal" class="modal" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -470,9 +395,179 @@
                 </div>
             </div>
         </div>
-    
-    
-        <!-- 自动手动保存 提交当前页面 -->
+    <!-- 页面倒计时-->
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const pageTimerElement = document.getElementById('page-time-remaining');
+    const pageTimerContainer = document.getElementById('page-timer');
+    let remainingTime = parseFloat("{{ remaining_time }}"); // 从后端获取的初始剩余时间（秒）
+    let pageTimerInterval = null;
+
+    // 更新页面倒计时显示
+    function updatePageTimer() {
+        remainingTime -= 1; // 每秒减少1秒
+
+        if (remainingTime <= 0) {
+            clearInterval(pageTimerInterval);
+            pageTimerElement.textContent = '00:00:00';
+            alert("Time is up! Redirecting to the next page...");
+            window.location.href = "{% url 'accessment:exam_page' exam.id order|add:1 %}";
+            return;
+        }
+
+        const hours = Math.floor(remainingTime / 3600);
+        const minutes = Math.floor((remainingTime % 3600) / 60);
+        const seconds = Math.floor(remainingTime % 60);
+
+        pageTimerElement.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        // 如果剩余时间少于 1 分钟，添加警告样式
+        if (remainingTime < 50) {
+            pageTimerContainer.classList.add('warning');
+        } else {
+            pageTimerContainer.classList.remove('warning');
+        }
+    }
+
+    // 启动倒计时
+    function startPageTimer() {
+        clearInterval(pageTimerInterval); // 清除之前的定时器
+        pageTimerInterval = setInterval(updatePageTimer, 1000);
+    }
+
+    // 暂停倒计时
+    function pausePageTimer() {
+        clearInterval(pageTimerInterval);
+    }
+
+    // 页面失去焦点时暂停倒计时，并更新剩余时间到后端
+    window.onblur = function () {
+        pausePageTimer();
+        fetch("{% url 'accessment:update_remaining_time' student_page_record.id %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({ remaining_time: remainingTime }) // 以秒为单位
+        });
+    };
+// 页面即将卸载时更新剩余时间到后端
+    window.onbeforeunload = function () {
+        fetch("{% url 'accessment:update_remaining_time' student_page_record.id %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({ remaining_time: remainingTime }) // 以秒为单位
+        });
+    };
+
+    // 页面重新获得焦点时恢复倒计时
+    window.onfocus = function () {
+        startPageTimer();
+    };
+
+    // 初始更新倒计时显示
+    updatePageTimer();
+
+    // 初始启动倒计时
+    startPageTimer();
+});
+    </script>
+    <!-- 答案接收-->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+    const answers = {{ answers|safe }};
+    for (const sub_question_id in answers) {
+        const answer = answers[sub_question_id];
+        const input = document.querySelector(`input[name="answer_${sub_question_id}"]`);
+        if (input) {
+            input.value = answer;
+        }
+        if (answer !== "right") {
+            const [type, index, text] = answer.split(":");
+            const correctionType = document.getElementById(`correction_type_${sub_question_id}`);
+            const correctionIndex = document.getElementById(`correction_index_${sub_question_id}`);
+            const correctionText = document.getElementById(`correction_text_${sub_question_id}`);
+        const wordContainer = document.querySelector(`.corrections[data-sub-question-id="${sub_question_id}"] .word-container`);
+const word = wordContainer.querySelector(`span[data-index="${index}"]`);
+            if (correctionType) {
+                correctionType.value = type;
+            }
+            if (correctionIndex) {
+                correctionIndex.value = index;
+            }
+            if (correctionText) {
+                correctionText.value = text;
+            }
+             if (word) {
+                word.classList.add('highlight', type);
+                if (type === 'insert') {
+                    word.classList.add('insert');
+                } else if (type === 'delete') {
+                    word.classList.add('delete');
+                } else if (type === 'revise') {
+                    word.classList.add('revise');
+                }
+            }
+        } else {
+            const correctionType = document.getElementById(`correction_type_${sub_question_id}`);
+            if (correctionType) {
+                correctionType.value = "none";
+            }
+        }
+    }
+});
+    </script>
+    <!-- 答案显示-->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+    const examForm = document.getElementById('save-answers-form');
+    const formData = new FormData(examForm);
+
+    fetch(examForm.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.answers) {
+            // 动态更新页面上的答案
+            Object.keys(data.answers).forEach(sub_question_id => {
+                const answer = data.answers[sub_question_id];
+                const answerInput = document.querySelector(`input[name="answer_${sub_question_id}"]`);
+                if (answerInput) {
+                    answerInput.value = answer;
+                }
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+});
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // 获取答案数据
+        const answers = {{ answers|safe }};
+
+        // 遍历答案数据，填充输入框
+        for (const sub_question_id in answers) {
+            const answer = answers[sub_question_id];
+            const answerInput = document.querySelector(`input[name="answer_${sub_question_id}"]`);
+            if (answerInput) {
+                answerInput.value = answer;
+            }
+        }
+    });
+</script>
+    <!-- 自动手动保存 提交当前页面 -->
         <script>
     // 手动保存：将答案暂存到缓存
     function manualSave() {
@@ -618,11 +713,11 @@ function canModify() {
         };
     });
 </script>
-    
+
         <!--  页面导航 -->
         <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const currentPageNumber = {{ page.page_number | safe }};
+            document.addEventListener('DOMContentLoaded', function () {
+    const currentPageNumber = {{ page.order | safe }};
     const pageNavCircles = document.querySelectorAll('.nav-circle');
 
     // 更新页面导航圆点的状态
@@ -786,7 +881,7 @@ function forceSubmitForm() {
     function goToIncompletePage(unsubmittedPages) {
         // 跳转到第一个未完成的页面
         const firstIncompletePage = Math.min(...unsubmittedPages);
-        window.location.href = "{% url 'accessment:exam_page' exam_id=exam.id page_number=1 %}".replace(/1/, firstIncompletePage);
+        window.location.href = "{% url 'accessment:exam_page' exam_id=exam.id order=1 %}".replace(/1/, firstIncompletePage);
     }
 
     // 关闭模态框
@@ -796,7 +891,7 @@ function forceSubmitForm() {
     };
 });
         </script>
-        <!-- 倒计时 -->
+        <!--  倒计时 -->
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const timerElement = document.getElementById('time-remaining');
@@ -839,28 +934,73 @@ function forceSubmitForm() {
             updateTimer();
 });
         </script>
+        <!-- 改错 -->
+        <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const clickableWords = document.querySelectorAll('.clickable-word');
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 获取所有可点击的单词
-        const clickableWords = document.querySelectorAll('.clickable-word');
+    clickableWords.forEach(word => {
+        word.addEventListener('click', function () {
+            const subQuestionId = word.closest('.corrections').dataset.subQuestionId;
+            const correctionType = document.getElementById(`correction_type_${subQuestionId}`);
+            const correctionIndex = document.getElementById(`correction_index_${subQuestionId}`);
+            const selectedWord = document.getElementById(`selected_word_${subQuestionId}`);
 
-        clickableWords.forEach(word => {
-            word.addEventListener('click', function() {
-                const subQuestionId = word.closest('.corrections').dataset.subQuestionId;
-                const correctionIndex = document.getElementById(`correction_index_${subQuestionId}`);
-                const selectedWord = document.getElementById(`selected_word_${subQuestionId}`);
+            // 移除之前高亮的单词（如果有）
+            const previouslyHighlighted = document.querySelector('.highlight');
+            if (previouslyHighlighted) {
+                previouslyHighlighted.classList.remove('highlight', 'insert', 'delete', 'revise');
+            }
 
-                // 更新隐藏字段和显示的单词
-                correctionIndex.value = word.dataset.index;
-                selectedWord.textContent = `${word.dataset.word}`;
-            });
+            // 添加高亮样式到当前点击的单词
+            word.classList.add('highlight');
+
+            // 显示错误类型选择框
+            if (correctionType) {
+                correctionType.style.display = 'block'; // 显示选择框
+            }
+
+            // 更新隐藏字段和显示的单词
+            correctionIndex.value = word.dataset.index;
+            selectedWord.textContent = `${word.dataset.word}`;
         });
     });
+
+    // 监听错误类型选择的变化
+    const correctionTypeSelects = document.querySelectorAll('select.error-type-select');
+    correctionTypeSelects.forEach(select => {
+        select.addEventListener('change', function () {
+            const subQuestionId = this.id.split('_').pop();
+            const selectedWord = document.querySelector(`.corrections[data-sub-question-id="${subQuestionId}"] .highlight`);
+
+            if (!selectedWord) return;
+
+            // 移除之前的错误类型样式
+            selectedWord.classList.remove('insert', 'delete', 'revise');
+
+            // 添加新的错误类型样式
+            const errorType = this.value;
+            switch (errorType) {
+                case 'insert':
+                    selectedWord.classList.add('insert');
+                    break;
+                case 'delete':
+                    selectedWord.classList.add('delete');
+                    break;
+                case 'revise':
+                    selectedWord.classList.add('revise');
+                    break;
+                default:
+                    selectedWord.classList.remove('insert', 'delete', 'revise');
+            }
+        });
+    });
+});
 </script>
 
-<!--  练习端发帖 -->
-<script>
+
+        <!--  练习端发帖 -->
+        <script>
 var subQuestionId = null; // 定义为全局变量
 var quoteButton = null; // 定义为全局变量
 
@@ -912,7 +1052,7 @@ document.addEventListener('click', function(event) {
     }
 });
 </script>
-    
+
 </body>
 
 </html>
