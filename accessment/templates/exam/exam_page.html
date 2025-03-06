@@ -228,7 +228,7 @@
                     {% elif main_question.question_type == 'matching' %}
                 {% for sub_question in sub_questions %}
                     {% if sub_question.main_question == main_question %}
-                    <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
+                        <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
                         <!--连线题 -->
                        <div class="matching">
                        <div class="left-item">
@@ -254,61 +254,53 @@
                     {% endif %}
                  {% endfor %}
                    {% elif main_question.question_type == 'correction' %}
-                    {% for sub_question in sub_questions %}
-                    {% if sub_question.main_question == main_question %}
-                    <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
-                    <!-- 改错题 -->
-                    <div class="corrections" data-sub-question-id="{{ sub_question.id }}">
-                    <div class="correction-container">
-                        <div class="form-group">
-                        <div class="sentence">
-                            <div class="word-container">
-                                {% for word in sub_question.words %}
-                                    <span class="clickable-word" data-index="{{ forloop.counter }}" data-word="{{ word }}">{{ word }}</span>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        </div>
-                    <div class="correction-content">
-                        <div class="form-group">
-
-                          {% with answers|get_item:sub_question.id as answer_text %}
-            {% with answer_text|parse_correction_answer as answer %}
-                <select name="correction_type_{{ sub_question.id }}"
-                        id="correction_type_{{ sub_question.id }}"
-                        class="form-control error-type-select">
-                    <option value="none" {% if answer.text == "right" %} selected {% endif %}>无错误</option>
-                    <option value="insert" {% if answer.type == "insert" %} selected {% endif %}>插入</option>
-                    <option value="delete" {% if answer.type == "delete" %} selected {% endif %}>删除</option>
-                    <option value="revise" {% if answer.type == "revise" %} selected {% endif %}>修改</option>
-                </select>
-            {% endwith %}
-        {% endwith %}
-                        </div>
-                        <div class="form-group">
-                            <label for="correction_index_{{ sub_question.id }}"></label>
-                            {% with answers|get_item:sub_question.id as answer_text %}
-                {% with answer_text|parse_correction_answer as answer %}
-                    <input type="hidden" name="correction_index_{{ sub_question.id }}" id="correction_index_{{ sub_question.id }}" class="form-control" value="{{ answer.index|default:"" }}">
-                {% endwith %}
-        {% endwith %}
-
-                            <span id="selected_word_{{ sub_question.id }}" style="display: none"></span>
-                        </div>
-                        <div class="answer-input">
-                            {% with answers|get_item:sub_question.id as answer_text %}
-                {% with answer_text|parse_correction_answer as answer %}
-                    <input type="text" name="correction_text_{{ sub_question.id }}" id="correction_text_{{ sub_question.id }}" class="form-control" placeholder="输入修改内容" value="{{ answer.text|default:"" }}">
-                {% endwith %}
-        {% endwith %}
-                        </div>
-                    </div>
-                        </div>
-                        </div>
-                    </div>
-                    {% endif %}
+                         {% with correction_data|get_item:main_question.id as data %}
+         <div class="correction-question">
+            <!-- 显示完整的短文 -->
+            <div class="full-text">
+                <div class="word-container">
+                    {% for word_info in data.words %}
+                        <span class="clickable-word"
+                              data-sub-question-id="{{ word_info.sub_question_id }}"
+                              data-local-index="{{ word_info.local_index }}"
+                         data-word="{{ word_info.word }}">
+                            {{ word_info.word|safe }}
+                        </span>
                     {% endfor %}
+                </div>
+            </div>
 
+            <!-- 显示错误类型选择框和输入框 -->
+{#                <div class="correction-controls">#}
+{#                    <div id="dynamic-corrections">#}
+{#                    </div>#}
+{#                </div>#}
+      <div class="correction-controls">
+        {% for sub_q in data.sub_questions %}
+                    <div class="correction-control" data-index="{{ forloop.counter0 }}">
+                    <div class="selected-word-display">
+                            当前作答的单词：<span class="selected-word-text"></span>
+                        </div>
+                        <label>修改第 {{ forloop.counter }} 处错误：</label>
+                        <select class="error-type-select" name="correction_type_{{ sub_question.id }}_{{ correction.index }}">
+                <option value="none">请选择错误类型</option>
+                <option value="insert">插入</option>
+                <option value="delete">删除</option>
+                <option value="revise">修改</option>
+            </select>
+                        <input type="hidden" name="correction_index_{{ sub_question.id }}_{{ correction.index }}"
+                               value="{{ correction.index }}">
+
+            <input type="text" class="correction-text-input"
+                   value="{{ correction.text }}"
+                   placeholder="输入修改内容">
+                        <button class="clear-button" type="button">清除</button>
+                    </div>
+                {% endfor %}
+            </div>
+
+        </div>
+    {% endwith %}
 
 {#                        <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>#}
 {#                        <div class="answer-input">#}
@@ -365,7 +357,7 @@
         </div>
 
     <!-- 是否确认提交 -->
-        <div id="finishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
+    <div id="finishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -386,7 +378,7 @@
         </div>
 
     <!-- 答案保存成功的模态框 -->
-        <div id="successModal" class="modal" tabindex="-1" role="dialog">
+    <div id="successModal" class="modal" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-body">
@@ -476,52 +468,22 @@
     startPageTimer();
 });
     </script>
-    <!-- 答案接收-->
+    <!-- 答案显示-->
+
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-    const answers = {{ answers|safe }};
+document.addEventListener('DOMContentLoaded', function () {
+    const answers = {{ answers|safe }}
+
+    // 填充普通题型的答案
     for (const sub_question_id in answers) {
         const answer = answers[sub_question_id];
         const input = document.querySelector(`input[name="answer_${sub_question_id}"]`);
         if (input) {
             input.value = answer;
         }
-        if (answer !== "right") {
-            const [type, index, text] = answer.split(":");
-            const correctionType = document.getElementById(`correction_type_${sub_question_id}`);
-            const correctionIndex = document.getElementById(`correction_index_${sub_question_id}`);
-            const correctionText = document.getElementById(`correction_text_${sub_question_id}`);
-        const wordContainer = document.querySelector(`.corrections[data-sub-question-id="${sub_question_id}"] .word-container`);
-const word = wordContainer.querySelector(`span[data-index="${index}"]`);
-            if (correctionType) {
-                correctionType.value = type;
-            }
-            if (correctionIndex) {
-                correctionIndex.value = index;
-            }
-            if (correctionText) {
-                correctionText.value = text;
-            }
-             if (word) {
-                word.classList.add('highlight', type);
-                if (type === 'insert') {
-                    word.classList.add('insert');
-                } else if (type === 'delete') {
-                    word.classList.add('delete');
-                } else if (type === 'revise') {
-                    word.classList.add('revise');
-                }
-            }
-        } else {
-            const correctionType = document.getElementById(`correction_type_${sub_question_id}`);
-            if (correctionType) {
-                correctionType.value = "none";
-            }
-        }
     }
 });
-    </script>
-    <!-- 答案显示-->
+</script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
     const examForm = document.getElementById('save-answers-form');
@@ -552,24 +514,10 @@ const word = wordContainer.querySelector(`span[data-index="${index}"]`);
     });
 });
     </script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // 获取答案数据
-        const answers = {{ answers|safe }};
 
-        // 遍历答案数据，填充输入框
-        for (const sub_question_id in answers) {
-            const answer = answers[sub_question_id];
-            const answerInput = document.querySelector(`input[name="answer_${sub_question_id}"]`);
-            if (answerInput) {
-                answerInput.value = answer;
-            }
-        }
-    });
-</script>
     <!-- 自动手动保存 提交当前页面 -->
-        <script>
-    // 手动保存：将答案暂存到缓存
+    <script>
+    // 手动保存
     function manualSave() {
     const examForm = document.getElementById('save-answers-form');
     const formData = new FormData(examForm);
@@ -582,7 +530,7 @@ const word = wordContainer.querySelector(`span[data-index="${index}"]`);
     submitForm(formData);
 }
 
-    // 提交：将答案保存到数据库
+    // 将答案保存到数据库
     function manualSubmit() {
     const examForm = document.getElementById('save-answers-form');
     const formData = new FormData(examForm);
@@ -608,6 +556,7 @@ const word = wordContainer.querySelector(`span[data-index="${index}"]`);
         for (let [key, value] of formData.entries()) {
         console.log(`${key}: ${value}`);
     }
+
         fetch(examForm.action, {
             method: 'POST',
             body: formData,
@@ -714,7 +663,7 @@ function canModify() {
     });
 </script>
 
-        <!--  页面导航 -->
+        <!-- 页面导航 -->
         <script>
             document.addEventListener('DOMContentLoaded', function () {
     const currentPageNumber = {{ page.order | safe }};
@@ -773,7 +722,6 @@ function canModify() {
             console.error('Error:', error);
         });
     });
-
     // 保存答案的逻辑
     function manualSave() {
         return new Promise((resolve, reject) => {
@@ -891,7 +839,7 @@ function forceSubmitForm() {
     };
 });
         </script>
-        <!--  倒计时 -->
+        <!-- 倒计时 -->
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const timerElement = document.getElementById('time-remaining');
@@ -938,63 +886,129 @@ function forceSubmitForm() {
         <script>
 document.addEventListener('DOMContentLoaded', function () {
     const clickableWords = document.querySelectorAll('.clickable-word');
+    const correctionControls = document.querySelectorAll('.correction-control');
+    const clearButtons = document.querySelectorAll('.clear-button');
 
+    // 用于存储用户选择的错误
+    let userCorrections = {};
+
+    // 点击单词时绑定到对应的输入框和选择框
     clickableWords.forEach(word => {
         word.addEventListener('click', function () {
-            const subQuestionId = word.closest('.corrections').dataset.subQuestionId;
-            const correctionType = document.getElementById(`correction_type_${subQuestionId}`);
-            const correctionIndex = document.getElementById(`correction_index_${subQuestionId}`);
-            const selectedWord = document.getElementById(`selected_word_${subQuestionId}`);
+            const subQuestionId = word.dataset.subQuestionId;
+            const localIndex = word.dataset.localIndex;
+            const wordText = word.dataset.word;
 
-            // 移除之前高亮的单词（如果有）
-            const previouslyHighlighted = document.querySelector('.highlight');
-            if (previouslyHighlighted) {
-                previouslyHighlighted.classList.remove('highlight', 'insert', 'delete', 'revise');
+            // 找到一个未绑定的输入框和选择框
+            const correctionControl = Array.from(correctionControls).find(control => {
+                const typeSelect = control.querySelector('.error-type-select');
+                return !typeSelect.dataset.subQuestionId;  // 未绑定的输入框和选择框
+            });
+
+            if (!correctionControl) {
+                alert("所有输入框已被使用，请清除之前的绑定！");
+                return;
             }
 
-            // 添加高亮样式到当前点击的单词
+            // 绑定到对应的输入框和选择框
+            const typeSelect = correctionControl.querySelector('.error-type-select');
+            const textInput = correctionControl.querySelector('.correction-text-input');
+            const indexInput = document.createElement('input');  // 创建隐藏字段存储 index
+            indexInput.type = 'hidden';
+            indexInput.name = `correction_index_${subQuestionId}_${localIndex}`;
+            indexInput.value = localIndex;
+            correctionControl.appendChild(indexInput);  // 将隐藏字段添加到 DOM
+
+            typeSelect.dataset.subQuestionId = subQuestionId;
+            typeSelect.dataset.localIndex = localIndex;
+            typeSelect.name = `correction_type_${subQuestionId}_${localIndex}`;
+            textInput.name = `correction_text_${subQuestionId}_${localIndex}`;
+
+            // 更新当前这组作答的是哪个单词
+            const selectedWordText = correctionControl.querySelector('.selected-word-text');
+            selectedWordText.textContent = wordText;
+
+            // 高亮当前点击的单词
             word.classList.add('highlight');
 
-            // 显示错误类型选择框
-            if (correctionType) {
-                correctionType.style.display = 'block'; // 显示选择框
-            }
+            // 初始化用户选择的错误
+            userCorrections[`${subQuestionId}_${localIndex}`] = {
+                subQuestionId,
+                localIndex,
+                wordText,
+                correctionType: 'none',  // 默认类型
+                correctionText: ''
+            };
 
-            // 更新隐藏字段和显示的单词
-            correctionIndex.value = word.dataset.index;
-            selectedWord.textContent = `${word.dataset.word}`;
+            // 绑定选择框和输入框的值
+            typeSelect.value = 'none';
+            textInput.value = '';
+
+            // 监听选择框的变化
+            typeSelect.addEventListener('change', function () {
+                const correction = userCorrections[`${subQuestionId}_${localIndex}`];
+                if (correction) {
+                    correction.correctionType = this.value;
+                    updateWordStyles(correction);
+                }
+            });
+
+            // 监听输入框的变化
+            textInput.addEventListener('input', function () {
+                const correction = userCorrections[`${subQuestionId}_${localIndex}`];
+                if (correction) {
+                    correction.correctionText = this.value;
+                }
+            });
         });
     });
 
-    // 监听错误类型选择的变化
-    const correctionTypeSelects = document.querySelectorAll('select.error-type-select');
-    correctionTypeSelects.forEach(select => {
-        select.addEventListener('change', function () {
-            const subQuestionId = this.id.split('_').pop();
-            const selectedWord = document.querySelector(`.corrections[data-sub-question-id="${subQuestionId}"] .highlight`);
+    // 清除按钮的逻辑
+    clearButtons.forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();  // 阻止表单提交
 
-            if (!selectedWord) return;
+            const correctionControl = button.closest('.correction-control');
+            const typeSelect = correctionControl.querySelector('.error-type-select');
+            const textInput = correctionControl.querySelector('.correction-text-input');
+            const subQuestionId = typeSelect.dataset.subQuestionId;
+            const localIndex = typeSelect.dataset.localIndex;
 
-            // 移除之前的错误类型样式
-            selectedWord.classList.remove('insert', 'delete', 'revise');
+            // 清除对应的输入框和选择框
+            if (correctionControl) {
+                typeSelect.removeAttribute('data-sub-question-id');
+                typeSelect.removeAttribute('data-local-index');
+                textInput.removeAttribute('data-sub-question-id');
+                textInput.removeAttribute('data-local-index');
+                typeSelect.value = 'none';
+                textInput.value = '';
 
-            // 添加新的错误类型样式
-            const errorType = this.value;
-            switch (errorType) {
-                case 'insert':
-                    selectedWord.classList.add('insert');
-                    break;
-                case 'delete':
-                    selectedWord.classList.add('delete');
-                    break;
-                case 'revise':
-                    selectedWord.classList.add('revise');
-                    break;
-                default:
-                    selectedWord.classList.remove('insert', 'delete', 'revise');
+                // 清空当前这组作答的单词显示
+                const selectedWordText = correctionControl.querySelector('.selected-word-text');
+                selectedWordText.textContent = '';
             }
+
+            // 移除对应的高亮样式
+            const wordElement = document.querySelector(`.clickable-word.highlight[data-sub-question-id="${subQuestionId}"][data-local-index="${localIndex}"]`);
+            if (wordElement) {
+                wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
+            }
+
+            // 删除对应的用户选择
+            delete userCorrections[`${subQuestionId}_${localIndex}`];
         });
     });
+
+    // 更新单词的样式
+    function updateWordStyles(correction) {
+        const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
+        if (wordElement) {
+            wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
+            if (correction.correctionType !== 'none') {
+                wordElement.classList.add('highlight', correction.correctionType);
+            }
+        }
+    }
 });
 </script>
 
