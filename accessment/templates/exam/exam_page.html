@@ -271,10 +271,7 @@
             </div>
 
             <!-- 显示错误类型选择框和输入框 -->
-{#                <div class="correction-controls">#}
-{#                    <div id="dynamic-corrections">#}
-{#                    </div>#}
-{#                </div>#}
+
       <div class="correction-controls">
         {% for sub_q in data.sub_questions %}
                     <div class="correction-control" data-index="{{ forloop.counter0 }}">
@@ -302,13 +299,7 @@
         </div>
     {% endwith %}
 
-{#                        <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>#}
-{#                        <div class="answer-input">#}
-{#                        <input name="answer_{{ sub_question.id }}"#}
-{#                               id="answer_{{ sub_question.id }}"#}
-{#                               value="{{ answers|get_item:sub_question.id|default:'' }}"#}
-{#                               placeholder="{{ forloop.counter }}"/>#}
-{#                        </div>#}
+
 
                     {% endif %}
                 </div>
@@ -468,13 +459,12 @@
     startPageTimer();
 });
     </script>
-    <!-- 答案显示-->
-
+    <!-- 已作答的答案显示-->
     <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const answers = {{ answers|safe }}
+    const answers = {{ answers|safe }};
 
-    // 填充普通题型的答案
+    // 填充填空题的答案
     for (const sub_question_id in answers) {
         const answer = answers[sub_question_id];
         const input = document.querySelector(`input[name="answer_${sub_question_id}"]`);
