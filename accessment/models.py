@@ -31,7 +31,9 @@ class StudentAnswer(models.Model):
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='answers')
     student_page_record = models.ForeignKey(StudentPageRecord, on_delete=models.CASCADE, related_name='answers')
     text = models.TextField(verbose_name='答案文本', blank=True,null=True, default='')
-    #修改text答案文本
+    index = models.IntegerField(verbose_name='索引', blank=True, null=True)
+    type = models.CharField(verbose_name='改错类型', max_length=50, blank=True, null=True)
+
 
     def __str__(self):
         return f"Answer to {self.sub_question} by {self.student_page_record.student_exam_record.user}"
