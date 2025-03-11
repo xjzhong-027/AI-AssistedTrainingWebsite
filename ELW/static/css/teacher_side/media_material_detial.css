@@ -1,64 +1,151 @@
 /* 全局样式 */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: #f4f4f9;
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
     color: #333;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center; /* 水平居中 */
+    align-items: center;     /* 垂直居中 */
+    min-height: 100vh;       /* 确保页面高度占满整个视口 */
 }
 
+/* 容器样式 */
+.container {
+    max-width: 1000px;        /* 限制内容区域的最大宽度 */
+    width: 90%;              /* 宽度为视口的 90%，避免在小屏幕上过宽 */
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin: 30px;            /* 添加外边距，避免内容紧贴边缘 */
+}
+
+/* 标题样式 */
 h1 {
-    text-align: center;
-    color: #007BFF;
+    font-size: 2em;
+    color: #2c3e50;
     margin-bottom: 20px;
-}
-
-p {
-    margin: 10px 0;
-}
-
-p strong {
-    display: inline-block;
-    width: 100px;
+    text-align: left;        /* 标题左对齐 */
 }
 
 h2 {
-    color: #007BFF;
+    font-size: 1.5em;
+    color: #34495e;
     margin-top: 30px;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 5px;
+    text-align: left;        /* 标题左对齐 */
 }
 
 h3 {
-    background-color: #cfcaca;
+    font-size: 1.2em;
+    color: #2c3e50;
     padding: 10px;
-    border-radius: 5px;
+    border-radius: 4px;
+    margin-top: 20px;
     margin-bottom: 10px;
+    text-align: left;        /* 标题左对齐 */
+    color: #007BFF;
 }
 
 h4 {
-    margin-top: 10px;
-    margin-bottom: 5px;
+    margin-left: 20px;
+    font-size: 1.1em;
+    margin-top: 15px;
+    margin-bottom: 10px;
+    text-align: left;        /* 标题左对齐 */
+    line-height: 1.8;
 }
 
-.choice,
+/* 段落样式 */
+p {
+    font-size: 1em;
+    line-height: 1.6;
+    margin: 10px 0;
+    text-align: left;        /* 段落左对齐 */
+}
+
+strong {
+    color: #2c3e50;
+}
+
+/* 小题样式 */
+.sub-question {
+    margin-left: 20px;
+    padding: 10px;
+    /*background-color: #f5f5f5;*/
+    border-radius: 4px;
+    margin-bottom: 10px;
+    text-align: left;        /* 小题内容左对齐 */
+}
+
+/* 选择题样式 */
+.choice {
+    margin-left: 40px;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    text-align: left;        /* 选择题内容左对齐 */
+}
+
+.choice p {
+    margin: 5px 0;
+}
+
+/* 连线题样式 */
 .matching {
     margin-left: 20px;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    text-align: left;        /* 连线题内容左对齐 */
 }
 
-.choice p,
 .matching p {
-    margin: 3px 0;
+    margin: 5px 0;
 }
 
+.answer {
+    margin-left: 40px;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    text-align: left;
+}
+
+/* 答案、提示、解析样式 */
+.tips, .analysis {
+    margin-left: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    text-align: left;        /* 答案、提示、解析内容左对齐 */
+}
+
+.tips p, .analysis p {
+    margin: 5px 0;
+    font-style: italic;
+    color: #555;
+}
+
+/* 图片样式 */
 img {
     display: block;
-    margin-top: 5px;
+    margin: 10px 0;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.tips,
-.analysis {
-    margin-left: 20px;
-    background-color: #e8f0fe;
-    border-radius: 5px;
-    padding: 10px;
+/* 链接样式 */
+a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
 }

@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="{% static 'css/teacher_side/media_material_detial.css' %}">
 </head>
 <body>
-    <h1 style="text-align: center;">{{ material.title }}</h1>
+<div class="container">
+    <h1>{{ material.title }}</h1>
     <p><strong>主题:</strong> {{ material.theme }}</p>
     <p><strong>摘要:</strong> {{ material.abstract }}</p>
     <p><strong>关键词:</strong> {{ material.keywords }}</p>
@@ -16,11 +17,11 @@
 
     <h2>关联的大题</h2>
     {% for main_question in main_questions %}
-        <h3 style="background-color: #cfcaca">
+        <h3>
             {{ forloop.counter }}.
             {{ main_question.question_text }} ({{ main_question.get_question_type_display }})
         </h3>
-                    <span>{{ sub_question.question_text }}</span>
+        <span>{{ sub_question.question_text }}</span>
         <!-- 小题展示 -->
         {% for sub_question in main_question.sub_questions.all %}
 
@@ -31,16 +32,19 @@
                             <span>{{ sub_question.question_text }} </span>
                             <span style="text-decoration: underline">[{{ correction.type }}: {{ sub_question.answer }}]</span>
 {#                            <span>({{ sub_question.score }})</span>#}
-
                         {% endif %}
                     {% endfor %}
 
                 {% else %}
-                    <h4>({{ forloop.counter }}) {{ sub_question.question_text }}
-                        {% if sub_question.score %}
-                            ({{ sub_question.score }})
-                        {% endif %}
-                    </h4>
+                    <div class="sub_question">
+                        <h4>({{ forloop.counter }}) {{ sub_question.question_text }}
+                            {% if sub_question.score %}
+                                ({{ sub_question.score }})
+                            {% endif %}
+                        </h4>
+                        <button onclick="edit_question({{ sub_question.id }}, {{ material.id }})">编辑</button>
+                    </div>
+
 
                     {% if sub_question.image_url %}
                         <img src="{{ sub_question.image_url.url }}" alt="Image" width="50">
@@ -68,9 +72,7 @@
                         </div>
                     {% endif %}
 
-
-
-                    <p>【Answer】: {{ sub_question.answer }}</p>
+                    <p class="answer">【Answer】: {{ sub_question.answer }}</p>
 
                     {% if sub_question.tips %}
                         <div class="tips">
@@ -103,6 +105,48 @@
 
     {% endfor %}
 
+</div>
 
+<script>
+    function edit_question(question_id, material_id) {
+        console.log("question_id = " + question_id)
+        console.log("material_id = " + material_id)
+        fetch('/teacher/question_bank/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ question_id:  question_id, material_id: material_id })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // 手动跳转到重定向 URL
+                window.location.href = data.redirect_url;
+            } else {
+                console.error('Error:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+    // 获取 CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
 </body>
 </html>

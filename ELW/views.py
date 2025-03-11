@@ -391,20 +391,53 @@ def teacher_index(request):
 # 题库管理
 def teacher_question_bank(request):
     if request.session.get('is_login', None):
-        username = request.session.get('username', None)
-        media_materials = MediaMaterial.objects.all()
-        print('media_materials: ', media_materials)
-        paginator = Paginator(media_materials, 15)  # 每页展示 15 条
-        page_number = request.GET.get('page')  # 获取当前页码
-        page_obj = paginator.get_page(page_number)  # 获取当前页对象
-        # print((datetime.datetime.now() - datetime.datetime.fromisoformat(request.session.get('last_active_time'))).total_seconds() > 60)
-        return render(request, 'teacher_side/question_bank.html',
-                      {
-                          'username': username,
-                          'media_materials': media_materials,
-                          'page_obj': page_obj,
-                      })
+        if request.method == 'POST':
+            try:
+                data = json.loads(request.body)
+                sub_id = int(data.get('question_id'))
+                material_id = int(data.get('material_id'))
+
+                # 在这里处理接收到的变量
+                print(f"Received: sub_id: {sub_id}\n material_id: {material_id}")
+                redirect_url = reverse('teacher_edit_question', args=[sub_id, material_id])
+                # 返回 JSON 响应，包含重定向 URL
+                return JsonResponse({'status': 'success', 'redirect_url': redirect_url})
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        else:
+            username = request.session.get('username', None)
+            media_materials = MediaMaterial.objects.all()
+            print('media_materials: ', media_materials)
+            paginator = Paginator(media_materials, 15)  # 每页展示 15 条
+            page_number = request.GET.get('page')  # 获取当前页码
+            page_obj = paginator.get_page(page_number)  # 获取当前页对象
+            # print((datetime.datetime.now() - datetime.datetime.fromisoformat(request.session.get('last_active_time'))).total_seconds() > 60)
+            return render(request, 'teacher_side/question_bank.html',
+                          {
+                              'username': username,
+                              'media_materials': media_materials,
+                              'page_obj': page_obj,
+                          })
     return redirect('login')
+
+def teacher_edit_question(request, sub_id, material_id):
+    sub_question = SubQuestion.objects.get(id=sub_id)
+    main_question = MainQuestion.objects.get(id=sub_question.main_question_id)
+    media_material = MediaMaterial.objects.get(id=material_id)
+    if sub_question.image_url:
+        images = sub_question.image_url.split(',')
+        print(images)
+        return render(request, 'teacher_side/edit_question.html', {
+            'main_question': main_question,
+            'sub_question': sub_question,
+            'media_material': media_material,
+            'images': images,
+        })
+    return render(request, 'teacher_side/edit_question.html', {
+        'main_question': main_question,
+        'sub_question': sub_question,
+        'media_material': media_material,
+    })
 
 def teacher_page_create(request, material_id):
     material = get_object_or_404(MediaMaterial, id=material_id)
@@ -724,6 +757,27 @@ def teacher_page_save(request, material_id):
 
 # 查看素材包
 def teacher_media_material_detail(request, material_id):
+    if request.method == 'POST':
+        images = request.FILES.getlist('sub_images')  # 获取所有上传的文件
+        data = request.POST
+        print('data: ', data)
+
+        sub_id = data.get('sub_question_id')
+        sub_instance = SubQuestion.objects.get(id=sub_id)
+        main_instance = MainQuestion.objects.get(id=sub_instance.main_question_id)
+        question_text = data.get('sub_question_text')
+        tips = data.get('sub_question_tips')
+        analysis = data.get('sub_question_analysis')
+        if data.get('new_sub_question_answer'):
+            answer = data.get('new_sub_question_answer')
+        else:
+            answer = data.get('sub_question_answer')
+        if main_instance.question_type == 'choice':
+            option_count = data.get('option_count')
+            print('option_count: ', option_count)
+
+
+
     material = get_object_or_404(MediaMaterial, id=material_id)
     main_questions = material.main_questions.all()
     # 获取大题下的小题
