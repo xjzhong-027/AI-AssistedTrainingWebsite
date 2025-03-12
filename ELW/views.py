@@ -420,6 +420,11 @@ def teacher_question_bank(request):
                           })
     return redirect('login')
 
+def teacher_delete_material(request, material_id):
+    media_material = MediaMaterial.objects.get(id=material_id)
+    media_material.delete()
+    return redirect('teacher_question_bank')
+
 def teacher_edit_question(request, sub_id, material_id):
     sub_question = SubQuestion.objects.get(id=sub_id)
     main_question = MainQuestion.objects.get(id=sub_question.main_question_id)
@@ -574,10 +579,12 @@ def teacher_page_save(request, material_id):
             order = request.POST.get('week')
             title = request.POST.get('title')
             type = request.POST.get('selected_type')
-            duration = int(request.POST.get('exam_time'))
-            exam_date = datetime.date.fromisoformat(request.POST.get('exam_date'))
-            start_time = datetime.time.fromisoformat(request.POST.get('start_time'))
-            end_time = datetime.time.fromisoformat(request.POST.get('end_time'))
+            if request.POST.get('exam_time'):
+                duration = int(request.POST.get('exam_time'))
+            if request.POST.get('exam_date'):
+                exam_date = datetime.date.fromisoformat(request.POST.get('exam_date'))
+                start_time = datetime.time.fromisoformat(request.POST.get('start_time'))
+                end_time = datetime.time.fromisoformat(request.POST.get('end_time'))
 
             # 创建试卷
             class_instance = Class.objects.get(pk=class_id)
@@ -590,14 +597,20 @@ def teacher_page_save(request, material_id):
             unit_instance.save()
             print('unit_instance: ', unit_instance)
             # 如果为考试，则创建时间管理表
-            if type == 'exam' or type == 'quiz':
+            if type == 'exam':
                 time_management_instance = TimeManagement.objects.create(
                     unit=unit_instance,
-                    week=order,
                     duration=duration,
                     exam_date=exam_date,
                     start_time=start_time,
                     end_time=end_time,
+                )
+                time_management_instance.save()
+            if type == 'quiz':
+                time_management_instance = TimeManagement.objects.create(
+                    unit=unit_instance,
+                    week=order,
+                    duration=duration,
                 )
                 time_management_instance.save()
             # 遍历所有待创建页面

@@ -37,8 +37,9 @@
     </script>
 </head>
 <body>
-<div>
-    <select name="selected_class" id="selected_class" onchange='filterUnits()'>
+    <div class="header">
+        <button onclick="window.location.href='{% url 'teacher_index' %}'">返回首页</button>
+        <select name="selected_class" id="selected_class" onchange='filterUnits()'>
         <option value="All">全部班级</option>
         {% for class in classes %}
 
@@ -48,7 +49,19 @@
             </option>
         {% endfor %}
     </select>
-</div>
+    </div>
+{#<div>#}
+{#    <select name="selected_class" id="selected_class" onchange='filterUnits()'>#}
+{#        <option value="All">全部班级</option>#}
+{#        {% for class in classes %}#}
+{##}
+{#            <option value="{{ class.id }}">#}
+{#                {{ class.course.year }}-{{ class.course.grade }}-{{ class.course.semester }} :#}
+{#                周{{ class.week }} {{ class.start_time }}#}
+{#            </option>#}
+{#        {% endfor %}#}
+{#    </select>#}
+{#</div>#}
 
 <div>
     <h1 style="text-align: center;">试卷</h1>

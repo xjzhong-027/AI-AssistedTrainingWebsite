@@ -13,11 +13,14 @@
         <div class="unit_info">
             <h2>{{ unit.title }}</h2>
             <p>试卷类型：{{ unit.type }}</p>
+            <p>开放周次： {{ unit.order }}</p>
             {% if unit.type == 'exam' or unit.type == 'quiz' %}
                 {% if time_management %}
                     <p>时长限制： {{ time_management.duration }}分钟</p>
                 {% endif %}
-
+                {% if unit.type == 'exam' %}
+                    <p>开放时间：{{ time_management.exam_date }} -【{{ time_management.start_time }} : {{ time_management.end_time }}】</p>
+                {% endif %}
             {% endif %}
         </div>
 

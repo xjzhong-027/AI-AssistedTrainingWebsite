@@ -52,6 +52,9 @@ select {
 .time_management {
     margin-bottom: 20px;
 }
+.exam_time_management {
+    margin-bottom: 20px;
+}
 button[type="submit"] {
     background-color: #007BFF;
     color: white;

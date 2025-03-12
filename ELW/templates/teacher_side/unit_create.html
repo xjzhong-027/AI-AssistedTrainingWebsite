@@ -35,20 +35,23 @@
     </select>
 
     <div class="time_management" id="time_management" style="display: none">
-        <label for="exam_time" id="exam_time_label">考试时长: </label>
+        <label for="exam_time" id="exam_time_label">时长限制: </label>
         <input type="number" name="exam_time" id="exam_time"><span>分钟</span>
     </div>
 
-    <div>
+    <div class="exam_time_management" id="exam_time_management" style="display: none">
+        <label>开放时间：</label>
         <input type="date" id="exam_date" name="exam_date">
         <input type="time" id="start_time" name="start_time">
         <input type="time" id="end_time" name="end_time">
     </div>
 
 
+    <div class="open_week" id="open_week">
+        <label for="week">开放周次</label>
+        <input type="number" name="week" id="week">
+    </div>
 
-    <label for="week">开放周次</label>
-    <input type="number" name="week" id="week">
 
 
     <button type="submit">确认组卷</button>
@@ -62,13 +65,24 @@
     function toggleExamTimeInput() {
         const selectedType = document.getElementById('selected_type');
         const examDiv = document.getElementById('time_management');
+        const examTime = document.getElementById('exam_time_management');
+        {#const openWeek = document.getElementById('open_week');#}
         if (selectedType.value === 'exam') {
+            console.log('exam')
             examDiv.style.display = 'block';
+            examTime.style.display = 'block';
+            {#openWeek.style.display = 'none';#}
         }else if (selectedType.value === 'quiz'){
+            console.log('quiz')
             examDiv.style.display = 'block';
+            examTime.style.display = 'none';
+            {#openWeek.style.display = 'block';#}
         }
         else {
+            console.log('else')
             examDiv.style.display = 'none';
+            examTime.style.display = 'none';
+            {#openWeek.style.display = 'block';#}
         }
     }
 </script>

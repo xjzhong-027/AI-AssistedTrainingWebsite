@@ -12,6 +12,8 @@ urlpatterns = [
 
     path('question_bank/', views.teacher_question_bank, name='teacher_question_bank'),
 
+    path('delete_material/<int:material_id>', views.teacher_delete_material, name='teacher_delete_material'),
+
     path('edit_question/<int:sub_id>/<int:material_id>', views.teacher_edit_question, name='teacher_edit_question'),
 
     path('page_create/<int:material_id>', views.teacher_page_create, name='teacher_page_create'),
