@@ -17,7 +17,8 @@
     <select name="selected_class" id="selected_class">
         {% for class in classes %}
             {% if class %}
-                <option value="{{ class.id }}">周{{ class.week }}: {{ class.start_time }}-{{ class.end_time }}</option>
+{#                <option value="{{ class.id }}">周{{ class.week }}: {{ class.start_time }}-{{ class.end_time }}</option>#}
+                <option value="{{ class.id }}">{{ class.class_name}}</option>
             {% else %}
                 <p style="color: red">您当前没有正在教授的班级，无法进行组卷！</p>
             {% endif %}

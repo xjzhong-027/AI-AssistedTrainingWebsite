@@ -10,8 +10,12 @@ class Announcement(models.Model):
     created_at = models.DateTimeField(verbose_name='发布日期', auto_now_add=True)
     receivers = models.ManyToManyField(Students, blank=True, related_name='announcements')
     teachers = models.ForeignKey(Teachers, on_delete=models.CASCADE, related_name='announcements', null=True)
+
+    class Meta:
+        verbose_name_plural = '公告管理'
+
     def __str__(self):
-        return self.a_title
+        return f"公告[{self.a_title}] : {self.a_content}"
 
 
 

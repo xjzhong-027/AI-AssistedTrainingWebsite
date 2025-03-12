@@ -1,6 +1,8 @@
 from django.db.models.signals import post_save, post_delete
-from Account.models import Students, Teachers
+# from Account.models import Students, Teachers
 from .models import LogEntry
+from ELW.models import Unit, MediaMaterial
+from announce.models import Announcement
 from .middleware import get_current_user
 
 
@@ -32,7 +34,7 @@ def log_delete(sender, instance, **kwargs):
     """
     if isinstance(instance, sender):
         user = get_current_user()  # 获取当前登录用户
-        message = f"Deleted {instance.__class__.__name__} with ID {instance.id} by {user}"
+        message = f"Deleted {str(instance)}"
 
 
         # 使用模型的 verbose_name_plural 作为模块名
@@ -49,7 +51,9 @@ def log_delete(sender, instance, **kwargs):
 # 使用信号注册器来动态连接信号
 def register_signals():
     # 把操作到的表放进来
-    post_save.connect(log_create_or_update, sender=Students)
-    post_delete.connect(log_delete, sender=Students)
-    post_save.connect(log_create_or_update, sender=Teachers)
-    post_delete.connect(log_delete, sender=Teachers)
+    post_save.connect(log_create_or_update, sender=Unit)
+    post_delete.connect(log_delete, sender=Unit)
+    post_save.connect(log_create_or_update, sender=MediaMaterial)
+    post_delete.connect(log_delete, sender=MediaMaterial)
+    post_save.connect(log_create_or_update, sender=Announcement)
+    post_delete.connect(log_delete, sender=Announcement)

@@ -87,6 +87,9 @@ class MediaMaterial(models.Model):
     media_url = models.CharField(max_length=100)
     image_url = models.CharField(max_length=100, default='')
 
+    class Meta:
+        verbose_name_plural = '题库管理'
+
     def __str__(self):
         return self.title
 
@@ -186,6 +189,12 @@ class Unit(models.Model):
     order = models.IntegerField(verbose_name='单元序号', blank=False, null=False)
     title = models.CharField(verbose_name='单元名称', blank=True, null=True, max_length=100)
     type = models.CharField(verbose_name='题目类型', choices=TYPES, default='practice', blank=False, null=False, max_length=20)
+
+    class Meta:
+        verbose_name_plural = '试卷管理'
+
+    def __str__(self):
+        return f"{self.type} - {self.title} for {self.class_instance}"
 
 class PaperPage(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='paper_pages')
