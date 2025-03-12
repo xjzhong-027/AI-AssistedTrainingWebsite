@@ -1,0 +1,13 @@
+{% block content %}
+
+    <div class="batch_input">
+        <h2>导入学生数据</h2>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label for="xlsx_file">选择 XLSX 文件：</label>
+            <input type="file" name="xlsx_file" accept=".xlsx" required>
+            <button type="submit">上传并导入</button>
+        </form>
+    </div>
+
+{% endblock %}

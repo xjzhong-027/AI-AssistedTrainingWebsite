@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
 from .models import StudentMediaPlayRecord,StudentPageRecord,StudentExamRecord,StudentAnswer
-from ELW.models import (Students,
+from ELW.models import (
                         TimeManagement,
                         Unit,
                         PaperPage,
@@ -18,6 +18,7 @@ from ELW.models import (Students,
                         MainQuestion,
                         PageMainQuestion,
                         PageSubQuestion, Correction, )
+from Account.models import Students
 
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib import messages

@@ -1,9 +1,10 @@
 from django.db import models
 from ELW.models import (
-Students,Class,Unit,MediaMaterial,
+Unit,MediaMaterial,
 MainQuestion,SubQuestion,ChoiceOption,
 MatchingOption,Correction,PaperPage,TimeManagement
 )
+from Account.models import Students, Class
 
 
 class StudentExamRecord(models.Model):

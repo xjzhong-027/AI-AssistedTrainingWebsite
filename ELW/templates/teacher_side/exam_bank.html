@@ -44,8 +44,9 @@
         {% for class in classes %}
 
             <option value="{{ class.id }}">
-                {{ class.course.year }}-{{ class.course.grade }}-{{ class.course.semester }} :
-                周{{ class.week }} {{ class.start_time }}
+{#                {{ class.course.year }}-{{ class.course.grade }}-{{ class.course.semester }} :#}
+{#                周{{ class.week }} {{ class.start_time }}#}
+                {{ class.class_name }}
             </option>
         {% endfor %}
     </select>

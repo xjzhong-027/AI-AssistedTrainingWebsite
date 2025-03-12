@@ -2,7 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 from django import forms
-from ELW.models import Teachers,Students
+from Account.models import Teachers,Students
 from accessment.models import MainQuestion,SubQuestion
 
 class Post(models.Model):

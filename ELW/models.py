@@ -4,54 +4,56 @@ from django.db import models
 import uuid
 import os
 
+from Account.models import Students, Teachers, Class, Course, Admins, Attendance
+
 # Create your models here.
 
 # 教师表
-class Teachers(models.Model):
-    username = models.CharField(max_length=20, verbose_name='账号')
-    name = models.CharField(max_length=20, verbose_name='姓名')
-    password = models.CharField(max_length=100)
-# Teachers.objects.create(username='teacher', name='teacher1', password='teacher')
-
-# 课程表
-class Course(models.Model):
-    year = models.IntegerField(verbose_name='开课年份', blank=False, null=False)
-    grade = models.IntegerField(verbose_name='开课年级', blank=False, null=False,
-                                choices=[(1, '大一'), (2, '大二'), (3, '大三'), (4, '大四')])
-    semester = models.IntegerField(verbose_name='开课学期', blank=False, null=False,
-                                   choices=[(1, '上学期'), (2, '下学期')])
-# 班级表
-class Class(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='course')
-    teacher = models.ForeignKey(Teachers, on_delete=models.CASCADE, related_name='teacher_id')
-    start_date = models.CharField(verbose_name='开课日期', blank=True, null=True, max_length=20)
-    week = models.IntegerField(verbose_name='周几上课', blank=False, null=False,
-                               choices=[(1, '周一'), (2, '周二'), (3, '周三'), (4, '周四'), (5, '周五'), (6, '周六'), (7, '周日')])
-    start_time = models.CharField(verbose_name='上课时间', blank=False, null=False, max_length=50)
-    end_time = models.CharField(verbose_name='下课时间', blank=False, null=False, max_length=50)
-
-# 学生表
-class Students(models.Model):
-    class_instance = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='class_id')
-    username = models.CharField(verbose_name='学生账号', max_length=20)
-    name = models.CharField(verbose_name='学生姓名', max_length=20)
-    password = models.CharField(verbose_name='学生密码', max_length=100)
+# class Teachers(models.Model):
+#     username = models.CharField(max_length=20, verbose_name='账号')
+#     name = models.CharField(max_length=20, verbose_name='姓名')
+#     password = models.CharField(max_length=100)
+# # Teachers.objects.create(username='teacher', name='teacher1', password='teacher')
+#
+# # 课程表
+# class Course(models.Model):
+#     year = models.IntegerField(verbose_name='开课年份', blank=False, null=False)
+#     grade = models.IntegerField(verbose_name='开课年级', blank=False, null=False,
+#                                 choices=[(1, '大一'), (2, '大二'), (3, '大三'), (4, '大四')])
+#     semester = models.IntegerField(verbose_name='开课学期', blank=False, null=False,
+#                                    choices=[(1, '上学期'), (2, '下学期')])
+# # 班级表
+# class Class(models.Model):
+#     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='course')
+#     teacher = models.ForeignKey(Teachers, on_delete=models.CASCADE, related_name='teacher_id')
+#     start_date = models.CharField(verbose_name='开课日期', blank=True, null=True, max_length=20)
+#     week = models.IntegerField(verbose_name='周几上课', blank=False, null=False,
+#                                choices=[(1, '周一'), (2, '周二'), (3, '周三'), (4, '周四'), (5, '周五'), (6, '周六'), (7, '周日')])
+#     start_time = models.CharField(verbose_name='上课时间', blank=False, null=False, max_length=50)
+#     end_time = models.CharField(verbose_name='下课时间', blank=False, null=False, max_length=50)
+#
+# # 学生表
+# class Students(models.Model):
+#     class_instance = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='class_id')
+#     username = models.CharField(verbose_name='学生账号', max_length=20)
+#     name = models.CharField(verbose_name='学生姓名', max_length=20)
+#     password = models.CharField(verbose_name='学生密码', max_length=100)
 # Students.objects.create(username='student', name='student1', password='student')
 
 # 考勤记录表
-class Attendance(models.Model):
-    student = models.ForeignKey(Students, on_delete=models.CASCADE, related_name='student_id')
-    week = models.IntegerField(verbose_name='周次', blank=False, null=False)
-    status = models.CharField(verbose_name='考勤状况', blank=False, null=False, max_length=20,
-                              choices=[('normal', '正常出勤'), ('absent', '缺勤'), ('late', '迟到'),
-                                       ('early-leave', '早退'), ('abnormal', '异常挂机'), ('late and early-leave', '迟到+早退'),
-                                       ('vacation', '假期')],
-                              default='absent')
-
-# 管理员表
-class Admins(models.Model):
-    username = models.CharField(max_length=20)
-    password = models.CharField(max_length=100)
+# class Attendance(models.Model):
+#     student = models.ForeignKey(Students, on_delete=models.CASCADE, related_name='student_id')
+#     week = models.IntegerField(verbose_name='周次', blank=False, null=False)
+#     status = models.CharField(verbose_name='考勤状况', blank=False, null=False, max_length=20,
+#                               choices=[('normal', '正常出勤'), ('absent', '缺勤'), ('late', '迟到'),
+#                                        ('early-leave', '早退'), ('abnormal', '异常挂机'), ('late and early-leave', '迟到+早退'),
+#                                        ('vacation', '假期')],
+#                               default='absent')
+#
+# # 管理员表
+# class Admins(models.Model):
+#     username = models.CharField(max_length=20)
+#     password = models.CharField(max_length=100)
 
 # 用户登录记录（ID，学号，周次，行为，时间，最后活动时间，登录设备信息）
 class LoginInfo(models.Model):

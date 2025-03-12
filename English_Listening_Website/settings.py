@@ -40,6 +40,7 @@ ALLOWED_HOSTS = []
 # pip install Django-filter
 
 INSTALLED_APPS = [
+    'simpleui',
     "daphne",
     'channels',
     "django.contrib.admin",
@@ -54,7 +55,10 @@ INSTALLED_APPS = [
     "forum",
     "announce",
     "accessment",
-    'student_ELW'
+    'student_ELW',
+    'Account.apps.AccountConfig',
+    'Backup.apps.BackupConfig',
+    'Log.apps.LogConfig'
 ]
 CHANNEL_LAYERS = {
     'default': {
@@ -76,7 +80,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'English_Listening_Website.middleware.SessionTimeoutMiddleware'
+    'English_Listening_Website.middleware.SessionTimeoutMiddleware',
+    'Log.middleware.CurrentUserMiddleware',  # Log应用获取当前登录用户的中间件
 ]
 
 ROOT_URLCONF = 'English_Listening_Website.urls'
@@ -117,7 +122,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'elw',
         'USER': 'root',
-        'PASSWORD': '0000',
+        'PASSWORD': '123456',
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -145,7 +150,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'zh-hans'
 
 TIME_ZONE = 'UTC'
 
@@ -173,3 +178,7 @@ SESSION_COOKIE_AGE = 60 * 30  # 30分钟
 # 用户登录后，浏览器关闭时，关闭登录状态
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
+
+SIMPLEUI_HOME_INFO=False
+SIMPLEUI_ANALYSIS=False
+SIMPLEUI_INDEX = 'http://localhost:8000/login'

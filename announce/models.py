@@ -1,5 +1,5 @@
 from django.db import models
-from ELW.models import Students, Teachers
+from Account.models import Students, Teachers
 from forum.models import Post
 # Create your models here.
 

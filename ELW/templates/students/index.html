@@ -1,13 +1,41 @@
 {% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Student Page</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语听力教学网站</title>
+    <link rel="stylesheet" href="{% static 'css/index.css' %}">
 
 </head>
 <body>
-    <script src="{% static 'js/lastActiveTime.js' %}"></script>
-<p>The main page of student version should be shown here.</p>
+<script src="{% static 'js/lastActiveTime.js' %}"></script>
+    <div class="container">
+        <aside class="sidebar">
+            <ul>
+                <li><a href="{% url 'logout' %}">退出登录</a></li>
+                <li><a href="">练习</a></li>
+                <li><a href="{% url 'accessment:confirm_info' %}">考试</a></li>
+                <li><a href="{% url 'forum:forum' %}">论坛</a></li>
+                <li><a href="{% url 'announce:student_announcements' %}" class="btn btn-primary mb-4">公告栏</a></li>
+                <li><a href="{% url 'announce:message_list' %}" class="btn btn-primary mb-4">消息箱</a></li>
+                <li><a href="">updating</a></li>
+            </ul>
+        </aside>
+        <main class="content">
+            <h1>欢迎, {{ request.session.username }}!</h1>
+            <p>点击左侧边栏中的栏目以进行相应操作。</p>
+        </main>
+    </div>
+
+
+<script src="{% static 'js/lastActiveTime.js' %}"></script>
 </body>
 </html>
+
+
+
+
+
+

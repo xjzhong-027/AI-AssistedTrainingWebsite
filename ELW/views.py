@@ -27,10 +27,10 @@ from .models import (
     Correction,
     ChoiceOption,
     Course,
-    Teachers,
-    Students,
-    Class,
-    Attendance,
+    # Teachers,
+    # Students,
+    # Class,
+    # Attendance,
     Unit,
     PaperPage,
     PageMainQuestion,
@@ -46,6 +46,7 @@ from .forms import (
     MatchingOptionFormset,
     CorrectionFormSet
 )
+from Account.models import Students, Teachers, Class, Attendance, Course
 
 
 # 大题+小题页
@@ -275,7 +276,8 @@ def login(request):
         request.session['last_active_time'] = datetime.datetime.now().isoformat()
         # 验证学生登录
         if role == 'student':
-            if models.Students.objects.filter(username=username).exists():
+            # if models.Students.objects.filter(username=username).exists():
+            if Students.objects.filter(username=username).exists():
                 # 写入session
                 request.session['role'] = 'student'
                 request.session['username'] = username
@@ -303,6 +305,10 @@ def login(request):
                 '''
                 # 修改学生考勤状况
                 student_instance = Students.objects.get(username=username)
+                student_user = student_instance.user
+                if student_user is not None:
+                    login(request, student_user)
+
                 class_instance = Class.objects.get(id=student_instance.class_instance_id)
                 start_date = datetime.date.fromisoformat(class_instance.start_date)
                 this_date = datetime.date.today()
@@ -335,11 +341,12 @@ def login(request):
                 return redirect('student_ELW:student_index')
         # 验证教师登录
         if role == 'teacher':
-            if models.Teachers.objects.filter(username=username,password=password).exists():
+            # if models.Teachers.objects.filter(username=username,password=password).exists():
+            if Teachers.objects.filter(username=username,password=password).exists():
                 request.session['role'] = 'teacher'
                 request.session['username'] = username
                 request.session['is_login'] = True
-                request.session['teacher_name'] = models.Teachers.objects.get(username=username).name
+                request.session['teacher_name'] = Teachers.objects.get(username=username).name
                 time = datetime.datetime.now()
                 # 获取用户的 User-Agent 信息，包括浏览器类型和引擎、操作系统信息、设备类型等信息
                 user_agent = request.META.get('HTTP_USER_AGENT', '')
@@ -351,6 +358,10 @@ def login(request):
                     device_info=user_agent,
                 )
                 # print(request.session['teacher_name'])
+                teacher_instance = Teachers.objects.get(username=username)
+                teacher_user = teacher_instance.user
+                if teacher_user is not None:
+                    login(request, teacher_user)
                 return redirect('teacher_index')
         # 验证管理员登录
         if role == 'admin':

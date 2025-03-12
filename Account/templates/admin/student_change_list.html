@@ -1,0 +1,25 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+    <style>
+       .batch_input {
+            margin-left: 50px;
+            margin-bottom: 10px;
+        }
+    </style>
+
+    <div class="batch_input">
+        <h2>导入学生账号</h2>
+        <form method="post" enctype="multipart/form-data" action="{% url 'admin:import_students' %}">
+            {% csrf_token %}
+            <label for="xlsx_file">选择 XLSX 文件：</label>
+            <input type="file" name="xlsx_file" id="xlsx_file" required>
+            <button type="submit">上传并导入</button>
+        </form>
+    </div>
+
+    <hr>
+
+    <!-- 显示学生列表 -->
+    {{ block.super }}
+{% endblock %}

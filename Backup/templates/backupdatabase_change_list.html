@@ -1,0 +1,41 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+    <style>
+        .backup {
+            margin-left: 50px;
+            margin-top: 10px;
+        }
+
+        .backup a {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        #backup {
+            background-color: #e3e8ef;
+            color: #ffffff;
+            margin-right: 30px;
+        }
+
+        #restore {
+            background-color: #e3e8ef;
+            color: #ffffff;
+        }
+
+        .backup a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+    <div class="backup">
+        <h2>选择按钮进行操作：</h2>
+        <span><a href="{% url 'admin:backup_database' %}" id="backup">备份数据库</a></span>
+        <span><a href="{% url 'admin:restore_database' %}" id="restore">恢复数据库</a></span>
+    </div>
+
+    <!-- 备份记录 -->
+    {{ block.super }}
+{% endblock %}
