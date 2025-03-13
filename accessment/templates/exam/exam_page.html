@@ -256,8 +256,7 @@
                    {% elif main_question.question_type == 'correction' %}
                          {% with correction_data|get_item:main_question.id as data %}
          <div class="correction-question">
-            <!-- 显示完整的短文 -->
-            <div class="full-text">
+                <div class="full-text">
                 <div class="word-container">
                     {% for word_info in data.words %}
                         <span class="clickable-word"
@@ -271,32 +270,13 @@
             </div>
 
             <!-- 显示错误类型选择框和输入框 -->
-
-      <div class="correction-controls">
-        {% for sub_q in data.sub_questions %}
-                    <div class="correction-control" data-index="{{ forloop.counter0 }}">
-                    <div class="selected-word-display">
-                            当前作答的单词：<span class="selected-word-text"></span>
-                        </div>
-                        <label>修改第 {{ forloop.counter }} 处错误：</label>
-                        <select class="error-type-select" name="correction_type_{{ sub_question.id }}_{{ correction.index }}">
-                <option value="none">请选择错误类型</option>
-                <option value="insert">插入</option>
-                <option value="delete">删除</option>
-                <option value="revise">修改</option>
-            </select>
-                        <input type="hidden" name="correction_index_{{ sub_question.id }}_{{ correction.index }}"
-                               value="{{ correction.index }}">
-
-            <input type="text" class="correction-text-input"
-                   value="{{ correction.text }}"
-                   placeholder="输入修改内容">
-                        <button class="clear-button" type="button">清除</button>
+                <div class="correction-controls">
+                    <div id="dynamic-corrections">
                     </div>
-                {% endfor %}
-            </div>
-
+                </div>
         </div>
+
+
     {% endwith %}
 
 
@@ -316,7 +296,7 @@
     <!-- 页面按钮 -->
     <div id="footer-buttons">
         <button type="button" onclick="manualSave()">保存</button>
-        <button type="button" onclick="manualSubmit()">提交</button>
+        <button type="button" onclick="manualSubmit()">下一页</button>
     </div>
 </div>
         </form>
@@ -462,49 +442,28 @@
     <!-- 已作答的答案显示-->
     <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const answers = {{ answers|safe }};
+    const answers = JSON.parse('{{ answers|safe|escapejs }}');
 
-    // 填充填空题的答案
+    // 填充选择题和填空题的答案
     for (const sub_question_id in answers) {
         const answer = answers[sub_question_id];
         const input = document.querySelector(`input[name="answer_${sub_question_id}"]`);
         if (input) {
             input.value = answer;
         }
-    }
-});
-</script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-    const examForm = document.getElementById('save-answers-form');
-    const formData = new FormData(examForm);
 
-    fetch(examForm.action, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.answers) {
-            // 动态更新页面上的答案
-            Object.keys(data.answers).forEach(sub_question_id => {
-                const answer = data.answers[sub_question_id];
-                const answerInput = document.querySelector(`input[name="answer_${sub_question_id}"]`);
-                if (answerInput) {
-                    answerInput.value = answer;
+        // 填充选择题的选项
+        const radioButtons = document.querySelectorAll(`input[name="answer_${sub_question_id}"]`);
+        if (radioButtons.length > 0) {
+            radioButtons.forEach(radio => {
+                if (radio.value === answer) {
+                    radio.checked = true;
                 }
             });
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
+    }
 });
-    </script>
-
+</script>
     <!-- 自动手动保存 提交当前页面 -->
     <script>
     // 手动保存
@@ -609,8 +568,8 @@ function canModify() {
         const examForm = document.getElementById('save-answers-form');
         const formData = new FormData(examForm);
 
-        // 设置 manual_save 为 true，表示自动保存
-        document.querySelector('input[name="manual_save"]').value = "true";
+        // 设置 manual_save 为 false，表示自动保存
+        document.querySelector('input[name="manual_save"]').value = "false";
         document.querySelector('input[name="is_manual_submit"]').value = "false";
 
         fetch(examForm.action, {
@@ -682,6 +641,22 @@ function canModify() {
 
     // 初始化页面导航圆点状态
     updateNavCircles();
+    pageNavCircles.forEach(circle => {
+        circle.addEventListener('click', function () {
+            const pageNumber = parseInt(this.getAttribute('data-page-number'));
+
+            // 如果点击的是当前页面或未到达的页面，则不跳转
+            if (pageNumber === currentPageNumber || pageNumber > currentPageNumber) {
+                return;
+            }
+
+            // 跳转到对应的页面
+            const examId = {{ exam.id | safe }};  // 从模板中获取 exam.id
+            const url = `/accessment/exams/${examId}/page/${pageNumber}/`;  // 构造 URL
+            window.location.href = url;  // 跳转
+
+        });
+    });
 });
         </script>
 
@@ -876,133 +851,264 @@ function forceSubmitForm() {
         <script>
 document.addEventListener('DOMContentLoaded', function () {
     const clickableWords = document.querySelectorAll('.clickable-word');
-    const correctionControls = document.querySelectorAll('.correction-control');
-    const clearButtons = document.querySelectorAll('.clear-button');
+    const dynamicCorrections = document.getElementById('dynamic-corrections');
 
     // 用于存储用户选择的错误
-    let userCorrections = {};
+    let userCorrections = [];
 
-    // 点击单词时绑定到对应的输入框和选择框
-    clickableWords.forEach(word => {
-        word.addEventListener('click', function () {
-            const subQuestionId = word.dataset.subQuestionId;
-            const localIndex = word.dataset.localIndex;
-            const wordText = word.dataset.word;
+    // 输入框
+    function renderDynamicCorrections() {
+        dynamicCorrections.innerHTML = '';  // 清空之前的输入框
+        userCorrections.forEach((correction, index) => {
+            const correctionDiv = document.createElement('div');
+            correctionDiv.classList.add('correction-item');
+            const wordDisplay = document.createElement('span');
+            wordDisplay.classList.add('word-display');
+            wordDisplay.textContent = `${correction.wordText}`;
+            // 错误类型选择框
+            const typeSelect = document.createElement('select');
+            typeSelect.name = `correction_type_${correction.subQuestionId}_${correction.localIndex}`;
+            typeSelect.id = `correction_type_${correction.subQuestionId}_${correction.localIndex}`;
+            typeSelect.classList.add('error-type-select');
+            typeSelect.innerHTML = `
+                <option value="none" ${correction.type === 'none' ? 'selected' : ''}>请选择错误类型</option>
+                <option value="insert" ${correction.type === 'insert' ? 'selected' : ''}>插入</option>
+                <option value="delete" ${correction.type === 'delete' ? 'selected' : ''}>删除</option>
+                <option value="revise" ${correction.type === 'revise' ? 'selected' : ''}>修改</option>
+            `;
 
-            // 找到一个未绑定的输入框和选择框
-            const correctionControl = Array.from(correctionControls).find(control => {
-                const typeSelect = control.querySelector('.error-type-select');
-                return !typeSelect.dataset.subQuestionId;  // 未绑定的输入框和选择框
-            });
-
-            if (!correctionControl) {
-                alert("所有输入框已被使用，请清除之前的绑定！");
-                return;
-            }
-
-            // 绑定到对应的输入框和选择框
-            const typeSelect = correctionControl.querySelector('.error-type-select');
-            const textInput = correctionControl.querySelector('.correction-text-input');
-            const indexInput = document.createElement('input');  // 创建隐藏字段存储 index
-            indexInput.type = 'hidden';
-            indexInput.name = `correction_index_${subQuestionId}_${localIndex}`;
-            indexInput.value = localIndex;
-            correctionControl.appendChild(indexInput);  // 将隐藏字段添加到 DOM
-
-            typeSelect.dataset.subQuestionId = subQuestionId;
-            typeSelect.dataset.localIndex = localIndex;
-            typeSelect.name = `correction_type_${subQuestionId}_${localIndex}`;
-            textInput.name = `correction_text_${subQuestionId}_${localIndex}`;
-
-            // 更新当前这组作答的是哪个单词
-            const selectedWordText = correctionControl.querySelector('.selected-word-text');
-            selectedWordText.textContent = wordText;
-
-            // 高亮当前点击的单词
-            word.classList.add('highlight');
-
-            // 初始化用户选择的错误
-            userCorrections[`${subQuestionId}_${localIndex}`] = {
-                subQuestionId,
-                localIndex,
-                wordText,
-                correctionType: 'none',  // 默认类型
-                correctionText: ''
-            };
-
-            // 绑定选择框和输入框的值
-            typeSelect.value = 'none';
-            textInput.value = '';
-
-            // 监听选择框的变化
             typeSelect.addEventListener('change', function () {
-                const correction = userCorrections[`${subQuestionId}_${localIndex}`];
-                if (correction) {
-                    correction.correctionType = this.value;
-                    updateWordStyles(correction);
-                }
+                correction.type = this.value;
+                updateWordStyles(correction);
             });
 
-            // 监听输入框的变化
+            // 错误内容输入框
+            const textInput = document.createElement('input');
+            textInput.type = 'text';
+            textInput.name = `correction_text_${correction.subQuestionId}_${correction.localIndex}`;
+            textInput.id = `correction_text_${correction.subQuestionId}_${correction.localIndex}`;
+            textInput.placeholder = '输入修改内容';
+            textInput.value = correction.text || '';
+
             textInput.addEventListener('input', function () {
-                const correction = userCorrections[`${subQuestionId}_${localIndex}`];
-                if (correction) {
-                    correction.correctionText = this.value;
+                correction.text = this.value;
+            });
+
+            // 删除按钮
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '删除';
+            deleteButton.addEventListener('click', function () {
+                userCorrections = userCorrections.filter(c =>
+                    c.subQuestionId !== correction.subQuestionId || c.localIndex !== correction.localIndex
+                );
+                renderDynamicCorrections();
+
+                // 移除对应的高亮样式
+                const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
+                if (wordElement) {
+                    wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
                 }
             });
+
+            correctionDiv.appendChild(wordDisplay);
+            correctionDiv.appendChild(typeSelect);
+            correctionDiv.appendChild(textInput);
+            correctionDiv.appendChild(deleteButton);
+            dynamicCorrections.appendChild(correctionDiv);
         });
-    });
-
-    // 清除按钮的逻辑
-    clearButtons.forEach(button => {
-        button.addEventListener('click', function (event) {
-            event.preventDefault();  // 阻止表单提交
-
-            const correctionControl = button.closest('.correction-control');
-            const typeSelect = correctionControl.querySelector('.error-type-select');
-            const textInput = correctionControl.querySelector('.correction-text-input');
-            const subQuestionId = typeSelect.dataset.subQuestionId;
-            const localIndex = typeSelect.dataset.localIndex;
-
-            // 清除对应的输入框和选择框
-            if (correctionControl) {
-                typeSelect.removeAttribute('data-sub-question-id');
-                typeSelect.removeAttribute('data-local-index');
-                textInput.removeAttribute('data-sub-question-id');
-                textInput.removeAttribute('data-local-index');
-                typeSelect.value = 'none';
-                textInput.value = '';
-
-                // 清空当前这组作答的单词显示
-                const selectedWordText = correctionControl.querySelector('.selected-word-text');
-                selectedWordText.textContent = '';
-            }
-
-            // 移除对应的高亮样式
-            const wordElement = document.querySelector(`.clickable-word.highlight[data-sub-question-id="${subQuestionId}"][data-local-index="${localIndex}"]`);
-            if (wordElement) {
-                wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
-            }
-
-            // 删除对应的用户选择
-            delete userCorrections[`${subQuestionId}_${localIndex}`];
-        });
-    });
+    }
 
     // 更新单词的样式
     function updateWordStyles(correction) {
         const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
         if (wordElement) {
             wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
-            if (correction.correctionType !== 'none') {
-                wordElement.classList.add('highlight', correction.correctionType);
+            if (correction.type !== 'none') {
+                wordElement.classList.add('highlight', correction.type);
             }
         }
     }
+
+    // 点击单词时添加填写框
+    clickableWords.forEach(word => {
+        word.addEventListener('click', function () {
+            const subQuestionId = word.dataset.subQuestionId;
+            const localIndex = word.dataset.localIndex;
+            const wordText = word.dataset.word;
+
+            // 检查是否已经记录了这个单词的错误
+            const existingCorrection = userCorrections.find(correction =>
+                correction.subQuestionId === subQuestionId && correction.localIndex === localIndex);
+            word.classList.add('highlight');
+            if (existingCorrection) {
+                alert("该词已被标记！");
+                return;
+            }
+
+            // 添加新的错误记录
+            userCorrections.push({
+                subQuestionId,
+                localIndex,
+                wordText,
+                type: 'none',  // 默认类型
+                text: ''
+            });
+
+            // 更新动态输入框
+            renderDynamicCorrections();
+
+        });
+    });
 });
 </script>
+        <script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const clickableWords = document.querySelectorAll('.clickable-word');
+    const dynamicCorrections = document.getElementById('dynamic-corrections');
 
+    // 用于存储用户选择的错误
+    let userCorrections = [];
 
+    // 从后端加载答案
+    const answers = JSON.parse('{{ answers|safe|escapejs }}');
+    console.log('Loaded answers:', answers);  // 打印加载的答案
+
+    // 遍历所有改错题的答案
+    for (const sub_question_id in answers) {
+        const corrections = answers[sub_question_id];
+        if (Array.isArray(corrections)) {
+            corrections.forEach((correction) => {
+                const { type, index, text } = correction;
+
+                // 找到对应的单词
+                const wordElement = document.querySelector(
+                    `.clickable-word[data-sub-question-id="${sub_question_id}"][data-local-index="${index}"]`
+                );
+
+                if (wordElement) {
+                    // 添加新的错误记录
+                    userCorrections.push({
+                        subQuestionId: sub_question_id,
+                        localIndex: index,
+                        wordText: wordElement.dataset.word,
+                        type: type,
+                        text: text
+                    });
+
+                    // 高亮当前点击的单词
+                    wordElement.classList.add('highlight', type);
+                }
+            });
+        }
+    }
+
+    // 渲染动态输入框
+    renderDynamicCorrections();
+
+    // 输入框
+    function renderDynamicCorrections() {
+        dynamicCorrections.innerHTML = '';  // 清空之前的输入框
+        userCorrections.forEach((correction, index) => {
+            const correctionDiv = document.createElement('div');
+            correctionDiv.classList.add('correction-item');
+            const wordDisplay = document.createElement('span');
+            wordDisplay.classList.add('word-display');
+            wordDisplay.textContent = `${correction.wordText}`;
+            // 错误类型选择框
+            const typeSelect = document.createElement('select');
+            typeSelect.name = `correction_type_${correction.subQuestionId}_${correction.localIndex}`;
+            typeSelect.id = `correction_type_${correction.subQuestionId}_${correction.localIndex}`;
+            typeSelect.classList.add('error-type-select');
+            typeSelect.innerHTML = `
+                <option value="none" ${correction.type === 'none' ? 'selected' : ''}>请选择错误类型</option>
+                <option value="insert" ${correction.type === 'insert' ? 'selected' : ''}>插入</option>
+                <option value="delete" ${correction.type === 'delete' ? 'selected' : ''}>删除</option>
+                <option value="revise" ${correction.type === 'revise' ? 'selected' : ''}>修改</option>
+            `;
+
+            typeSelect.addEventListener('change', function () {
+                correction.type = this.value;
+                updateWordStyles(correction);
+            });
+
+            // 错误内容输入框
+            const textInput = document.createElement('input');
+            textInput.type = 'text';
+            textInput.name = `correction_text_${correction.subQuestionId}_${correction.localIndex}`;
+            textInput.id = `correction_text_${correction.subQuestionId}_${correction.localIndex}`;
+            textInput.placeholder = '输入修改内容';
+            textInput.value = correction.text || '';
+
+            textInput.addEventListener('input', function () {
+                correction.text = this.value;
+            });
+
+            // 删除按钮
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '删除';
+            deleteButton.addEventListener('click', function () {
+                userCorrections = userCorrections.filter(c =>
+                    c.subQuestionId !== correction.subQuestionId || c.localIndex !== correction.localIndex
+                );
+                renderDynamicCorrections();
+
+                // 移除对应的高亮样式
+                const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
+                if (wordElement) {
+                    wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
+                }
+            });
+
+            correctionDiv.appendChild(wordDisplay);
+            correctionDiv.appendChild(typeSelect);
+            correctionDiv.appendChild(textInput);
+            correctionDiv.appendChild(deleteButton);
+            dynamicCorrections.appendChild(correctionDiv);
+        });
+    }
+
+    // 更新单词的样式
+    function updateWordStyles(correction) {
+        const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
+        if (wordElement) {
+            wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
+            if (correction.type !== 'none') {
+                wordElement.classList.add('highlight', correction.type);
+            }
+        }
+    }
+
+    // 点击单词时添加填写框
+    clickableWords.forEach(word => {
+        word.addEventListener('click', function () {
+            const subQuestionId = word.dataset.subQuestionId;
+            const localIndex = word.dataset.localIndex;
+            const wordText = word.dataset.word;
+
+            // 检查是否已经记录了这个单词的错误
+            const existingCorrection = userCorrections.find(correction =>
+                correction.subQuestionId === subQuestionId && correction.localIndex === localIndex);
+            word.classList.add('highlight');
+            if (existingCorrection) {
+                alert("该词已被标记！");
+                return;
+            }
+
+            // 添加新的错误记录
+            userCorrections.push({
+                subQuestionId,
+                localIndex,
+                wordText,
+                type: 'none',  // 默认类型
+                text: ''
+            });
+
+            // 更新动态输入框
+            renderDynamicCorrections();
+        });
+    });
+});
+</script>
         <!--  练习端发帖 -->
         <script>
 var subQuestionId = null; // 定义为全局变量
