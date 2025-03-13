@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
 from .models import StudentMediaPlayRecord,StudentPageRecord,StudentExamRecord,StudentAnswer
-from ELW.models import (
+from ELW.models import (Students,
                         TimeManagement,
                         Unit,
                         PaperPage,
@@ -18,7 +18,6 @@ from ELW.models import (
                         MainQuestion,
                         PageMainQuestion,
                         PageSubQuestion, Correction, )
-from Account.models import Students
 
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib import messages
@@ -155,6 +154,46 @@ def start_exam(request, exam_id):
     return redirect('accessment:exam_page', exam_id=exam.id, order=first_page.order)
 
 
+#加载答案
+def load_answers(student_page_record):
+    cache_key = f"answers_{student_page_record.id}"
+    cached_answers = cache.get(cache_key)
+
+    if cached_answers is not None:
+        # 如果缓存存在，直接使用缓存中的答案
+        answers_dict = {}
+        for sub_question_id, answer_text in cached_answers.items():
+            if answer_text:
+                if isinstance(answer_text, str) and answer_text.startswith('['):
+                    answers_dict[int(sub_question_id)] = json.loads(answer_text)
+                else:
+                    answers_dict[int(sub_question_id)] = answer_text
+        print(answers_dict)
+        return answers_dict
+
+    else:
+        # 如果没有缓存，从数据库中加载答案
+        answers = StudentAnswer.objects.filter(student_page_record=student_page_record)
+        answers_dict = {}
+        for answer in answers:
+            sub_question_id = int(answer.sub_question_id)
+            if answer.sub_question.main_question.question_type == 'correction':
+                if sub_question_id not in answers_dict:
+                    answers_dict[sub_question_id] = []
+                answers_dict[sub_question_id].append({
+                    'text': answer.text,
+                    'index': answer.index,
+                    'type': answer.type
+                })
+            else:
+                answers_dict[sub_question_id] = answer.text
+            print(answers_dict)
+
+        # 更新缓存
+        cache.set(cache_key, answers_dict, timeout=600)
+
+        return answers_dict
+
 def exam_page(request, exam_id, order):
     exam = get_object_or_404(Unit, id=exam_id, type='exam')
     time_management = get_object_or_404(TimeManagement, unit=exam)
@@ -191,16 +230,19 @@ def exam_page(request, exam_id, order):
 
     random.seed(student_page_record.student_exam_record.user.id)
 
-    #加载答案（不完善
-    answers = StudentAnswer.objects.filter(student_page_record=student_page_record)
-    #answers_dict = {answer.sub_question_id: answer.text for answer in answers}
-    answers_dict = {str(answer.sub_question_id): answer.text for answer in answers}
+    # #加载答案（不完善
+    # answers = StudentAnswer.objects.filter(student_page_record=student_page_record)
+    # #answers_dict = {answer.sub_question_id: answer.text for answer in answers}
+    # answers_dict = {str(answer.sub_question_id): answer.text for answer in answers}
+    #
+    # cache_key = f"answers_{student_page_record.id}"
+    # cached_answers = cache.get(cache_key, {})
+    # for sub_question_id, answer_text in cached_answers.items():
+    #     if answer_text:
+    #         answers_dict[sub_question_id] = answer_text
+    answers_dict = load_answers(student_page_record)
+    print(answers_dict)
 
-    cache_key = f"answers_{student_page_record.id}"
-    cached_answers = cache.get(cache_key, {})
-    for sub_question_id, answer_text in cached_answers.items():
-        if answer_text:
-            answers_dict[sub_question_id] = answer_text
 
     comprehension_data = {}
     correction_data = {}
@@ -254,22 +296,7 @@ def exam_page(request, exam_id, order):
     play_records_dict = {record.main_question_id: record.play_count for record in play_records}
 
     is_last_page = not PaperPage.objects.filter(unit=exam, order=page.order + 1).exists()
-    # 查询改错题答案
-    correction_answers = StudentAnswer.objects.filter(
-        student_page_record=student_page_record,
-        sub_question__main_question__question_type='correction'
-    )
 
-    # 将改错题答案整理成一个字典
-    correction_answers_dict = {}
-    for answer in correction_answers:
-        if answer.sub_question_id not in correction_answers_dict:
-            correction_answers_dict[answer.sub_question_id] = []
-        correction_answers_dict[answer.sub_question_id].append({
-            'index': answer.index,
-            'type': answer.type,
-            'text': answer.text
-        })
 
     context = {
         'exam': exam,
@@ -281,7 +308,7 @@ def exam_page(request, exam_id, order):
         'media_materials': media_materials,
         'sub_questions': sub_questions,
         'order': page.order,
-        'answers': answers_dict,
+        'answers': json.dumps(answers_dict, cls=DjangoJSONEncoder),
         'is_last_page': is_last_page,
         'exam_record_id': student_exam_record.id,
         'started_at': student_exam_record.started_at,
@@ -291,7 +318,6 @@ def exam_page(request, exam_id, order):
         'remaining_time': student_page_record.remaining_time,
         'comprehension_data': comprehension_data,
         'correction_data':correction_data,
-        'correction_answers': json.dumps(correction_answers_dict, cls=DjangoJSONEncoder),
     }
     return render(request, 'exam/exam_page.html', context)
 
@@ -326,101 +352,101 @@ def next_page(request, exam_id, order):
         # 跳转到下一页
         return redirect('accessment:exam_page', exam_id=exam.id, order=next_page.order)
 
-def _save_answers_logic(request, page_record_id):
-    # 获取页面记录
-    page_record = get_object_or_404(StudentPageRecord, id=page_record_id)
-
-    # 获取当前页面的所有大题
-    page_main_questions = PageMainQuestion.objects.filter(page=page_record.page)
-    main_questions = [pmq.main_question for pmq in page_main_questions]
-
-    # 获取所有相关的小题
-    page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
-    sub_question_ids = [psq.sub_question.id for psq in page_sub_questions]
-
-    # 保存答案
-    for sub_question_id in sub_question_ids:
-        sub_question = SubQuestion.objects.get(id=sub_question_id)
-        main_question = sub_question.main_question
-        question_type = main_question.question_type
-
-        if question_type == 'choice':
-            # 选择题
-            selected_option = request.POST.get(f'answer_{sub_question_id}')
-            answer_text = selected_option
-            # 更新或创建答案记录
-            StudentAnswer.objects.update_or_create(
-                sub_question_id=sub_question_id,
-                student_page_record=page_record,
-                defaults={'text': answer_text}
-            )
-        elif question_type == 'matching':
-            # 连线题
-            answers = request.POST.getlist(f'answer_{sub_question_id}')
-            answer_text = ','.join(answers)
-            # 更新或创建答案记录
-            StudentAnswer.objects.update_or_create(
-                sub_question_id=sub_question_id,
-                student_page_record=page_record,
-                defaults={'text': answer_text}
-            )
-        elif question_type == 'correction':
-            # 改错题
-            for key, value in request.POST.items():
-                if key.startswith(f'correction_type_{sub_question_id}_'):
-                    # 提取 local_index
-                    local_index = key.split('_')[-1]
-
-                    # 获取对应的错误类型、索引和修改内容
-                    correction_type = value.strip()
-                    correction_text = request.POST.get(f'correction_text_{sub_question_id}_{local_index}', '').strip()
-                    correction_index = request.POST.get(f'correction_index_{sub_question_id}_{local_index}', '').strip()
-
-                    # 检查是否有错误
-                    if correction_type == 'none':  # 没有错误
-                        answer_text = 'right'
-                    else:
-                        # 格式化答案文本：type:index:text
-                        answer_text = f"{correction_type}:{correction_index}:{correction_text}"
-                    StudentAnswer.objects.create(
-                        sub_question=sub_question,
-                        student_page_record=page_record,
-                        text=answer_text
-                    )
-
-
-        else:
-            # 主观题
-            answer_text = request.POST.get(f'answer_{sub_question_id}', '').strip()
-            # 更新或创建答案记录
-            StudentAnswer.objects.update_or_create(
-                sub_question_id=sub_question_id,
-                student_page_record=page_record,
-                defaults={'text': answer_text}
-            )
-
-        # # 更新或创建答案记录
-        # StudentAnswer.objects.update_or_create(
-        #     sub_question_id=sub_question_id,
-        #     student_page_record=page_record,
-        #     defaults={'text': answer_text}
-        # )
-
-    return JsonResponse({'message': '答案保存成功'})
-def save_answers(request):
-    if request.method == 'POST':
-        page_record_id = request.POST.get('page_record_id')
-        if not page_record_id:
-            return JsonResponse({'message': '缺少页面记录 ID'}, status=400)
-
-        try:
-            page_record_id = int(page_record_id)
-        except ValueError:
-            return JsonResponse({'message': '页面记录 ID 必须是有效的数字'}, status=400)
-
-        return _save_answers_logic(request, page_record_id)
-    else:
-        return JsonResponse({'message': '请求方法错误'}, status=400)
+# def _save_answers_logic(request, page_record_id):
+#     # 获取页面记录
+#     page_record = get_object_or_404(StudentPageRecord, id=page_record_id)
+#
+#     # 获取当前页面的所有大题
+#     page_main_questions = PageMainQuestion.objects.filter(page=page_record.page)
+#     main_questions = [pmq.main_question for pmq in page_main_questions]
+#
+#     # 获取所有相关的小题
+#     page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
+#     sub_question_ids = [psq.sub_question.id for psq in page_sub_questions]
+#
+#     # 保存答案
+#     for sub_question_id in sub_question_ids:
+#         sub_question = SubQuestion.objects.get(id=sub_question_id)
+#         main_question = sub_question.main_question
+#         question_type = main_question.question_type
+#
+#         if question_type == 'choice':
+#             # 选择题
+#             selected_option = request.POST.get(f'answer_{sub_question_id}')
+#             answer_text = selected_option
+#             # 更新或创建答案记录
+#             StudentAnswer.objects.update_or_create(
+#                 sub_question_id=sub_question_id,
+#                 student_page_record=page_record,
+#                 defaults={'text': answer_text}
+#             )
+#         elif question_type == 'matching':
+#             # 连线题
+#             answers = request.POST.getlist(f'answer_{sub_question_id}')
+#             answer_text = ','.join(answers)
+#             # 更新或创建答案记录
+#             StudentAnswer.objects.update_or_create(
+#                 sub_question_id=sub_question_id,
+#                 student_page_record=page_record,
+#                 defaults={'text': answer_text}
+#             )
+#         elif question_type == 'correction':
+#             # 改错题
+#             for key, value in request.POST.items():
+#                 if key.startswith(f'correction_type_{sub_question_id}_'):
+#                     # 提取 local_index
+#                     local_index = key.split('_')[-1]
+#
+#                     # 获取对应的错误类型、索引和修改内容
+#                     correction_type = value.strip()
+#                     correction_text = request.POST.get(f'correction_text_{sub_question_id}_{local_index}', '').strip()
+#                     correction_index = request.POST.get(f'correction_index_{sub_question_id}_{local_index}', '').strip()
+#
+#                     # 检查是否有错误
+#                     if correction_type == 'none':  # 没有错误
+#                         answer_text = 'right'
+#                     else:
+#                         # 格式化答案文本：type:index:text
+#                         answer_text = f"{correction_type}:{correction_index}:{correction_text}"
+#                     StudentAnswer.objects.create(
+#                         sub_question=sub_question,
+#                         student_page_record=page_record,
+#                         text=answer_text
+#                     )
+#
+#
+#         else:
+#             # 主观题
+#             answer_text = request.POST.get(f'answer_{sub_question_id}', '').strip()
+#             # 更新或创建答案记录
+#             StudentAnswer.objects.update_or_create(
+#                 sub_question_id=sub_question_id,
+#                 student_page_record=page_record,
+#                 defaults={'text': answer_text}
+#             )
+#
+#         # # 更新或创建答案记录
+#         # StudentAnswer.objects.update_or_create(
+#         #     sub_question_id=sub_question_id,
+#         #     student_page_record=page_record,
+#         #     defaults={'text': answer_text}
+#         # )
+#
+#     return JsonResponse({'message': '答案保存成功'})
+# def save_answers(request):
+#     if request.method == 'POST':
+#         page_record_id = request.POST.get('page_record_id')
+#         if not page_record_id:
+#             return JsonResponse({'message': '缺少页面记录 ID'}, status=400)
+#
+#         try:
+#             page_record_id = int(page_record_id)
+#         except ValueError:
+#             return JsonResponse({'message': '页面记录 ID 必须是有效的数字'}, status=400)
+#
+#         return _save_answers_logic(request, page_record_id)
+#     else:
+#         return JsonResponse({'message': '请求方法错误'}, status=400)
 
 #暂时缓存
 def _save_answers_to_cache(request, page_record_id):
@@ -454,27 +480,28 @@ def _save_answers_to_cache(request, page_record_id):
             answers = request.POST.getlist(f'answer_{sub_question_id}')
             answer_text = ','.join(answers)
         elif question_type == 'correction': # 改错题
-            corrections = []
+            correction_types = []
+            correction_texts = []
+            correction_indices = []
+
             for key, value in request.POST.items():
                 if key.startswith(f'correction_type_{sub_question_id}_'):
                     local_index = key.split('_')[-1]
-
-                    # 获取对应的错误类型、索引和修改内容
                     correction_type = value.strip()
                     correction_text = request.POST.get(f'correction_text_{sub_question_id}_{local_index}', '').strip()
-                    correction_index = request.POST.get(f'correction_index_{sub_question_id}_{local_index}', '').strip()
 
-                    # 检查是否有错误
                     if correction_type != 'none':
-                        corrections.append({
-                            "type": correction_type,
-                            "index": correction_index,
-                            "text": correction_text
-                        })
-
-            # 如果没有错误记录，保存为空列表
-            answer_text = corrections if corrections else []
-
+                        correction_types.append(correction_type)
+                        correction_texts.append(correction_text)
+                        correction_indices.append(local_index)
+            answer_text = []
+            for i in range(len(correction_types)):
+                answer_text.append({
+                    'type': correction_types[i],
+                    'index': correction_indices[i],
+                    'text': correction_texts[i]
+                })
+            answer_text = json.dumps(answer_text)  # 将列表转换为 JSON 字符串
         else:
             # 主观题
             answer_text = request.POST.get(f'answer_{sub_question_id}', '').strip()
@@ -500,38 +527,61 @@ def _save_answers_to_cache(request, page_record_id):
 #         )
 #     cache.delete(cache_key)  # 删除缓存
 #     return JsonResponse({'message': '已保存'})
+
+def _update_cache(page_record):
+    """从数据库中读取最新答案并更新缓存"""
+    cache_key = f"answers_{page_record.id}"
+    cached_answers = {}
+
+    student_answers = StudentAnswer.objects.filter(student_page_record=page_record)
+    for answer in student_answers:
+        sub_question_id = answer.sub_question.id
+        if answer.sub_question.main_question.question_type == 'correction':
+            # 对于改错题，将答案转换为 JSON 字符串
+            corrections = []
+            if answer.type and answer.index is not None and answer.text:
+                corrections.append({
+                    'type': answer.type,
+                    'index': answer.index,
+                    'text': answer.text
+                })
+            cached_answers[sub_question_id] = json.dumps(corrections)
+        else:
+            cached_answers[sub_question_id] = answer.text
+    print(cached_answers)
+    print('save')
+
+    # 更新缓存
+    cache.set(cache_key, cached_answers, timeout=600)
+
 def _save_answers_to_database(page_record_id):
     """从缓存中读取答案并保存到数据库"""
     cache_key = f"answers_{page_record_id}"
     cached_answers = cache.get(cache_key, {})
 
     for sub_question_id, answer_text in cached_answers.items():
-        sub_question_id = int(sub_question_id)  # 确保 sub_question_id 是整数
+        sub_question_id = int(sub_question_id)
         sub_question = SubQuestion.objects.get(id=sub_question_id)
 
         if sub_question.main_question.question_type == 'correction':
-            # 处理改错题的多个错误记录
             if answer_text == 'none':
-                # 如果没有错误记录，删除所有相关答案
                 StudentAnswer.objects.filter(
                     sub_question=sub_question,
                     student_page_record_id=page_record_id
                 ).delete()
             else:
-                # 删除旧的答案记录
                 StudentAnswer.objects.filter(
                     sub_question=sub_question,
                     student_page_record_id=page_record_id
                 ).delete()
 
-                # 保存新的答案记录
-
-                for correction in answer_text:
+                corrections = json.loads(answer_text)
+                for correction in corrections:
                     StudentAnswer.objects.create(
                         sub_question=sub_question,
                         student_page_record_id=page_record_id,
                         text=correction['text'],
-                        index=correction['index'],
+                        index=int(correction['index']),
                         type=correction['type']
                     )
         else:
@@ -541,8 +591,10 @@ def _save_answers_to_database(page_record_id):
                 student_page_record_id=page_record_id,
                 defaults={'text': answer_text}
             )
-
-    cache.delete(cache_key)  # 删除缓存
+    # 更新缓存
+    page_record = StudentPageRecord.objects.get(id=page_record_id)
+    _update_cache(page_record)
+    print(cached_answers)
     return JsonResponse({'message': '已保存'})
 
 
@@ -611,6 +663,7 @@ def save_page(request, exam_id, order):
             page_record.submitted = True
             page_record.submitted_at = timezone.now()
             page_record.save()
+            print(page_record)
             return next_page(request, exam.id, order)
 
         return _save_answers_to_cache(request, page_record.id)
