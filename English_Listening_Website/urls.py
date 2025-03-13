@@ -44,7 +44,7 @@ urlpatterns = [
     # 分发路由
     path('teacher/', include('ELW.urls')),
     path('student/', include('student_ELW.urls')),
-    path('create-big-question/', views.create_big_question_with_small_questions, name='create_big_question_with_small_questions'),
+    # path('create-big-question/', views.create_big_question_with_small_questions, name='create_big_question_with_small_questions'),
 
 #forum announce accessment
 path('forum/', include('forum.urls')),

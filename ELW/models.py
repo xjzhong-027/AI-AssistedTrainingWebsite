@@ -8,6 +8,8 @@ from Account.models import Students, Teachers, Class, Course, Admins, Attendance
 
 # Create your models here.
 
+# 数据已迁移至管理员端-Account
+'''
 # 教师表
 # class Teachers(models.Model):
 #     username = models.CharField(max_length=20, verbose_name='账号')
@@ -54,6 +56,8 @@ from Account.models import Students, Teachers, Class, Course, Admins, Attendance
 # class Admins(models.Model):
 #     username = models.CharField(max_length=20)
 #     password = models.CharField(max_length=100)
+'''
+
 
 # 用户登录记录（ID，学号，周次，行为，时间，最后活动时间，登录设备信息）
 class LoginInfo(models.Model):
