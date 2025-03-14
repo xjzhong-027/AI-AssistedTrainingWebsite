@@ -73,8 +73,8 @@ def images_upload_to(instance, filename):
     extension = os.path.splitext(filename)[1]  # 获取文件扩展名
     new_filename = f"{uuid.uuid4()}{extension}"  # 生成唯一文件名
     # print(extension)
-    # print(f'images/{new_filename}')
-    return f"images/{new_filename}"  # 存储到 media/images/
+    # print(f'image/{new_filename}')
+    return f"images/{new_filename}"  # 存储到 media_material/image/
 
 def documents_upload_to(instance, filename):
     extension = os.path.splitext(filename)[1]

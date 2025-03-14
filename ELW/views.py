@@ -298,7 +298,7 @@ def teacher_edit_question(request, sub_id, material_id):
             'main_question': main_question,
             'sub_question': sub_question,
             'media_material': media_material,
-            'images': images,
+            'image': images,
         })
     return render(request, 'teacher_side/edit_question.html', {
         'main_question': main_question,
@@ -673,24 +673,26 @@ def teacher_question_add(request):
 # 添加素材包
 def teacher_task_package_add(request):
     # 提交的表单有数据，则为填写表单后提交的网页
+    '''
     if request.method == 'POST' and request.POST.keys():
         form = UploadMediaForm(request.POST, request.FILES)
         # 表单合法，存储表单数据至临时库
         if form.is_valid():
+            print('valid')
             # 【处理文件保存逻辑（【待替换】需要保存到数据库，在这里创建 UploadedMedia 实例）】
             media_file = request.FILES.get('media_file')
             media_uuid =uuid.uuid4().hex
-            media_file_path = os.path.join(settings.MEDIA_ROOT, 'media/', media_uuid)
-            # os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
-            # with open(media_file_path, 'wb+') as destination:
-            #     for chunk in media_file.chunks():
-            #         destination.write(chunk)
+            media_file_path = os.path.join(settings.MEDIA_ROOT, 'media_material/', media_uuid)
+            os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
+            with open(media_file_path, 'wb+') as destination:
+                for chunk in media_file.chunks():
+                    destination.write(chunk)
 
             # 处理多张图片
-            image_files = request.FILES.getlist('image_file')
-            for image_file in image_files:
-                print("Image file:", image_file.name)
-            '''
+            # image_files = request.FILES.getlist('image_file')
+            # for image_file in image_files:
+            #     print("Image file:", image_file.name)
+
             image_file = request.FILES.get('image_file')
             if image_file:
                 image_uuid = uuid.uuid4().hex
@@ -705,7 +707,7 @@ def teacher_task_package_add(request):
                     abstract = request.POST.get('abstract'),
                     keywords = request.POST.get('keywords'),
                     transcript = request.POST.get('transcript'),
-                    media_url = 'media/' + media_uuid,
+                    media_url = 'media_material/' + media_uuid,
                     image_url = 'image/' + image_uuid,
                 )
                 id = new_task_package.id
@@ -719,7 +721,7 @@ def teacher_task_package_add(request):
                 abstract=request.POST.get('abstract'),
                 keywords=request.POST.get('keywords'),
                 transcript=request.POST.get('transcript'),
-                media_url='media/' + media_uuid,
+                media_url='media_material/' + media_uuid,
             )
             id = new_task_package.id
             print('Received all task_package_info successfully.')
@@ -731,14 +733,41 @@ def teacher_task_package_add(request):
             url = reverse('question_integration')
             return HttpResponseRedirect(f"{url}?{query_string}")
             # return redirect('teacher_question_add')
-            '''
+
+        else:
+            # 打印表单错误信息
+            print("表单验证失败，错误信息：", form.errors)
+    '''
+
+    if request.method == 'POST':
+        media_file = request.FILES.get('media_file')
+        media_uuid = uuid.uuid4().hex
+        print('outside/uuid: ', media_uuid)
+
+        media_file_path = os.path.join(settings.MEDIA_ROOT, 'media\\', media_uuid)
+
+        print('media_path: ', media_file_path)
+        os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
+        with open(media_file_path, 'wb+') as destination:
+            for chunk in media_file.chunks():
+                destination.write(chunk)
+
+        image_files = request.FILES.getlist('image_file')
+        for image_file in image_files:
+            print('image/uuid: ', media_uuid)
+
+            image_file_path = os.path.join(f'{settings.MEDIA_ROOT}\\image\\{media_uuid}\\{image_file.name}')
+
+            print('image_path: ', image_file_path)
+            os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
+            with open(image_file_path, 'wb+') as destination:
+                for chunk in image_file.chunks():
+                    destination.write(chunk)
+
     # 表单无数据，为初次跳转网页
     print('first fetch at task_package_add.html')
-    form = UploadMediaForm()
-    return render(request, 'teacher_side/task_package_add.html',
-            {
-                    'form': form,
-                })
+    # form = UploadMediaForm()
+    return render(request, 'teacher_side/task_package_add.html')
 
 def teacher_question_type(request):
     task_package_id = request.GET.get('task_package_id')

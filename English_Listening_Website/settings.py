@@ -170,8 +170,8 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # 【用于测试，后续应转为连接数据库】
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media_material/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media_material')
 
 # 设置会话过期时间（单位：秒）
 SESSION_COOKIE_AGE = 60 * 30  # 30分钟

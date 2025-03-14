@@ -7,6 +7,7 @@ from django.template.context_processors import request
 import requests
 from docx import Document as DocxDocument
 from io import BytesIO
+from .widgets import MultipleFileInput
 
 
 
@@ -157,7 +158,7 @@ class UploadMediaForm(forms.Form):
     # )
     image_file = forms.ImageField(
         validators=[FileExtensionValidator(allowed_extensions=['png', 'jpg', 'jpeg', 'gif'])],
-        widget=ClearableFileInput(attrs={'accept': 'image/*', 'multiple': True}),
+        widget=MultipleFileInput(attrs={'accept': 'image/*'}),
         required=False,
     )
 
