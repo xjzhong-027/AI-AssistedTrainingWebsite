@@ -35,6 +35,8 @@ ALLOWED_HOSTS = []
 # Application definition
 
 #需要配置
+# pip install pymysql, django-simpleui, daphne, channels, django-filter, openpyxl, python-docx, requests,
+
 # pip install channels channels_redis
 # pip install daphne
 # pip install Django-filter

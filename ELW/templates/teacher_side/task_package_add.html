@@ -13,7 +13,7 @@
         <form method="post" action="/teacher/task_package_add/" enctype="multipart/form-data">
         {% csrf_token %}
 {#        {{ form.as_p }}#}
-        <input type="file" name="media_file" accept=".mp3,.mp4,.avi,.wav,.mov,.ogg,.webm,audio/*">
+        <input type="file" name="media_file" accept=".mp3,.mp4,.avi,.wav,.mov,.ogg,.webm,audio/*" required>
         <input type="file" name="image_file" accept="image/*" multiple>
         <div>
             <label for="title">Title: </label>

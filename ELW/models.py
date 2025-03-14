@@ -89,7 +89,7 @@ class MediaMaterial(models.Model):
     keywords = models.TextField(default='')
     transcript = models.TextField(default='')
     media_url = models.CharField(max_length=100)
-    image_url = models.CharField(max_length=100, default='')
+    image_url = models.CharField(max_length=10000, default='')
 
     class Meta:
         verbose_name_plural = '题库管理'

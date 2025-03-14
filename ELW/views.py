@@ -740,29 +740,45 @@ def teacher_task_package_add(request):
     '''
 
     if request.method == 'POST':
-        media_file = request.FILES.get('media_file')
+        # 全球唯一标识符
         media_uuid = uuid.uuid4().hex
-        print('outside/uuid: ', media_uuid)
-
+        # 存储音频/视频
+        media_file = request.FILES.get('media_file')
         media_file_path = os.path.join(settings.MEDIA_ROOT, 'media\\', media_uuid)
-
         print('media_path: ', media_file_path)
         os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
         with open(media_file_path, 'wb+') as destination:
             for chunk in media_file.chunks():
                 destination.write(chunk)
-
+        # 存储图片
         image_files = request.FILES.getlist('image_file')
-        for image_file in image_files:
-            print('image/uuid: ', media_uuid)
+        if image_files:
+            image_file_paths = ''
+            for image_file in image_files:
+                image_file_path = os.path.join(f'{settings.MEDIA_ROOT}\\image\\{media_uuid}\\{image_file.name}')
+                print('image_path: ', image_file_path)
+                image_file_paths = image_file_paths + image_file_path + ','
+                os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
+                with open(image_file_path, 'wb+') as destination:
+                    for chunk in image_file.chunks():
+                        destination.write(chunk)
+            new_task_package = models.MediaMaterial.objects.create(
+                title=request.POST.get('title'),
+                theme=request.POST.get('theme'),
+                abstract=request.POST.get('abstract'),
+                keywords=request.POST.get('keywords'),
+                transcript=request.POST.get('transcript'),
+                media_url=media_file_path,
+                image_url=image_file_paths,
+            )
+            print('new_task_package', new_task_package)
+            id = new_task_package.id
+            params = {'task_package_id': id}
+            query_string = urlencode(params)
+            url = reverse('question_integration')
+            return HttpResponseRedirect(f"{url}?{query_string}")
 
-            image_file_path = os.path.join(f'{settings.MEDIA_ROOT}\\image\\{media_uuid}\\{image_file.name}')
 
-            print('image_path: ', image_file_path)
-            os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
-            with open(image_file_path, 'wb+') as destination:
-                for chunk in image_file.chunks():
-                    destination.write(chunk)
 
     # 表单无数据，为初次跳转网页
     print('first fetch at task_package_add.html')
