@@ -18,7 +18,7 @@ from .forms import UploadMediaForm, WordUploadForm
 from ELW import models
 from django.contrib import messages
 
-from . import func, pre_page, doc_func
+from . import func, pre_page, doc_func, doc_page_func
 
 from .models import (
     MediaMaterial,
@@ -679,13 +679,19 @@ def teacher_task_package_add(request):
         if form.is_valid():
             # 【处理文件保存逻辑（【待替换】需要保存到数据库，在这里创建 UploadedMedia 实例）】
             media_file = request.FILES.get('media_file')
-            image_file = request.FILES.get('image_file')
             media_uuid =uuid.uuid4().hex
             media_file_path = os.path.join(settings.MEDIA_ROOT, 'media/', media_uuid)
-            os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
-            with open(media_file_path, 'wb+') as destination:
-                for chunk in media_file.chunks():
-                    destination.write(chunk)
+            # os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
+            # with open(media_file_path, 'wb+') as destination:
+            #     for chunk in media_file.chunks():
+            #         destination.write(chunk)
+
+            # 处理多张图片
+            image_files = request.FILES.getlist('image_file')
+            for image_file in image_files:
+                print("Image file:", image_file.name)
+            '''
+            image_file = request.FILES.get('image_file')
             if image_file:
                 image_uuid = uuid.uuid4().hex
                 image_file_path = os.path.join(settings.MEDIA_ROOT, 'image/', image_uuid)
@@ -725,7 +731,7 @@ def teacher_task_package_add(request):
             url = reverse('question_integration')
             return HttpResponseRedirect(f"{url}?{query_string}")
             # return redirect('teacher_question_add')
-
+            '''
     # 表单无数据，为初次跳转网页
     print('first fetch at task_package_add.html')
     form = UploadMediaForm()
@@ -1188,13 +1194,13 @@ def question_integration(request):
             word_file = request.FILES['word_file']
             # 提取文本内容
             text_content = extract_text_from_word(word_file)
-            question_data = []
-            questions = doc_func.extract_questions(text_content)
-            for question in questions:
-                main_question = doc_func.parse_main_question(question)
-                question_data.append(main_question)
-                print('main_question: ', main_question)
-
+            # question_data = []
+            # questions = doc_func.extract_questions(text_content)
+            # for question in questions:
+            #     main_question = doc_func.parse_main_question(question)
+            #     question_data.append(main_question)
+            #     print('main_question: ', main_question)
+            question_data = doc_func.main_process(text_content)
 
             # 将每道改错题的sub_list、type_list、answer_list、index_list合并为一个列表，列表中每个集合包含这四个值
             for main_question in question_data:
@@ -1997,19 +2003,36 @@ def teacher_exam_delete(request, unit_id):
     return redirect(teacher_exam_bank)
 
 def teacher_exam_management(request):
-    if request.method == 'POST':
-        main_text = request.POST['MainQuestion']
-        sub_text = request.POST['SubQuestion']
-        main_data = func.extract_main_question(main_text)
-        print('main_data: ', main_data)
-        if request.POST['question_type'] == 'blank':
-            questions = func.extract_blank_questions(sub_text)
-            print('questions: ', questions)
-            for question in questions:
-                question_datas = func.extract_subtext_and_answers(question)
-                print('question_datas: ', question_datas)
+    # if request.method == 'POST':
+        # main_text = request.POST['MainQuestion']
+        # sub_text = request.POST['SubQuestion']
+        # main_data = func.extract_main_question(main_text)
+        # print('main_data: ', main_data)
+        # if request.POST['question_type'] == 'blank':
+        #     questions = func.extract_blank_questions(sub_text)
+        #     print('questions: ', questions)
+        #     for question in questions:
+        #         question_datas = func.extract_subtext_and_answers(question)
+        #         print('question_datas: ', question_datas)
+        # word文档导入
+    form = WordUploadForm()
+    if request.method == 'POST' and request.FILES.get('word_file'):
+        def extract_text_from_word(doc_file):
+            # 读取Word文档内容
+            doc = Document(doc_file)
+            text = ''
+            for para in doc.paragraphs:
+                text += para.text
+            return text
 
-    return render(request, 'teacher_side/exam_management.html')
+        form = WordUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            word_file = request.FILES['word_file']
+            # 提取文本内容
+            text_content = extract_text_from_word(word_file)
+            doc_page_func.main_process(text_content)
+
+    return render(request, 'teacher_side/exam_management.html', {'form': form})
 
 def teacher_forum(request):
     if request.method == 'POST':

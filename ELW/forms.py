@@ -148,11 +148,16 @@ class UploadMediaForm(forms.Form):
         # 至少要上传一个媒体文件
         required=True,
     )
-    image_file = forms.FileField(
-        # 只允许上传图片
+    # image_file = forms.FileField(
+    #     # 只允许上传图片
+    #     validators=[FileExtensionValidator(allowed_extensions=['png', 'jpg', 'jpeg', 'gif'])],
+    #     widget=ClearableFileInput(attrs={'accept': 'image/*'}),
+    #     # 可以不上传图片
+    #     required=False,
+    # )
+    image_file = forms.ImageField(
         validators=[FileExtensionValidator(allowed_extensions=['png', 'jpg', 'jpeg', 'gif'])],
-        widget=ClearableFileInput(attrs={'accept': 'image/*'}),
-        # 可以不上传图片
+        widget=ClearableFileInput(attrs={'accept': 'image/*', 'multiple': True}),
         required=False,
     )
 

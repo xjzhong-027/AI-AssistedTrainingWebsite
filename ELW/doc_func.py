@@ -1,6 +1,15 @@
 import re
 from . import func
 
+def main_process(text):
+    question_data = []
+    questions = extract_questions(text)
+    for question in questions:
+        main_question = parse_main_question(question)
+        question_data.append(main_question)
+        print('main_question: ', main_question)
+    return question_data
+
 # 分割各道大题
 def extract_questions(text):
     # 使用正则表达式匹配各个部分，注意匹配的是带有数字和括号的章节标题

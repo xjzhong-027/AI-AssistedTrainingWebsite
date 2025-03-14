@@ -6,6 +6,15 @@
 </head>
 <body>
 <h2>Here are exam_management.</h2>
+    <div class="file_form">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">导入文件</button>
+        </form>
+    </div>
+
+
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <fieldset>
