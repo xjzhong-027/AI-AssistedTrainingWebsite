@@ -744,8 +744,10 @@ def teacher_task_package_add(request):
         media_uuid = uuid.uuid4().hex
         # 存储音频/视频
         media_file = request.FILES.get('media_file')
-        media_file_path = os.path.join(settings.MEDIA_ROOT, 'media\\', media_uuid)
+        media_file_path = os.path.join(settings.MEDIA_ROOT, 'media_material\\', media_uuid)
+        media_url = os.path.join('\\media_material\\media\\', media_uuid)
         print('media_path: ', media_file_path)
+        print('media_url: ', media_url)
         os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
         with open(media_file_path, 'wb+') as destination:
             for chunk in media_file.chunks():
@@ -753,11 +755,13 @@ def teacher_task_package_add(request):
         # 存储图片
         image_files = request.FILES.getlist('image_file')
         if image_files:
-            image_file_paths = ''
+            image_urls = ''
             for image_file in image_files:
                 image_file_path = os.path.join(f'{settings.MEDIA_ROOT}\\image\\{media_uuid}\\{image_file.name}')
+                image_url = os.path.join(f'\\media_material\\image\\{media_uuid}\\{image_file.name}')
                 print('image_path: ', image_file_path)
-                image_file_paths = image_file_paths + image_file_path + ','
+                print('image_url: ', image_url)
+                image_urls = image_urls + image_url + ','
                 os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
                 with open(image_file_path, 'wb+') as destination:
                     for chunk in image_file.chunks():
@@ -768,8 +772,8 @@ def teacher_task_package_add(request):
                 abstract=request.POST.get('abstract'),
                 keywords=request.POST.get('keywords'),
                 transcript=request.POST.get('transcript'),
-                media_url=media_file_path,
-                image_url=image_file_paths,
+                media_url=media_url,
+                image_url=image_urls,
             )
             print('new_task_package', new_task_package)
             id = new_task_package.id
@@ -1444,8 +1448,7 @@ def question_integration(request):
             return redirect('teacher_question_bank')
 
     form = WordUploadForm()
-
-    return render(request, 'teacher_side/question_integration.html', {'form': form})
+    return render(request, 'teacher_side/question_integration.html', {'form': form,})
 
 # question_integration.html (test整合页面)
 #
