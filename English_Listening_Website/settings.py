@@ -57,7 +57,8 @@ INSTALLED_APPS = [
     'student_ELW',
     'Account.apps.AccountConfig',
     'Backup.apps.BackupConfig',
-    'Log.apps.LogConfig'
+    'Log.apps.LogConfig',
+    'Query.apps.QueryConfig',
 ]
 CHANNEL_LAYERS = {
     'default': {

@@ -1,0 +1,173 @@
+{% extends "query_base.html" %}
+
+{% block content %}
+    <style>
+        .pagination-circle .page-item {
+            margin: 0 5px;
+        }
+        .pagination-circle .page-link {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            line-height: 40px;
+            text-align: center;
+            border-radius: 50%;
+            border: 1px solid #ddd;
+            color: #333;
+            background-color: #fff;
+            margin-right: 20px;
+        }
+        .pagination-circle .page-item.active .page-link {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: #fff;
+        }
+        .pagination-circle .page-link:hover {
+            background-color: #f8f9fa;
+            border-color: #ddd;
+        }
+        .main-question {
+            margin-bottom: 50px;
+        }
+        .sub-question {
+            margin-bottom: 40px;
+        }
+        u {
+            text-decoration: underline;
+            text-decoration-thickness: 1.5px;
+        }
+        span[style="text-decoration: line-through;"] {
+            text-decoration: line-through;
+            text-decoration-thickness: 1.5px;
+        }
+        sup {
+            vertical-align: sub;
+            position: relative;
+            top: 0.5em;
+            left: 0.2em;
+            font-size: 1.2em;
+        }
+    </style>
+
+    <h2>{{ unit.type }} - {{ unit.title }} - {{ class_instance }}</h2>
+    <!-- 分页控件 -->
+    <div class="pagination">
+        <ul class="pagination pagination-circle">
+            {% for page_data in question_data %}
+                <li class="page-item {% if forloop.counter0 == 0 %}active{% endif %}" data-page-index="{{ forloop.counter0 }}">
+                    <a class="page-link" href="#">{{ forloop.counter }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- 题目显示区域 -->
+    <div id="question-container">
+
+        {% for page_data  in question_data %}
+            <div class="page-content" data-page-index="{{ forloop.counter0  }}" style="display: none;">
+                {% for main_question in page_data.main_questions %}
+                    <div class="main-question">
+                        <h4>题目： {{ main_question.main_question.question_text }}</h4>
+                        <!-- 选择题 -->
+                        {% if main_question.main_question.question_type == 'choice' %}
+                            {% for sub_question in main_question.sub_questions %}
+                                <div class="sub-question">
+                                    <p>{{ forloop.counter }}. {{ sub_question.sub_question.question_text }}</p>
+                                    {% for choice in sub_question.choices %}
+                                        <ul>
+                                            <p
+                                                {% if choice.is_answer %}
+                                                    style="color: #007bff;"
+                                                {% endif %}
+                                            >{{ choice.option_label}}. {{ choice.option_content }}</p>
+                                        </ul>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+
+                        <!-- 改错题 -->
+                        {% elif main_question.main_question.question_type == 'correction' %}
+                            {% for sub_question in main_question.sub_questions %}
+                                <span>{{ sub_question.corrected_text }}</span>
+                            {% endfor %}
+
+
+                            {% for sub_question in main_question.sub_questions %}
+                                {% for correction in sub_question.corrections %}
+                                    <p>{{ correction.index }} - {{ correction.type }} - {{ sub_question.sub_question.answer }}</p>
+                                {% endfor %}
+                            {% endfor %}
+
+                        <!-- 填空题 -->
+                        {% elif main_question.main_question.question_type == 'blank' %}
+                            {% for sub_question in main_question.sub_questions %}
+                                <span>{{ sub_question.sub_question.question_text }} ___{{ forloop.counter }}___</span>
+                            {% endfor %}
+
+                            {% for sub_question in main_question.sub_questions %}
+                                <p>{{ forloop.counter }}. {{ sub_question.sub_question.answer }}</p>
+                            {% endfor %}
+
+                        <!-- 简答题 -->
+                        {% elif main_question.main_question.question_type == 'comprehension' %}
+                            {% for sub_question in main_question.sub_questions %}
+                                <div class="sub-question">
+                                    <p>{{ forloop.counter }}. {{ sub_question.sub_question.question_text }}</p>
+                                    <p>参考答案：{{ sub_question.sub_question.answer }}</p>
+                                </div>
+                            {% endfor %}
+
+
+                        <!-- 连线题 -->
+                        {% elif main_question.main_question.question_type == 'matching' %}
+                            {% for sub_question in main_question.sub_questions %}
+                                {% for matching in sub_question.matchings %}
+                                    <div class="sub-question">
+                                        <p>{{ forloop.parentloop.counter }}. {{ sub_question.sub_question.question_text }}</p>
+                                        <p>{{ sub_question.sub_question.answer }}. {{ matching.option_content }}</p>
+                                    </div>
+                                {% endfor %}
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+    </div>
+
+    <script>
+        // 获取所有分页按钮和页面内容
+        const pageItems = document.querySelectorAll('.pagination-circle .page-item');
+        const pageContents = document.querySelectorAll('.page-content');
+
+        // 默认显示第一页
+        pageContents[0].style.display = 'block';
+
+        // 绑定分页按钮点击事件
+        pageItems.forEach(item => {
+            item.addEventListener('click', (event) => {
+                event.preventDefault(); // 阻止默认跳转行为
+
+                const pageIndex = item.getAttribute('data-page-index');
+
+                // 隐藏所有页面内容
+                pageContents.forEach(content => {
+                    content.style.display = 'none';
+                });
+
+                // 显示当前选中的页面内容
+                pageContents[pageIndex].style.display = 'block';
+
+                // 移除所有分页按钮的高亮效果
+                pageItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+
+                // 为当前分页按钮添加高亮效果
+                item.classList.add('active');
+            });
+        });
+    </script>
+{% endblock %}

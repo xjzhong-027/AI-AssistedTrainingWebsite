@@ -1,0 +1,129 @@
+{% extends "query_base.html" %}
+
+{% block content %}
+    <div class="container-fluid">
+        {% if assignments_data %}
+            <h2 class="mb-4">学习记录统计 — {{ student.name }}</h2>
+        {% else %}
+            <h2 class="mb-4">暂无学习记录</h2>
+        {% endif %}
+
+        <!-- 筛选条件 -->
+        <div>
+            <label for="category-filter">筛选类别:</label>
+            <select id="category-filter" class="form-control">
+                <option value="">所有类别</option>
+                {% for key, value in categories.items %}
+                    <option value="{{ key }}">{{ value }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- 表格容器 -->
+        <table class="table table-bordered table-striped table-hover" id="assignment-table">
+            <thead class="table-light">
+                <tr>
+                    <th>No.</th>
+                    <th>单元</th>
+                    <th>任务类型</th>
+                    <th>开放周次</th>
+                    <th>开放时间</th>
+                    <th>提交状态</th>
+                    <th>提交时间</th>
+                    <th>
+                        分数
+                        <span data-toggle="tooltip" data-placement="top" title="总分=所有页面的分数与页面诚信分的乘积的总和">?</span>
+                    </th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for data in assignments_data %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ data.unit.title }}</td>
+                    <td>{{ data.unit.type }}</td>
+                    <td>
+                        {% if data.unit.type == "exam" or data.unit.type == "quiz" %}
+                            Week {{ data.unit_data.week }}
+                        {% else %}
+                            Week {{ data.unit.order }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if data.unit.type == "exam" %}
+                            {{ data.unit_data.exam_date }} - {{ data.unit_data.start_time }} - {{ data.unit_data.end_time }}
+                        {% else %}
+                            ——
+                        {% endif %}
+                    </td>
+                    <td
+                        {% if not data.record.submitted %}
+                            style="color: #ea5e5a;"
+                        {% endif %}
+                    >
+                        {{ data.record.submitted|yesno:"已提交,未提交" }}</td>
+                    <td>{{ data.record.finished_at }}</td>
+                    <td>{{ data.record.score }}</td>
+                    <td>
+                        <a href="{% url 'Query:unit_detail' data.unit.id student.id %}" class="btn btn-info btn-sm">查看详情</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- 分页控件 -->
+        <div class="pagination">
+            <ul class="pagination">
+                {% if assignments_data.has_previous %}
+                    <li><a href="?page=1">&laquo; 第一页</a></li>
+                    <li><a href="?page={{ assignments_data.previous_page_number }}">上一页</a></li>
+                {% else %}
+                    <li class="disabled"><span>&laquo; 第一页</span></li>
+                    <li class="disabled"><span>上一页</span></li>
+                {% endif %}
+
+                <li class="disabled"><span>第 {{ assignments_data.number }} 页</span></li>
+
+                {% if assignments_data.has_next %}
+                    <li><a href="?page={{ assignments_data.next_page_number }}">下一页</a></li>
+                    <li><a href="?page={{ assignments_data.paginator.num_pages }}">最后一页 &raquo;</a></li>
+                {% else %}
+                    <li class="disabled"><span>下一页</span></li>
+                    <li class="disabled"><span>最后一页 &raquo;</span></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            // 启用 Bootstrap 的 tooltip 功能
+            $('[data-toggle="tooltip"]').tooltip();
+
+            // 筛选categories
+            const categoryFilter = document.getElementById('category-filter');
+            const tableRows = document.querySelectorAll('#assignment-table tbody tr');
+            categoryFilter.addEventListener('change', function() {
+                const selectedCategory = categoryFilter.value.toLowerCase();
+
+                // 遍历表格中的每一行，根据类别进行筛选
+                tableRows.forEach(row => {
+                    const categoryCell = row.querySelector('td:nth-child(3)'); // 获取类别列
+                    const categoryText = categoryCell ? categoryCell.textContent.toLowerCase() : '';
+
+                    // 如果选择了类别，且当前行的类别与所选类别匹配，则显示该行
+                    if (selectedCategory === '' || categoryText.includes(selectedCategory)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

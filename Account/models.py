@@ -12,7 +12,7 @@ Group._meta.verbose_name_plural = '分组'
 class Admins(models.Model):
     """ 管理员 """
     username = models.CharField(verbose_name='用户名', max_length=32, unique=True)
-    password = models.CharField(verbose_name='密码', max_length=32)
+    password = models.TextField(verbose_name='密码')
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admins', null=True, blank=True)
 
     class Meta:

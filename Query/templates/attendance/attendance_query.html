@@ -1,0 +1,195 @@
+{% extends "query_base.html" %}
+
+{% block content %}
+    <!-- 显示消息 -->
+    {% if messages %}
+        <ul class="messages list-group">
+            {% for message in messages %}
+                <li class="list-group-item {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                    {{ message }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+
+    <h2>查询学生考勤记录</h2>
+
+    <!-- 查询表单 -->
+    <form method="GET" class="form-inline">
+        <div class="form-group">
+            <label for="week" class="control-label">周次:</label>
+            {{ form.week }}
+        </div>
+
+        <div class="form-group">
+            <label for="class_field" class="control-label">班级名称:</label>
+            {{ form.class_field }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">查询考勤</button>
+    </form>
+
+    <hr>
+    {% if class_info %}
+        <h3>查询结果：</h3>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>班级</th>
+                    <th>课程</th>
+                    <th>上课时间</th>
+                    <th>授课教师</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ class_info.class_name }}</td>
+                    <td>{{ class_info.course }}</td>
+                    <td>周{{ class_info.week }} — {{ class_info.start_time }} - {{ class_info.end_time }}</td>
+                    <td>{{ class_info.teacher }}</td>
+                    <td>
+                        <a href="{% url 'Query:class_seat_plan' class_info.id %}" class="btn btn-info btn-sm">查看详情</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <!-- 筛选条件 -->
+            <div>
+                <label for="time-filter">筛选上课时间:</label>
+                <select id="time-filter" >
+                    <option value="">所有时间</option>
+                    {% for time in class_time %}
+                        <option value="{{ time }}">{{ time }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- 统一修改考勤状态 -->
+            <div>
+                <label for="status">统一修改状态:</label>
+                <select name="status">
+                    {% for value, label in status_choices.items %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" name="action" value="update_all" class="btn btn-warning">统一修改</button>
+            </div>
+
+            <!-- 单独修改每个学生的状态 -->
+            <table class="table table-bordered table-striped" id="attendance-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="select_all"></th>
+                        <th>班级</th>
+                        <th>学号</th>
+                        <th>学生姓名</th>
+                        <th>周次</th>
+                        <th>上课时间</th>
+                        <th>座位号</th>
+                        <th>考勤状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attendance in attendances %}
+                        <tr>
+                            <td><input type="checkbox" name="attendance_ids" value="{{ attendance.id }}"></td>
+                            <td>{{ class_info.class_name }}</td>
+                            <td>{{ attendance.student.username }}</td>
+                            <td>{{ attendance.student.name }}</td>
+                            <td>{{ attendance.week }}</td>
+                            <td>
+                                {% if attendance.adjusted_class_time %}
+                                    周{{ attendance.adjusted_class_time.new_week_day }} — {{ attendance.adjusted_class_time.new_class_begin_time }} - {{ attendance.adjusted_class_time.new_class_end_time }}
+                                {% elif attendance.added_class_time %}
+                                    周{{ attendance.added_class_time.weekday }} — {{ attendance.added_class_time.class_begin_time }} - {{ attendance.added_class_time.class_end_time }}
+                                {% else %}
+                                    周{{ class_info.week }} — {{ class_info.start_time }} - {{ class_info.end_time }}
+                                {% endif %}
+                            </td>
+                            <td>{{ attendance.student.seat_number }}</td>
+                            <td>{{ attendance.status_display }}</td>
+                            <td>
+                                <select name="status_{{ attendance.id }}" class="form-control">
+                                    {% for value, label in status_choices.items %}
+                                        <option value="{{ value }}" {% if value == attendance.status %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <button type="submit" name="action" value="update_selected" class="btn btn-success">保存修改</button>
+        </form>
+        <!-- 分页控件 -->
+        <div class="pagination">
+            <ul class="pagination">
+                {% if attendances.has_previous %}
+                    <li><a href="?page=1&week={{ request.GET.week }}&class_name={{ request.GET.class_name }}">&laquo; 第一页</a></li>
+                    <li><a href="?page={{ attendances.previous_page_number }}&week={{ request.GET.week }}&class_name={{ request.GET.class_name }}">上一页</a></li>
+                {% else %}
+                    <li class="disabled"><span>&laquo; 第一页</span></li>
+                    <li class="disabled"><span>上一页</span></li>
+                {% endif %}
+
+                <li class="disabled"><span>第 {{ attendances.number }} 页</span></li>
+
+                {% if attendances.has_next %}
+                    <li><a href="?page={{ attendances.next_page_number }}&week={{ request.GET.week }}&class_name={{ request.GET.class_name }}">下一页</a></li>
+                    <li><a href="?page={{ attendances.paginator.num_pages }}&week={{ request.GET.week }}&class_name={{ request.GET.class_name }}">最后一页 &raquo;</a></li>
+                {% else %}
+                    <li class="disabled"><span>下一页</span></li>
+                    <li class="disabled"><span>最后一页 &raquo;</span></li>
+                {% endif %}
+            </ul>
+        </div>
+    {% else %}
+        <p>没有找到相关的班级记录。</p>
+    {% endif %}
+
+    <script>
+        // 筛选上课时间
+        const timeFilter = document.getElementById('time-filter');
+        const tableRows = document.querySelectorAll('#attendance-table tbody tr');
+        timeFilter.addEventListener('change', function() {
+            const selectedTime = timeFilter.value;
+
+            // 遍历表格中的每一行，根据上课时间进行筛选
+            tableRows.forEach(row => {
+                const timeCell = row.querySelector('td:nth-child(6)'); // 获取时间列
+                const timeText = timeCell ? timeCell.textContent : '';
+
+                // 如果选择了上课时间，且当前行的上课时间与所选时间匹配，则显示该行
+                if (selectedTime === '' || timeText.includes(selectedTime)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // 全选功能
+        document.getElementById('select_all').addEventListener('click', function() {
+            var checkboxes = document.querySelectorAll('input[name="attendance_ids"]');
+            var isChecked = this.checked;  // 获取全选按钮的状态
+
+            // 遍历所有复选框，只对显示的行进行操作
+            checkboxes.forEach(function(checkbox, index) {
+                var row = tableRows[index];
+
+                if (row.style.display !== 'none') {
+                    checkbox.checked = isChecked;
+                }
+            });
+        });
+    </script>
+
+{% endblock %}

@@ -1,0 +1,573 @@
+{% extends "query_base.html" %}
+
+{% block content %}
+    <style>
+        .pagination-circle .page-item {
+            margin: 0 5px;
+        }
+        .pagination-circle .page-link {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            line-height: 40px;
+            text-align: center;
+            border-radius: 50%;
+            border: 1px solid #ddd;
+            color: #333;
+            background-color: #fff;
+            margin-right: 20px;
+        }
+        .pagination-circle .page-item.active .page-link {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: #fff;
+        }
+        .pagination-circle .page-link:hover {
+            background-color: #f8f9fa;
+            border-color: #ddd;
+        }
+        .main-question {
+            margin-bottom: 50px;
+        }
+        u {
+            text-decoration: underline;
+            text-decoration-thickness: 1.5px;
+        }
+        span[style="text-decoration: line-through;"] {
+            text-decoration: line-through;
+            text-decoration-thickness: 1.5px;
+        }
+        sup {
+            vertical-align: sub;
+            position: relative;
+            top: 0.5em;
+            left: 0.2em;
+            font-size: 1.2em;
+        }
+    </style>
+
+    <!-- 显示消息 -->
+    {% if messages %}
+        <ul class="messages list-group">
+            {% for message in messages %}
+                <li class="list-group-item {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                    {{ message }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <h2>{{ unit.type }} - {{ unit.title }} - {{ student.name }}</h2>
+    <!-- 分页控件 -->
+    <div class="pagination">
+        <ul class="pagination pagination-circle">
+            {% for page_data in question_data %}
+                <li class="page-item {% if forloop.counter0 == 0 %}active{% endif %}" data-page-index="{{ forloop.counter0 }}">
+                    <a class="page-link" href="#">{{ forloop.counter }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <h3>作答情况</h3>
+    <div id="question-container">
+
+        {% for page_data  in question_data %}
+            <div class="page-content" data-page-index="{{ forloop.counter0  }}" style="display: none;">
+                {% for main_question in page_data.main_questions %}
+                    <div class="main-question">
+                        <h4>题目： {{ main_question.main_question.question_text }}</h4>
+                        <!-- 选择题 -->
+                        {% if main_question.main_question.question_type == 'choice' or main_question.main_question.question_type == 'comprehension' or main_question.main_question.question_type == 'matching' %}
+                            <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id %}">
+                                {% csrf_token %}
+                                <table class="table table-bordered table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>序号</th>
+                                            <th>题目</th>
+                                            <th>作答内容</th>
+                                            <th>得分</th>
+                                            <th>操作</th>
+                                            <th style="background-color: #a9e6a9">参考答案</th>
+                                            <th style="background-color: #a9e6a9">小题分值</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sub_question in main_question.sub_questions %}
+                                            <tr>
+                                                <td><input type="checkbox" name="selected_answer_records" value="{{ sub_question.student_answers.0.id }}" /></td>
+                                                <td>{{ forloop.counter }}</td>
+                                                <td>{{ sub_question.sub_question.question_text }}</td>
+                                                <td>{{ sub_question.student_answers.0.text }}</td>
+                                                <td>
+                                                    <span class="question_score" id="question-score-{{ sub_question.student_answers.0.id }}">{{ sub_question.student_answers.0.score }}</span>
+                                                    <input type="number" id="score-input-{{ sub_question.student_answers.0.id }}" value="{{ sub_question.student_answers.0.score }}" step="0.1"  style="display: none;" />
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-warning btn-sm" id="edit-score-btn-{{ sub_question.student_answers.0.id }}" onclick="editScore({{ sub_question.student_answers.0.id }},event)">编辑</button>
+                                                    <button type="button" class="btn btn-success btn-sm" id="save-score-btn-{{ sub_question.student_answers.0.id }}" onclick="saveScore({{ sub_question.student_answers.0.id }},event)" style="display: none;">保存</button>
+                                                    <button type="button" class="btn btn-danger btn-sm" id="cancel-score-btn-{{ sub_question.student_answers.0.id }}" onclick="cancelScoreEdit({{ sub_question.student_answers.0.id }},event)" style="display: none;">取消</button>
+                                                </td>
+                                                <td>{{ sub_question.sub_question.answer }}</td>
+                                                <td>{{ sub_question.sub_question.score }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <button type="submit" class="btn btn-danger">删除记录</button>
+                            </form>
+
+                        {% elif main_question.main_question.question_type == 'correction' %}
+                            {% for sub_question in main_question.sub_questions %}
+                                <span>{{ sub_question.corrected_text }}</span>
+                            {% endfor %}
+                            <div>
+                                <h5>参考答案：</h5>
+                                {% for sub_question in main_question.sub_questions %}
+                                    <ul>
+                                        {% for correction in sub_question.corrections %}
+                                            <p>{{ correction.index }} - {{ correction.type }} - {{ sub_question.sub_question.answer }}</p>
+                                        {% endfor %}
+                                    </ul>
+                                {% endfor %}
+                            </div>
+                            <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id %}">
+                                {% csrf_token %}
+                                <table class="table table-bordered table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>题目</th>
+                                            <th>作答内容</th>
+                                            <th>得分</th>
+                                            <th>操作</th>
+                                            <th style="background-color: #a9e6a9">小题分值</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sub_question in main_question.sub_questions %}
+                                            {% for student_answer in sub_question.student_answers %}
+                                                <tr>
+                                                    <td><input type="checkbox" name="selected_answer_records" value="{{ student_answer.id }}" /></td>
+                                                    <td>{{ sub_question.sub_question.question_text }}</td>
+                                                    <td>
+                                                        {{ student_answer.index }} - {{ student_answer.type }} - {{ student_answer.text }}
+                                                    </td>
+                                                    <td>
+                                                        <span class="question_score" id="question-score-{{ student_answer.id }}">{{ student_answer.score }}</span>
+                                                        <input type="number" id="score-input-{{ student_answer.id }}" value="{{ student_answer.score }}" step="0.1" style="display: none;" />
+                                                    </td>
+                                                    <td>
+                                                        <button type="button" class="btn btn-warning btn-sm" id="edit-score-btn-{{ student_answer.id }}" onclick="editScore({{ student_answer.id }},event)">编辑</button>
+                                                        <button type="button" class="btn btn-success btn-sm" id="save-score-btn-{{ student_answer.id }}" onclick="saveScore({{ student_answer.id }},event)" style="display: none;">保存</button>
+                                                        <button type="button" class="btn btn-danger btn-sm" id="cancel-score-btn-{{ student_answer.id }}" onclick="cancelScoreEdit({{ student_answer.id }},event)" style="display: none;">取消</button>
+                                                    </td>
+                                                    <td>{{ sub_question.sub_question.score }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <button type="submit" class="btn btn-danger">删除记录</button>
+                            </form>
+
+
+                        {% elif main_question.main_question.question_type == 'blank' %}
+                            {% for sub_question in main_question.sub_questions %}
+                                <span>{{ sub_question.sub_question.question_text }} ___{{ forloop.counter }}___</span>
+                            {% endfor %}
+
+                            <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id %}">
+                                {% csrf_token %}
+                                <table class="table table-bordered table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>序号</th>
+                                        <th>作答内容</th>
+                                        <th>得分</th>
+                                        <th>操作</th>
+                                        <th style="background-color: #a9e6a9">参考答案</th>
+                                        <th style="background-color: #a9e6a9">小题分值</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sub_question in main_question.sub_questions %}
+                                        <tr>
+                                            <td><input type="checkbox" name="selected_answer_records" value="{{ sub_question.student_answers.0.id }}" /></td>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>{{ sub_question.student_answers.0.text }}</td>
+                                            <td>
+                                                <span class="question_score" id="question-score-{{ sub_question.student_answers.0.id }}">{{ sub_question.student_answers.0.score }}</span>
+                                                <input type="number" id="score-input-{{ sub_question.student_answers.0.id }}" value="{{ sub_question.student_answers.0.score }}" step="0.1"  style="display: none;" />
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-warning btn-sm" id="edit-score-btn-{{ sub_question.student_answers.0.id }}" onclick="editScore({{ sub_question.student_answers.0.id }},event)">编辑</button>
+                                                <button type="button" class="btn btn-success btn-sm" id="save-score-btn-{{ sub_question.student_answers.0.id }}" onclick="saveScore({{ sub_question.student_answers.0.id }},event)" style="display: none;">保存</button>
+                                                <button type="button" class="btn btn-danger btn-sm" id="cancel-score-btn-{{ sub_question.student_answers.0.id }}" onclick="cancelScoreEdit({{ sub_question.student_answers.0.id }},event)" style="display: none;">取消</button>
+                                            </td>
+                                            <td>{{ sub_question.sub_question.answer }}</td>
+                                            <td>{{ sub_question.sub_question.score }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                                <button type="submit" class="btn btn-danger">删除记录</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+    </div>
+
+{#                        {% for question in question_data %}#}
+{#        <div style="margin-bottom: 50px;">#}
+{#            <h4>{{ forloop.counter }}: {{ question.main_question.question_text }}</h4>#}
+{#            {% if question.main_question.question_type == 'choice' or question.main_question.question_type == 'comprehension' or question.main_question.question_type == 'matching'  %}#}
+{##}
+{#                #}
+{##}
+{##}
+{#            #}
+{#                {% for sub in question.sub_questions %}#}
+{#                    <span>{{ sub.sub_question.question_text }}</span>#}
+{#                    <span>{{ sub.corrected_text }}</span>#}
+{#                {% endfor %}#}
+{#                <div>#}
+{#                    <h5>参考答案：</h5>#}
+{#                    {% for sub in question.sub_questions %}#}
+{#                        <ul>#}
+{#                            {% for correction in sub.corrections %}#}
+{#                                <p>{{ correction.index }} - {{ correction.type }} - {{ sub.sub_question.answer }}</p>#}
+{#                            {% endfor %}#}
+{#                        </ul>#}
+{#                    {% endfor %}#}
+{#                </div>#}
+{#                <table class="table table-bordered table-striped table-hover">#}
+{#                    <thead>#}
+{#                        <tr>#}
+{#                            <th>题目</th>#}
+{#                            <th>作答内容</th>#}
+{#                            <th>得分</th>#}
+{#                            <th>操作</th>#}
+{#                            <th style="background-color: #a9e6a9">参考答案</th>#}
+{#                            <th style="background-color: #a9e6a9">小题分值</th>#}
+{#                        </tr>#}
+{#                    </thead>#}
+{#                    <tbody>#}
+{#                        {% for sub in question.sub_questions %}#}
+{#                            {% for student_answer in sub.student_answers %}#}
+{#                                <tr>#}
+{#                                    <td>{{ sub.sub_question.question_text }}</td>#}
+{#                                    <td>#}
+{#                                        {{ student_answer.index }} - {{ student_answer.type }} - {{ student_answer.text }}#}
+{#                                    </td>#}
+{#                                    <td>#}
+{#                                        <span class="question_score" id="question-score-{{ student_answer.id }}">{{ student_answer.score }}</span>#}
+{#                                        <input type="number" id="score-input-{{ student_answer.id }}" value="{{ student_answer.score }}" step="0.1" style="display: none;" />#}
+{#                                    </td>#}
+{#                                    <td>#}
+{#                                        <button class="btn btn-warning btn-sm" id="edit-score-btn-{{ student_answer.id }}" onclick="editScore({{ student_answer.id }})">编辑</button>#}
+{#                                        <button class="btn btn-success btn-sm" id="save-score-btn-{{ student_answer.id }}" onclick="saveScore({{ student_answer.id }})" style="display: none;">保存</button>#}
+{#                                        <button class="btn btn-danger btn-sm" id="cancel-score-btn-{{ student_answer.id }}" onclick="cancelScoreEdit({{ student_answer.id }})" style="display: none;">取消</button>#}
+{#                                    </td>#}
+{#                                    <td>#}
+{#                                        {% for correction in sub.corrections %}#}
+{#                                            {{ correction.index }} - {{ correction.type }} - {{ sub.sub_question.answer }}#}
+{#                                        {% endfor %}#}
+{#                                    </td>#}
+{#                                    <td>{{ sub.sub_question.score }}</td>#}
+{#                                </tr>#}
+{#                            {% endfor %}#}
+{#                        {% endfor %}#}
+{#                    </tbody>#}
+{#                </table>#}
+{##}
+{#            {% elif question.main_question.question_type == 'blank' %}#}
+{#                {% for sub in question.sub_questions %}#}
+{#                    <span>{{ sub.sub_question.question_text }} ___{{ forloop.counter }}___</span>#}
+{#                {% endfor %}#}
+{##}
+{#                <table class="table table-bordered table-striped table-hover">#}
+{#                    <thead>#}
+{#                        <tr>#}
+{#                            <th>序号</th>#}
+{#                            <th>作答内容</th>#}
+{#                            <th>得分</th>#}
+{#                            <th>操作</th>#}
+{#                            <th style="background-color: #a9e6a9">参考答案</th>#}
+{#                            <th style="background-color: #a9e6a9">小题分值</th>#}
+{#                        </tr>#}
+{#                    </thead>#}
+{#                    <tbody>#}
+{#                        {% for sub in question.sub_questions %}#}
+{#                            <tr>#}
+{#                                <td>{{ forloop.counter }}</td>#}
+{#                                <td>{{ sub.student_answers.0.text }}</td>#}
+{#                                <td>#}
+{#                                    <span class="question_score" id="question-score-{{ sub.student_answers.0.id }}">{{ sub.student_answers.0.score }}</span>#}
+{#                                    <input type="number" id="score-input-{{ sub.student_answers.0.id }}" value="{{ sub.student_answers.0.score }}" step="0.1"  style="display: none;" />#}
+{#                                </td>#}
+{#                                <td>#}
+{#                                    <button class="btn btn-warning btn-sm" id="edit-score-btn-{{ sub.student_answers.0.id }}" onclick="editScore({{ sub.student_answers.0.id }})">编辑</button>#}
+{#                                    <button class="btn btn-success btn-sm" id="save-score-btn-{{ sub.student_answers.0.id }}" onclick="saveScore({{ sub.student_answers.0.id }})" style="display: none;">保存</button>#}
+{#                                    <button class="btn btn-danger btn-sm" id="cancel-score-btn-{{ sub.student_answers.0.id }}" onclick="cancelScoreEdit({{ sub.student_answers.0.id }})" style="display: none;">取消</button>#}
+{#                                </td>#}
+{#                                <td>{{ sub.sub_question.answer }}</td>#}
+{#                                <td>{{ sub.sub_question.score }}</td>#}
+{#                            </tr>#}
+{#                        {% endfor %}#}
+{#                    </tbody>#}
+{#                </table>#}
+{#            {% endif %}#}
+{#        </div>#}
+{#    {% endfor %}#}
+
+
+
+    <hr>
+
+    <!-- 学习记录 -->
+    <h3>学习记录</h3>
+    {% if not media_record.exists and not page_record.exists %}
+        <p>暂无学习记录</p>
+    {% else %}
+        <h4>媒体播放记录：</h4>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>大题</th>
+                    <th>媒体素材</th>
+                    <th>视频已播次数</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in media_record %}
+                    <tr>
+                        <td>{{ record.main_question }}</td>
+                        <td>{{ record.media_material }}</td>
+                        <td>{{ record.play_count }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+
+        <h4>页面作答记录：</h4>
+        <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>页面</th>
+                        <th>提交状态</th>
+                        <th>提交时间</th>
+                        <th>是否超时</th>
+                        <th>剩余时间</th>
+                        <th>诚信分(介于0-1）</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in page_record %}
+                        <tr>
+                            <td>{{ record.page }}</td>
+                            <td
+                                {% if not record.submitted %}
+                                    style="color: #ea5e5a;"
+                                {% endif %}
+                            >
+                                {{ record.submitted|yesno:"已提交,未提交" }}
+                            </td>
+                            <td>{{ record.submitted_at }}</td>
+                            <td>{{ record.is_expired|yesno:"超时,未超时" }}</td>
+                            <td>{{ record.remaining_time }}</td>
+                            <td>
+                                <span class="integrity" id="integrity-score-{{ record.id }}">{{ record.integrity_score }}</span>
+                                <input type="number" id="integrity-input-{{ record.id }}" value="{{ record.integrity_score }}" step="0.1"  style="display: none;" />
+                            </td>
+                            <td>
+                                <button type= "button" class="btn btn-warning btn-sm" id="edit-integrity-btn-{{ record.id }}" onclick="editIntegrity({{ record.id }},event)">编辑</button>
+                                <button type= "button" class="btn btn-success btn-sm" id="save-integrity-btn-{{ record.id }}" onclick="saveIntegrity({{ record.id }},event)" style="display: none;">保存</button>
+                                <button type= "button" class="btn btn-danger btn-sm" id="cancel-integrity-btn-{{ record.id }}" onclick="cancelIntegrityEdit({{ record.id }},event)" style="display: none;">取消</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+    {% endif %}
+
+
+
+    <script>
+        // 获取所有分页按钮和页面内容
+        const pageItems = document.querySelectorAll('.pagination-circle .page-item');
+        const pageContents = document.querySelectorAll('.page-content');
+
+        // 默认显示第一页
+        pageContents[0].style.display = 'block';
+
+        // 绑定分页按钮点击事件
+        pageItems.forEach(item => {
+            item.addEventListener('click', (event) => {
+                event.preventDefault(); // 阻止默认跳转行为
+
+                const pageIndex = item.getAttribute('data-page-index');
+
+                // 隐藏所有页面内容
+                pageContents.forEach(content => {
+                    content.style.display = 'none';
+                });
+
+                // 显示当前选中的页面内容
+                pageContents[pageIndex].style.display = 'block';
+
+                // 移除所有分页按钮的高亮效果
+                pageItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+
+                // 为当前分页按钮添加高亮效果
+                item.classList.add('active');
+            });
+        });
+
+
+
+        // 编辑小题得分
+        function editScore(id,event) {
+            event.preventDefault();
+            // 隐藏小题得分文本
+            document.getElementById("question-score-" + id).style.display = "none";
+            // 显示小题得分输入框
+            document.getElementById("score-input-" + id).style.display = "inline-block";
+            // 显示保存按钮
+            document.getElementById("save-score-btn-" + id).style.display = "inline-block";
+            document.getElementById("cancel-score-btn-" + id).style.display = "inline-block";
+            // 隐藏编辑按钮
+            document.getElementById("edit-score-btn-" + id).style.display = "none";
+        }
+
+        function saveScore(id,event) {
+            event.preventDefault();
+            var questionScore = document.getElementById("score-input-" + id).value;
+
+            // 发起 AJAX 请求保存修改的状态
+            var xhr = new XMLHttpRequest();
+            var url = "{% url 'Query:update_question_score' %}";
+            xhr.open("POST", url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            // 请求中发送数据
+            xhr.send(JSON.stringify({
+                "record_id": id,
+                "question_score": questionScore
+            }));
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    // 更新页面显示
+                    document.getElementById("question-score-" + id).textContent = questionScore;
+                    // 恢复显示
+                    document.getElementById("question-score-" + id).style.display = "inline-block";
+                    document.getElementById("score-input-" + id).style.display = "none";
+
+                    document.getElementById("cancel-score-btn-" + id).style.display = "none";
+                    document.getElementById("save-score-btn-" + id).style.display = "none";
+                    document.getElementById("edit-score-btn-" + id).style.display = "inline-block";
+
+                    // 页面刷新
+                    location.reload();
+                } else {
+                    alert("保存失败，请稍后再试");
+                }
+            };
+        }
+
+        function cancelScoreEdit(id,event) {
+            event.preventDefault();
+            // 恢复原始显示
+            var originalScore = document.getElementById("question-score-" + id).textContent;
+
+            document.getElementById("question-score-" + id).style.display = "inline-block";
+            document.getElementById("score-input-" + id).style.display = "none";
+
+            document.getElementById("save-score-btn-" + id).style.display = "none";
+            document.getElementById("cancel-score-btn-" + id).style.display = "none";
+            document.getElementById("edit-score-btn-" + id).style.display = "inline-block";
+
+            // 恢复输入框的值为原始状态
+            document.getElementById("score-input-" + id).value = originalScore;
+        }
+
+        // 编辑诚信分
+        function editIntegrity(id,event) {
+            event.preventDefault();
+            // 隐藏诚信分文本
+            document.getElementById("integrity-score-" + id).style.display = "none";
+            // 显示诚信分输入框
+            document.getElementById("integrity-input-" + id).style.display = "inline-block";
+            // 显示保存按钮
+            document.getElementById("save-integrity-btn-" + id).style.display = "inline-block";
+            document.getElementById("cancel-integrity-btn-" + id).style.display = "inline-block";
+            // 隐藏编辑按钮
+            document.getElementById("edit-integrity-btn-" + id).style.display = "none";
+        }
+
+        function saveIntegrity(id,event) {
+            event.preventDefault();
+            var integrityScore = document.getElementById("integrity-input-" + id).value;
+
+            // 发起 AJAX 请求保存修改的状态
+            var xhr = new XMLHttpRequest();
+            var url = "{% url 'Query:update_integrity_score' %}";
+            xhr.open("POST", url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            // 请求中发送数据
+            xhr.send(JSON.stringify({
+                "record_id": id,
+                "integrity_score": integrityScore
+            }));
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    // 更新页面显示
+                    document.getElementById("integrity-score-" + id).textContent = integrityScore;
+                    // 恢复显示
+                    document.getElementById("integrity-score-" + id).style.display = "inline-block";
+                    document.getElementById("integrity-input-" + id).style.display = "none";
+
+                    document.getElementById("cancel-integrity-btn-" + id).style.display = "none";
+                    document.getElementById("save-integrity-btn-" + id).style.display = "none";
+                    document.getElementById("edit-integrity-btn-" + id).style.display = "inline-block";
+
+                    // 页面刷新
+                    location.reload();
+                } else {
+                    alert("保存失败，请稍后再试");
+                }
+            };
+        }
+
+        function cancelIntegrityEdit(id,event) {
+            event.preventDefault();
+            // 恢复原始显示
+            var originalScore = document.getElementById("integrity-score-" + id).textContent;
+
+            document.getElementById("integrity-score-" + id).style.display = "inline-block";
+            document.getElementById("integrity-input-" + id).style.display = "none";
+
+            document.getElementById("save-integrity-btn-" + id).style.display = "none";
+            document.getElementById("cancel-integrity-btn-" + id).style.display = "none";
+            document.getElementById("edit-integrity-btn-" + id).style.display = "inline-block";
+
+            // 恢复输入框的值为原始状态
+            document.getElementById("integrity-input-" + id).value = originalScore;
+        }
+
+    </script>
+{% endblock %}

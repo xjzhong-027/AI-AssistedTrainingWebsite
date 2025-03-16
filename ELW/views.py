@@ -221,7 +221,8 @@ def user_login(request):
                 request.session['username'] = username
                 request.session['is_login'] = True
                 #【待替换管理员页面】
-                return HttpResponse('The main page of admin version should be shown here.')
+                # return HttpResponse('The main page of admin version should be shown here.')
+                return redirect('/admin/')
         return render(request, 'login.html',
                       {
                           'error_message': 'Invalid username or password！',

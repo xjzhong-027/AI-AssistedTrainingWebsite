@@ -46,6 +46,8 @@ urlpatterns = [
     path('student/', include('student_ELW.urls')),
     # path('create-big-question/', views.create_big_question_with_small_questions, name='create_big_question_with_small_questions'),
 
+    path('query/', include('Query.urls')),
+
 #forum announce accessment
 path('forum/', include('forum.urls')),
     path('announce/', include('announce.urls')),

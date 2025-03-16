@@ -1,0 +1,167 @@
+{% extends "query_base.html" %}
+
+{% block content %}
+    <!-- 显示成功消息 -->
+    {% if messages %}
+        <ul class="messages list-group">
+            {% for message in messages %}
+                <li class="list-group-item {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                    {{ message }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+
+    <div class="row">
+        <!-- 左列: 调课相关 -->
+        <div class="col-md-6">
+            <!-- 调课表单 -->
+            <h3>调整上课时间</h3>
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    {{ adjustment_form.as_p }}
+                </div>
+                <button type="submit" class="btn btn-primary">提交调课</button>
+            </form>
+
+            <hr>
+
+            <div class="schedule-adjustments">
+                {% if schedule_adjustments %}
+                    <h3>所有调课记录</h3>
+                    <form method="post" action="{% url 'Query:batch_delete_schedule_adjustments' %}">
+                        {% csrf_token %}
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="select-all-adjustment" /></th>
+                                    <th>调课班级</th>
+                                    <th>调课周次</th>
+                                    <th>调课后的上课时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for adjustment in schedule_adjustments %}
+                                    <tr>
+                                        <td><input type="checkbox" name="selected_adjustment_records" value="{{ adjustment.id }}" /></td>
+                                        <td>{{ adjustment.class_instance.class_name }}</td>
+                                        <td>{{ adjustment.week }}</td>
+                                        <td>周{{ adjustment.new_week_day }} — {{ adjustment.new_class_begin_time }} - {{ adjustment.new_class_end_time }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="submit" class="btn btn-danger">删除记录</button>
+                    </form>
+
+                    <!-- 调课记录分页控件 -->
+                    <div class="pagination">
+                        <span class="step-links">
+                            {% if schedule_adjustments.has_previous %}
+                                <a href="?page_adjustments=1">&laquo; 第一页</a>
+                                <a href="?page_adjustments={{ schedule_adjustments.previous_page_number }}">上一页</a>
+                            {% endif %}
+
+                            <span class="current">
+                                第 {{ schedule_adjustments.number }} 页，共 {{ schedule_adjustments.paginator.num_pages }} 页
+                            </span>
+
+                            {% if schedule_adjustments.has_next %}
+                                <a href="?page_adjustments={{ schedule_adjustments.next_page_number }}">下一页</a>
+                                <a href="?page_adjustments={{ schedule_adjustments.paginator.num_pages }}">最后一页 &raquo;</a>
+                            {% endif %}
+                        </span>
+                    </div>
+                {% else %}
+                    <p>暂无调课记录</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 右列: 补课相关 -->
+        <div class="col-md-6">
+            <!-- 补课表单 -->
+            <h3>添加补课时间</h3>
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    {{ addition_form.as_p }}
+                </div>
+                <button type="submit" class="btn btn-primary">提交补课</button>
+            </form>
+
+            <hr>
+
+            <div class="schedule-additions">
+                {% if schedule_additions %}
+                    <h3>所有补课记录</h3>
+                    <form method="post" action="{% url 'Query:batch_delete_schedule_additions' %}">
+                        {% csrf_token %}
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="select-all-addition" /></th>
+                                    <th>补课班级</th>
+                                    <th>补课周次</th>
+                                    <th>补课时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for addition in schedule_additions %}
+                                    <tr>
+                                        <td><input type="checkbox" name="selected_addition_records" value="{{ addition.id }}" /></td>
+                                        <td>{{ addition.class_instance.class_name }}</td>
+                                        <td>{{ addition.week }}</td>
+                                        <td>周{{ addition.weekday }} — {{ addition.class_begin_time }} - {{ addition.class_end_time }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="submit" class="btn btn-danger">删除记录</button>
+                    </form>
+
+                    <!-- 补课记录分页控件 -->
+                    <div class="pagination">
+                        <span class="step-links">
+                            {% if schedule_additions.has_previous %}
+                                <a href="?page_additions=1">&laquo; 第一页</a>
+                                <a href="?page_additions={{ schedule_additions.previous_page_number }}">上一页</a>
+                            {% endif %}
+
+                            <span class="current">
+                                第 {{ schedule_additions.number }} 页，共 {{ schedule_additions.paginator.num_pages }} 页
+                            </span>
+
+                            {% if schedule_additions.has_next %}
+                                <a href="?page_additions={{ schedule_additions.next_page_number }}">下一页</a>
+                                <a href="?page_additions={{ schedule_additions.paginator.num_pages }}">最后一页 &raquo;</a>
+                            {% endif %}
+                        </span>
+                    </div>
+                {% else %}
+                    <p>暂无补课记录</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全选调课记录
+        document.getElementById('select-all-adjustment').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('input[name="selected_adjustment_records"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+
+        // 全选补课记录
+        document.getElementById('select-all-addition').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('input[name="selected_addition_records"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    </script>
+{% endblock %}

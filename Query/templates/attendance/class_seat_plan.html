@@ -1,0 +1,176 @@
+{% extends "query_base.html" %}
+
+{% block content %}
+    {% if messages %}
+      <ul class="messages list-group">
+        {% for message in messages %}
+          <li class="list-group-item {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+              {{ message }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <h2>{{ class.class_name }} - 座位分布</h2>
+    <h3>设置课室大小</h3>
+    <form method="POST" class="form-inline">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="seat_rows" class="control-label">行数:</label>
+            {{ form.seat_rows }}
+        </div>
+
+        <div class="form-group">
+            <label for="seat_cols" class="control-label">列数:</label>
+            {{ form.seat_cols }}
+        </div>
+        <button type="submit" class="btn btn-success">保存设置</button>
+    </form>
+
+    <hr>
+    <!-- 学生列表 -->
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>学号</th>
+                <th>学生姓名</th>
+                <th>座位号</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+                <tr>
+                    <td>{{ student.username }}</td>
+                    <td>{{ student.name }}</td>
+                    <td>
+                        <span class="seat-number" id="seat-number-{{ student.id }}">{{ student.seat_number }}</span>
+                        <input class="seat-input" type="text" id="seat-input-{{ student.id }}" value="{{ student.seat_number }}" style="display: none;" />
+                    </td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" id="edit-seat-btn-{{ student.id }}" onclick="editSeat({{ student.id }})">编辑</button>
+                        <button class="btn btn-success btn-sm" id="save-seat-btn-{{ student.id }}" onclick="saveSeat({{ student.id }})" style="display: none;">保存</button>
+                        <button class="btn btn-danger btn-sm" id="cancel-seat-btn-{{ student.id }}" onclick="cancelSeatEdit({{ student.id }})" style="display: none;">取消</button>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- 分页控件 -->
+    <div class="pagination">
+        <ul class="pagination">
+            {% if students.has_previous %}
+                <li><a href="?page=1">&laquo; 第一页</a></li>
+                <li><a href="?page={{ students.previous_page_number }}">上一页</a></li>
+            {% else %}
+                <li class="disabled"><span>&laquo; 第一页</span></li>
+                <li class="disabled"><span>上一页</span></li>
+            {% endif %}
+
+            <li class="disabled"><span>第 {{ students.number }} 页</span></li>
+
+            {% if students.has_next %}
+                <li><a href="?page={{ students.next_page_number }}">下一页</a></li>
+                <li><a href="?page={{ students.paginator.num_pages }}">最后一页 &raquo;</a></li>
+            {% else %}
+                <li class="disabled"><span>下一页</span></li>
+                <li class="disabled"><span>最后一页 &raquo;</span></li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <!-- 座位示意图 -->
+    <table class="table table-bordered" id="seatTable">
+        <thead>
+            <tr>
+                <th>座位</th>
+                {% for col in column_letters %}
+                    <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in seats %}
+                <tr>
+                    <th>{{ forloop.counter }}</th>
+                    {% for seat in row %}
+                        <td
+                            id="seat-{{ seat.seat }}"
+                            {% if seat.student_name %}
+                                style="background-color: #f0f0f0;"
+                            {% else %}
+                                style="background-color: #ffffff;"
+                            {% endif %}
+                        >
+                            {{ seat.student_name|default:"空" }}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        function editSeat(id) {
+            // 隐藏 seat_number 文本
+            document.getElementById("seat-number-" + id).style.display = "none";
+            // 显示座位号输入框
+            document.getElementById("seat-input-" + id).style.display = "inline-block";
+            // 显示保存按钮
+            document.getElementById("save-seat-btn-" + id).style.display = "inline-block";
+            document.getElementById("cancel-seat-btn-" + id).style.display = "inline-block";
+            // 隐藏编辑按钮
+            document.getElementById("edit-seat-btn-" + id).style.display = "none";
+        }
+
+        function saveSeat(id) {
+            var seatNumber = document.getElementById("seat-input-" + id).value;
+
+            // 发起 AJAX 请求保存修改的状态
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/query/update-seat-number/", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            // 请求中发送数据
+            xhr.send(JSON.stringify({
+                "student_id": id,
+                "seat_number": seatNumber
+            }));
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    // 更新页面显示
+                    document.getElementById("seat-number-" + id).textContent = seatNumber;
+                    // 恢复显示
+                    document.getElementById("seat-number-" + id).style.display = "inline-block";
+                    document.getElementById("seat-input-" + id).style.display = "none";
+
+                    document.getElementById("cancel-seat-btn-" + id).style.display = "none";
+                    document.getElementById("save-seat-btn-" + id).style.display = "none";
+                    document.getElementById("edit-seat-btn-" + id).style.display = "inline-block";
+
+                    // 页面刷新
+                    location.reload();
+                } else {
+                    alert("保存失败，请稍后再试");
+                }
+            };
+        }
+
+        function cancelSeatEdit(id) {
+            // 恢复原始显示
+            var originalSeat = document.getElementById("seat-number-" + id).textContent;
+
+            document.getElementById("seat-number-" + id).style.display = "inline-block";
+            document.getElementById("seat-input-" + id).style.display = "none";
+
+            document.getElementById("save-seat-btn-" + id).style.display = "none";
+            document.getElementById("cancel-seat-btn-" + id).style.display = "none";
+            document.getElementById("edit-seat-btn-" + id).style.display = "inline-block";
+
+            // 恢复输入框的值为原始状态
+            document.getElementById("seat-input-" + id).value = originalSeat;
+        }
+    </script>
+{% endblock %}

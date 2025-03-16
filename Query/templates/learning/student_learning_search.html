@@ -1,0 +1,67 @@
+{% extends 'query_base.html' %}
+
+{% block content %}
+    <div class="container-fluid">
+        <!-- 搜索表单 -->
+        <form class="student-search-form" id="student-search-form" method="get" action="{% url 'Query:student_learning_search' %}">
+            <div class="mb-3">
+                <label for="username" class="form-label">学生学号：</label>
+                <input type="text" id="username" name="username" class="form-control" value="{{ username }}" placeholder="例如：20210100001" />
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px">查询学生</button>
+        </form>
+
+
+        <hr>
+
+        <!-- 显示学生列表 -->
+        <div class="student-search-results">
+            <h2>搜索结果：</h2>
+
+            {% if students %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">学生姓名</th>
+                            <th scope="col">学生学号</th>
+                            <th scope="col">班级</th>
+                            <th scope="col">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                            <tr>
+                                <td>{{ student.name }}</td>
+                                <td>{{ student.username }}</td>
+                                <td>{{ student.class_instance }}</td>
+                                <td>
+                                    <a href="{% url 'Query:assignment_unit' student.id %}" class="btn btn-info btn-sm">查看详情</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- 学生分页 -->
+                <div class="pagination">
+                    <ul class="pagination pagination-btn">
+                        {% if students.has_previous %}
+                            <li class="page-item"><a href="?page=1&student_id={{ username }}" class="page-link">&laquo; 第一页</a></li>
+                            <li class="page-item"><a href="?page={{ students.previous_page_number }}&student_id={{ username }}" class="page-link">上一页</a></li>
+                        {% endif %}
+
+                        <li class="page-item disabled"><span class="page-link">第 {{ students.number }} 页，共 {{ students.paginator.num_pages }} 页</span></li>
+
+                        {% if students.has_next %}
+                            <li class="page-item"><a href="?page={{ students.next_page_number }}&student_id={{ username }}" class="page-link">下一页</a></li>
+                            <li class="page-item"><a href="?page={{ students.paginator.num_pages }}&student_id={{ username }}" class="page-link">最后一页 &raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+            {% else %}
+                <p>没有找到对应的学生。</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

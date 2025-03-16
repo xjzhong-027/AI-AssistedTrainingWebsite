@@ -1,0 +1,69 @@
+{% extends 'query_base.html' %}
+
+{% block content %}
+    <div class="container-fluid">
+        <!-- 搜索表单 -->
+        <form class="class-search-form" id="class-search-form" method="get" action="{% url 'Query:class_statistic_search' %}">
+            <div class="mb-3">
+                <label for="class_name" class="form-label">班号：</label>
+                <input type="text" id="class_name" name="class_name" class="form-control" value="{{ class_name }}" placeholder="例如：2021" />
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px">查询班级</button>
+        </form>
+
+
+        <hr>
+
+        <!-- 显示班级列表 -->
+        <div class="class-search-results">
+            <h2>搜索结果：</h2>
+
+            {% if class_instances %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">班级</th>
+                            <th scope="col">课程</th>
+                            <th scope="col">上课时间</th>
+                            <th scope="col">授课教师</th>
+                            <th scope="col">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for class in class_instances %}
+                            <tr>
+                                <td>{{ class.class_name }}</td>
+                                <td>{{ class.course }}</td>
+                                <td>周{{ class.week }} — {{ class.start_time }} - {{ class.end_time }}</td>
+                                <td>{{ class.teacher }}</td>
+                                <td>
+                                    <a href="{% url 'Query:class_unit' class.id %}" class="btn btn-info btn-sm">查看详情</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- 班级分页 -->
+                <div class="pagination">
+                    <ul class="pagination pagination-btn">
+                        {% if class_instances.has_previous %}
+                            <li class="page-item"><a href="?page=1&class_name={{ class_name }}" class="page-link">&laquo; 第一页</a></li>
+                            <li class="page-item"><a href="?page={{ class_instances.previous_page_number }}&class_name={{ class_name }}" class="page-link">上一页</a></li>
+                        {% endif %}
+
+                        <li class="page-item disabled"><span class="page-link">第 {{ class_instances.number }} 页，共 {{ class_instances.paginator.num_pages }} 页</span></li>
+
+                        {% if class_instances.has_next %}
+                            <li class="page-item"><a href="?page={{ class_instances.next_page_number }}&class_name={{ class_name }}" class="page-link">下一页</a></li>
+                            <li class="page-item"><a href="?page={{ class_instances.paginator.num_pages }}&class_name={{ class_name }}" class="page-link">最后一页 &raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+            {% else %}
+                <p>没有找到对应的班级。</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
