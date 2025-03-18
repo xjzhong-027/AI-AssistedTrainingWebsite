@@ -2,11 +2,45 @@
 {% load static %}
 
 {% block extra_css %}
-
+    <link rel="stylesheet" href="{% static 'css/teacher_side/question_integration.css' %}">
 {% endblock %}
 
 {% block content %}
-
+    <div class="file_form">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">导入文件</button>
+        </form>
+    </div>
+<div class="text_form">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <fieldset>
+            <legend>大题</legend>
+            <div class="type">
+                <label for="question_type">题目类型:</label>
+                <select id="question_type" name="question_type">
+                    <option value="choice">选择题</option>
+                    <option value="correction">改错题</option>
+                    <option value="matching">连线题/排序题</option>
+                    <option value="comprehension">主观题</option>
+                    <option value="blank">填空题</option>
+                </select>
+            </div>
+            <div class="main">
+                <label for="MainQuestion">大题题干：</label>
+                <textarea name="MainQuestion" id="MainQuestion" cols="30" rows="10"></textarea>
+            </div>
+            <div class="sub">
+                <label for="SubQuestion">小题内容：</label>
+                <textarea name="SubQuestion" id="SubQuestion" cols="100" rows="30"></textarea>
+            </div>
+        </fieldset>
+{#button class="save" type="submit">保存</button>#}
+            <button class="preview" type="submit" name="preview">预览</button>
+    </form>
+</div>
 {% endblock %}
 
 
