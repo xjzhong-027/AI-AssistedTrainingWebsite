@@ -1345,9 +1345,11 @@ def question_integration(request):
 
     # 传统表单导入
     elif request.method == 'POST':
+        print("-----------post-----------")
         question_type = request.POST.get('question_type')
         # 处理预览
         if 'preview' in request.POST:
+            print('-------------preview---------------')
             main_text = request.POST.get('MainQuestion')
             sub_text = request.POST.get('SubQuestion')
             main_info = func.extract_main_question(main_text)
@@ -1401,6 +1403,7 @@ def question_integration(request):
 
         # 处理保存逻辑
         if 'save' in request.POST:
+            print('------------save-------------')
             # 把POST数据转为字典
             post_data = request.POST.dict()
             print(request.POST)

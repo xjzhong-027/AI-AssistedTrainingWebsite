@@ -1,151 +1,370 @@
+/* media_material_detail.css */
+
 /* 全局样式 */
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f9f9f9;
-    color: #333;
+    font-family: 'Arial', sans-serif;
+    /*background-color: #f5f5f5;*/
+    /*color: #333;*/
     margin: 0;
     padding: 0;
-    display: flex;
-    justify-content: center; /* 水平居中 */
-    align-items: center;     /* 垂直居中 */
-    min-height: 100vh;       /* 确保页面高度占满整个视口 */
 }
 
-/* 容器样式 */
-.container {
-    max-width: 1000px;        /* 限制内容区域的最大宽度 */
-    width: 90%;              /* 宽度为视口的 90%，避免在小屏幕上过宽 */
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    margin: 30px;            /* 添加外边距，避免内容紧贴边缘 */
+.main {
+    padding: 30px;
+    max-width: 1000px;
+    margin: 40px auto;
 }
 
-/* 标题样式 */
-h1 {
-    font-size: 2em;
-    color: #2c3e50;
+/* 头部信息样式 */
+.header {
+    margin-bottom: 30px;
+}
+
+.header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #333;
     margin-bottom: 20px;
-    text-align: left;        /* 标题左对齐 */
 }
 
-h2 {
-    font-size: 1.5em;
-    color: #34495e;
-    margin-top: 30px;
-    margin-bottom: 15px;
-    border-bottom: 2px solid #3498db;
-    padding-bottom: 5px;
-    text-align: left;        /* 标题左对齐 */
-}
-
-h3 {
-    font-size: 1.2em;
-    color: #2c3e50;
-    padding: 10px;
-    border-radius: 4px;
-    margin-top: 20px;
-    margin-bottom: 10px;
-    text-align: left;        /* 标题左对齐 */
-    color: #007BFF;
-}
-
-h4 {
-    margin-left: 20px;
-    font-size: 1.1em;
-    margin-top: 15px;
-    margin-bottom: 10px;
-    text-align: left;        /* 标题左对齐 */
-    line-height: 1.8;
-}
-
-/* 段落样式 */
-p {
-    font-size: 1em;
-    line-height: 1.6;
+.header p {
+    font-size: 16px;
+    color: #555;
     margin: 10px 0;
-    text-align: left;        /* 段落左对齐 */
 }
 
-strong {
-    color: #2c3e50;
+.header p strong {
+    font-weight: 600;
+    color: #333;
 }
 
-/* 小题样式 */
-.sub-question {
-    margin-left: 20px;
-    padding: 10px;
-    /*background-color: #f5f5f5;*/
-    border-radius: 4px;
+/* 大题和小题样式 */
+.details {
+    margin-top: 20px;
+}
+
+.details h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.main_question {
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.main_question h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.sub_question {
+    margin-top: 15px;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 6px;
+    border: 1px solid #eee;
+}
+
+.sub_question h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
     margin-bottom: 10px;
-    text-align: left;        /* 小题内容左对齐 */
+}
+
+.sub_question img {
+    margin-top: 10px;
+    border-radius: 4px;
+}
+
+.sub_question button {
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.sub_question button:hover {
+    background-color: #0056b3;
 }
 
 /* 选择题样式 */
 .choice {
-    margin-left: 40px;
+    margin-top: 10px;
     padding: 10px;
+    background-color: #f9f9f9;
     border-radius: 4px;
-    margin-bottom: 10px;
-    text-align: left;        /* 选择题内容左对齐 */
+    border: 1px solid #eee;
 }
 
 .choice p {
+    font-size: 14px;
+    color: #555;
     margin: 5px 0;
 }
 
 /* 连线题样式 */
 .matching {
-    margin-left: 20px;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    text-align: left;        /* 连线题内容左对齐 */
-}
-
-.matching p {
-    margin: 5px 0;
-}
-
-.answer {
-    margin-left: 40px;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    text-align: left;
-}
-
-/* 答案、提示、解析样式 */
-.tips, .analysis {
-    margin-left: 20px;
+    margin-top: 10px;
     padding: 10px;
     background-color: #f9f9f9;
     border-radius: 4px;
-    margin-bottom: 10px;
-    text-align: left;        /* 答案、提示、解析内容左对齐 */
+    border: 1px solid #eee;
 }
 
-.tips p, .analysis p {
-    margin: 5px 0;
-    font-style: italic;
+.matching p {
+    font-size: 14px;
     color: #555;
+    margin: 5px 0;
 }
 
-/* 图片样式 */
-img {
-    display: block;
-    margin: 10px 0;
+/* 答案样式 */
+.answer {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #e9f5ff;
     border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid #cce7ff;
 }
 
-/* 链接样式 */
-a {
-    color: #3498db;
-    text-decoration: none;
+.answer p {
+    font-size: 14px;
+    color: #007bff;
+    font-weight: 600;
+    margin: 5px 0;
 }
 
-a:hover {
-    text-decoration: underline;
+/* 提示样式 */
+.tips {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #fff3e6;
+    border-radius: 4px;
+    border: 1px solid #ffd9b3;
 }
+
+.tips p {
+    font-size: 14px;
+    color: #e67e22;
+    margin: 5px 0;
+}
+
+/* 分析样式 */
+.analysis {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.analysis p {
+    font-size: 14px;
+    color: #555;
+    margin: 5px 0;
+}
+
+/* 空白提示样式 */
+.none {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    border: 1px solid #eee;
+}
+
+.none p {
+    font-size: 14px;
+    color: #777;
+    margin: 5px 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* 全局样式 */
+/*body {*/
+/*    font-family: Arial, sans-serif;*/
+/*    background-color: #f9f9f9;*/
+/*    color: #333;*/
+/*    margin: 0;*/
+/*    padding: 0;*/
+/*    display: flex;*/
+/*    justify-content: center; !* 水平居中 *!*/
+/*    align-items: center;     !* 垂直居中 *!*/
+/*    min-height: 100vh;       !* 确保页面高度占满整个视口 *!*/
+/*}*/
+
+/*!* 容器样式 *!*/
+/*.container {*/
+/*    max-width: 1000px;        !* 限制内容区域的最大宽度 *!*/
+/*    width: 90%;              !* 宽度为视口的 90%，避免在小屏幕上过宽 *!*/
+/*    background-color: #fff;*/
+/*    padding: 20px;*/
+/*    border-radius: 8px;*/
+/*    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);*/
+/*    margin: 30px;            !* 添加外边距，避免内容紧贴边缘 *!*/
+/*}*/
+
+/*!* 标题样式 *!*/
+/*h1 {*/
+/*    font-size: 2em;*/
+/*    color: #2c3e50;*/
+/*    margin-bottom: 20px;*/
+/*    text-align: left;        !* 标题左对齐 *!*/
+/*}*/
+
+/*h2 {*/
+/*    font-size: 1.5em;*/
+/*    color: #34495e;*/
+/*    margin-top: 30px;*/
+/*    margin-bottom: 15px;*/
+/*    border-bottom: 2px solid #3498db;*/
+/*    padding-bottom: 5px;*/
+/*    text-align: left;        !* 标题左对齐 *!*/
+/*}*/
+
+/*h3 {*/
+/*    font-size: 1.2em;*/
+/*    color: #2c3e50;*/
+/*    padding: 10px;*/
+/*    border-radius: 4px;*/
+/*    margin-top: 20px;*/
+/*    margin-bottom: 10px;*/
+/*    text-align: left;        !* 标题左对齐 *!*/
+/*    color: #007BFF;*/
+/*}*/
+
+/*h4 {*/
+/*    margin-left: 20px;*/
+/*    font-size: 1.1em;*/
+/*    margin-top: 15px;*/
+/*    margin-bottom: 10px;*/
+/*    text-align: left;        !* 标题左对齐 *!*/
+/*    line-height: 1.8;*/
+/*}*/
+
+/*!* 段落样式 *!*/
+/*p {*/
+/*    font-size: 1em;*/
+/*    line-height: 1.6;*/
+/*    margin: 10px 0;*/
+/*    text-align: left;        !* 段落左对齐 *!*/
+/*}*/
+
+/*strong {*/
+/*    color: #2c3e50;*/
+/*}*/
+
+/*!* 小题样式 *!*/
+/*.sub-question {*/
+/*    margin-left: 20px;*/
+/*    padding: 10px;*/
+/*    !*background-color: #f5f5f5;*!*/
+/*    border-radius: 4px;*/
+/*    margin-bottom: 10px;*/
+/*    text-align: left;        !* 小题内容左对齐 *!*/
+/*}*/
+
+/*!* 选择题样式 *!*/
+/*.choice {*/
+/*    margin-left: 40px;*/
+/*    padding: 10px;*/
+/*    border-radius: 4px;*/
+/*    margin-bottom: 10px;*/
+/*    text-align: left;        !* 选择题内容左对齐 *!*/
+/*}*/
+
+/*.choice p {*/
+/*    margin: 5px 0;*/
+/*}*/
+
+/*!* 连线题样式 *!*/
+/*.matching {*/
+/*    margin-left: 20px;*/
+/*    padding: 10px;*/
+/*    border-radius: 4px;*/
+/*    margin-bottom: 10px;*/
+/*    text-align: left;        !* 连线题内容左对齐 *!*/
+/*}*/
+
+/*.matching p {*/
+/*    margin: 5px 0;*/
+/*}*/
+
+/*.answer {*/
+/*    margin-left: 40px;*/
+/*    padding: 10px;*/
+/*    border-radius: 4px;*/
+/*    margin-bottom: 10px;*/
+/*    text-align: left;*/
+/*}*/
+
+/*!* 答案、提示、解析样式 *!*/
+/*.tips, .analysis {*/
+/*    margin-left: 20px;*/
+/*    padding: 10px;*/
+/*    background-color: #f9f9f9;*/
+/*    border-radius: 4px;*/
+/*    margin-bottom: 10px;*/
+/*    text-align: left;        !* 答案、提示、解析内容左对齐 *!*/
+/*}*/
+
+/*.tips p, .analysis p {*/
+/*    margin: 5px 0;*/
+/*    font-style: italic;*/
+/*    color: #555;*/
+/*}*/
+
+/*!* 图片样式 *!*/
+/*img {*/
+/*    display: block;*/
+/*    margin: 10px 0;*/
+/*    border-radius: 4px;*/
+/*    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);*/
+/*}*/
+
+/*!* 链接样式 *!*/
+/*a {*/
+/*    color: #3498db;*/
+/*    text-decoration: none;*/
+/*}*/
+
+/*a:hover {*/
+/*    text-decoration: underline;*/
+/*}*/

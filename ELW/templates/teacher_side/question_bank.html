@@ -27,7 +27,7 @@
                 <td><a href="{% url 'teacher_media_material_detail' material.id %}">{{ forloop.counter0|add:page_obj.start_index }}</a></td>
                 <td>
                     <a href="{% url 'teacher_media_material_detail' material.id %}">{{ material.title }}</a>
-                    {{ material.title }}
+{#                    {{ material.title }}#}
                 </td>
                 <td>
                     <a href="{% url 'teacher_delete_material' material.id %}">删除</a>
