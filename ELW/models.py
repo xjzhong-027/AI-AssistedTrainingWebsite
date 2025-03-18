@@ -204,6 +204,7 @@ class PaperPage(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='paper_pages')
     order = models.IntegerField(verbose_name='页面顺序', blank=False, null=False)
     text = models.TextField(verbose_name='页面文本', blank=True, null=True)
+    limited_time = models.TimeField(blank=True, null=True, default=None)
     created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
 
 class PageMainQuestion(models.Model):

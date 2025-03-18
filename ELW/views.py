@@ -319,7 +319,7 @@ def teacher_week_file_import(request):
             # 提取文本内容
             text_content = extract_text_from_word(word_file)
             print(f'text_content: {text_content}')
-            # question_data = doc_func.main_process(text_content)
+            print(f'word_page_process: {doc_page_func.main_process(text_content)}')
 
     form = WordUploadForm()
     return render(request, 'teacher_side/week_file_import.html', {'form': form})

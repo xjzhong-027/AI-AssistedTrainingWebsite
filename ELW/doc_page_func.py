@@ -7,6 +7,7 @@ def main_process(text):
     for i, page in enumerate(page_list):
         pages[i]['page_content'] = doc_func.main_process(page)
     print('pages: ', pages)
+    return pages
 
 
 def paging_process(text):
