@@ -1,65 +1,189 @@
-body, html {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    color: #333;
-    display: flex;
-    justify-content: center;
-    min-height: 100vh; /* 确保容器高度至少为视口高度 */
-}
+/* task_package_add.css */
 
 .main {
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    width: 800px;
+    /*padding: 30px;*/
+    /*background-color: #ffffff;*/
+    /*border-radius: 12px;*/
+    /*box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);*/
+    max-width: 1000px; /* 限制表单宽度 */
+    margin: 15px auto; /* 居中显示 */
+    font-family: 'Arial', sans-serif;
 }
 
-/* 表单样式 */
-.main form {
-    max-width: 95%; /* 确保表单不会超出主内容区域宽度 */
-    margin: 0 auto; /* 水平居中 */
-    background-color: #fff;
-    padding: 20px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
 }
 
-/* 表单元素样式 */
-.main form label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
+.form-row {
+    display: flex;
+    align-items: center; /* 垂直居中 */
+    gap: 15px; /* 标签和输入框之间的间距 */
 }
 
-.main form input[type="text"],
-.main form textarea {
-    width: 100%;
-    height: 30px;
+.form-row label {
+    flex: 0 0 120px; /* 固定标签宽度 */
+    font-weight: 600;
+    color: #333;
+    font-size: 18px;
+    text-align: left; /* 标签文字左对齐 */
+}
+
+.form-row input[type="text"],
+.form-row textarea,
+.form-row input[type="file"] {
+    flex: 1; /* 输入框占据剩余空间 */
     padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: large;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background-color: #fafafa;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.main form textarea {
-    height: 250px;
-    resize: vertical; /* 允许垂直调整大小 */
+.form-row input[type="text"]:focus,
+.form-row textarea:focus,
+.form-row input[type="file"]:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+    outline: none;
+    background-color: #fff;
 }
 
-.main form button {
-    width: 100%;
-    padding: 10px;
-    background-color: #007bff;
+.form-row textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-row input[type="file"] {
+    background-color: #fff;
+}
+
+button[type="submit"] {
+    padding: 12px 20px;
+    background-color: rgba(0, 123, 255, 0.81);
+    color: #fff;
     border: none;
-    border-radius: 4px;
-    color: white;
-    font-size: 16px;
+    border-radius: 6px;
     cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    width: auto; /* 宽度自适应内容 */
+    min-width: 150px; /* 设置最小宽度 */
+    margin: 0 auto; /* 水平居中 */
+    display: block; /* 使 margin: 0 auto 生效 */
+    transition: background-color 0.3s ease;
 }
 
-.main form button:hover {
-    background-color: #0056b3; /* 鼠标悬停时改变背景色 */
+button[type="submit"]:hover {
+    background-color: rgba(0, 86, 179, 0.82);
 }
+
+/* 文件上传区域的样式 */
+.file-upload {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.file-upload label {
+    flex: 0 0 120px;
+    font-weight: 600;
+    color: #333;
+    font-size: 18px;
+    text-align: left; /* 标签文字左对齐 */
+}
+
+/* 标题样式 */
+.form-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*原*/
+
+/*body, html {*/
+/*    margin: 0;*/
+/*    padding: 0;*/
+/*    font-family: Arial, sans-serif;*/
+/*    background-color: #f4f4f4;*/
+/*    color: #333;*/
+/*    display: flex;*/
+/*    justify-content: center;*/
+/*    min-height: 100vh; !* 确保容器高度至少为视口高度 *!*/
+/*}*/
+
+/*.main {*/
+/*    background-color: #fff;*/
+/*    padding: 30px;*/
+/*    border-radius: 8px;*/
+/*    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);*/
+/*    width: 800px;*/
+/*}*/
+
+/*!* 表单样式 *!*/
+/*.main form {*/
+/*    max-width: 95%; !* 确保表单不会超出主内容区域宽度 *!*/
+/*    margin: 0 auto; !* 水平居中 *!*/
+/*    background-color: #fff;*/
+/*    padding: 20px;*/
+/*    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);*/
+/*}*/
+
+/*!* 表单元素样式 *!*/
+/*.main form label {*/
+/*    display: block;*/
+/*    margin-bottom: 5px;*/
+/*    font-weight: bold;*/
+/*}*/
+
+/*.main form input[type="text"],*/
+/*.main form textarea {*/
+/*    width: 100%;*/
+/*    height: 30px;*/
+/*    padding: 10px;*/
+/*    margin-bottom: 15px;*/
+/*    border: 1px solid #ccc;*/
+/*    border-radius: 4px;*/
+/*    font-size: large;*/
+/*}*/
+
+/*.main form textarea {*/
+/*    height: 250px;*/
+/*    resize: vertical; !* 允许垂直调整大小 *!*/
+/*}*/
+
+/*.main form button {*/
+/*    width: 100%;*/
+/*    padding: 10px;*/
+/*    background-color: #007bff;*/
+/*    border: none;*/
+/*    border-radius: 4px;*/
+/*    color: white;*/
+/*    font-size: 16px;*/
+/*    cursor: pointer;*/
+/*}*/
+
+/*.main form button:hover {*/
+/*    background-color: #0056b3; !* 鼠标悬停时改变背景色 *!*/
+/*}*/

@@ -1,35 +1,108 @@
+{% extends 'base.html' %}
 {% load static %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>task_package_add</title>
+{% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/teacher_side/task_package_add.css'%}">
-</head>
-<body>
+{% endblock %}
 
+{% block content %}
     <div class="main">
+        <div class="form-title">添加素材包</div>
         <form method="post" action="/teacher/task_package_add/" enctype="multipart/form-data">
-        {% csrf_token %}
-{#        {{ form.as_p }}#}
-        <input type="file" name="media_file" accept=".mp3,.mp4,.avi,.wav,.mov,.ogg,.webm,audio/*" required>
-        <input type="file" name="image_file" accept="image/*" multiple>
-        <div>
-            <label for="title">Title: </label>
-            <input type="text" name="title" id="title">
-            <label for="theme">Theme: </label>
-            <input type="text" name="theme" id="theme">
-            <label for="abstract">Abstract: </label>
-            <input type="text" name="abstract" id="abstract">
-            <label for="keywords">Keywords: </label>
-            <input type="text" name="keywords" id="keywords">
-            <label for="transcript">Transcript: </label>
-            <textarea name="transcript" id="transcript" cols="100" rows="10"></textarea>
-        </div>
-        <button type="submit">Add</button>
-    </form>
+            {% csrf_token %}
+            <div class="form-row file-upload">
+                <label for="media_file">Media File:</label>
+                <input type="file" name="media_file" id="media_file" accept=".mp3,.mp4,.avi,.wav,.mov,.ogg,.webm,audio/*" required>
+            </div>
+            <div class="form-row file-upload">
+                <label for="image_file">Image File:</label>
+                <input type="file" name="image_file" id="image_file" accept="image/*" multiple>
+            </div>
+            <div class="form-row">
+                <label for="title">Title:</label>
+                <input type="text" name="title" id="title">
+            </div>
+            <div class="form-row">
+                <label for="theme">Theme:</label>
+                <input type="text" name="theme" id="theme">
+            </div>
+            <div class="form-row">
+                <label for="keywords">Keywords:</label>
+                <input type="text" name="keywords" id="keywords">
+            </div>
+            <div class="form-row">
+                <label for="abstract">Abstract:</label>
+                <textarea type="text" name="abstract" id="abstract"></textarea>
+            </div>
+            <div class="form-row">
+                <label for="transcript">Transcript:</label>
+                <textarea name="transcript" id="transcript" cols="100" rows="10"></textarea>
+            </div>
 
+            <button type="submit">Add</button>
+        </form>
     </div>
-</body>
-</html>
+
+{% endblock %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{#{% load static %}#}
+{##}
+{#<!DOCTYPE html>#}
+{#<html lang="en">#}
+{#<head>#}
+{#    <meta charset="UTF-8">#}
+{#    <title>task_package_add</title>#}
+{#    <link rel="stylesheet" href="{% static 'css/teacher_side/task_package_add.css'%}">#}
+{#</head>#}
+{#<body>#}
+{##}
+{#    <div class="main">#}
+{#        <form method="post" action="/teacher/task_package_add/" enctype="multipart/form-data">#}
+{#        {% csrf_token %}#}
+{#        {{ form.as_p }}#}
+{#        <input type="file" name="media_file" accept=".mp3,.mp4,.avi,.wav,.mov,.ogg,.webm,audio/*" required>#}
+{#        <input type="file" name="image_file" accept="image/*" multiple>#}
+{#        <div>#}
+{#            <label for="title">Title: </label>#}
+{#            <input type="text" name="title" id="title">#}
+{#            <label for="theme">Theme: </label>#}
+{#            <input type="text" name="theme" id="theme">#}
+{#            <label for="abstract">Abstract: </label>#}
+{#            <input type="text" name="abstract" id="abstract">#}
+{#            <label for="keywords">Keywords: </label>#}
+{#            <input type="text" name="keywords" id="keywords">#}
+{#            <label for="transcript">Transcript: </label>#}
+{#            <textarea name="transcript" id="transcript" cols="100" rows="10"></textarea>#}
+{#        </div>#}
+{#        <button type="submit">Add</button>#}
+{#    </form>#}
+{##}
+{#    </div>#}
+{#</body>#}
+{#</html>#}

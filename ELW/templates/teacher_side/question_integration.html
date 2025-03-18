@@ -1,48 +1,77 @@
+{% extends 'base.html' %}
 {% load static %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Question Integration</title>
-    <link rel="stylesheet" href="{% static 'css/teacher_side/question_integration.css' %}">
-</head>
-<body>
-    <div class="file_form">
-        <form method="POST" enctype="multipart/form-data">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit">导入文件</button>
-        </form>
-    </div>
+{% block extra_css %}
 
-    <div class="text_form">
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <fieldset>
-                <legend>大题</legend>
-                <p>
-                    <label for="question_type">题目类型:</label>
-                    <select id="question_type" name="question_type">
-                        <option value="choice">Choice</option>
-                        <option value="correction">Correction</option>
-                        <option value="matching">Matching</option>
-                        <option value="comprehension">Comprehension</option>
-                        <option value="blank">Blank</option>
-                    </select>
-                </p>
-                <p>大题题干：</p>
-                <textarea name="MainQuestion" id="MainQuestion" cols="30" rows="10"></textarea>
-            </fieldset>
-            <fieldset>
-                <legend>小题</legend>
-                <textarea name="SubQuestion" id="SubQuestion" cols="100" rows="30"></textarea>
-            </fieldset>
+{% endblock %}
+
+{% block content %}
+
+{% endblock %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{#{% load static %}#}
+{##}
+{#<!DOCTYPE html>#}
+{#<html lang="en">#}
+{#<head>#}
+{#    <meta charset="UTF-8">#}
+{#    <title>Question Integration</title>#}
+{#    <link rel="stylesheet" href="{% static 'css/teacher_side/question_integration.css' %}">#}
+{#</head>#}
+{#<body>#}
+{#    <div class="file_form">#}
+{#        <form method="POST" enctype="multipart/form-data">#}
+{#            {% csrf_token %}#}
+{#            {{ form.as_p }}#}
+{#            <button type="submit">导入文件</button>#}
+{#        </form>#}
+{#    </div>#}
+{##}
+{#    <div class="text_form">#}
+{#        <form method="post" enctype="multipart/form-data">#}
+{#            {% csrf_token %}#}
+{#            <fieldset>#}
+{#                <legend>大题</legend>#}
+{#                <p>#}
+{#                    <label for="question_type">题目类型:</label>#}
+{#                    <select id="question_type" name="question_type">#}
+{#                        <option value="choice">Choice</option>#}
+{#                        <option value="correction">Correction</option>#}
+{#                        <option value="matching">Matching</option>#}
+{#                        <option value="comprehension">Comprehension</option>#}
+{#                        <option value="blank">Blank</option>#}
+{#                    </select>#}
+{#                </p>#}
+{#                <p>大题题干：</p>#}
+{#                <textarea name="MainQuestion" id="MainQuestion" cols="30" rows="10"></textarea>#}
+{#            </fieldset>#}
+{#            <fieldset>#}
+{#                <legend>小题</legend>#}
+{#                <textarea name="SubQuestion" id="SubQuestion" cols="100" rows="30"></textarea>#}
+{#            </fieldset>#}
 {#            <button type="submit">保存</button>#}
-            <button type="submit" name="preview">预览</button>
-        </form>
-    </div>
-
-
-</body>
-</html>
+{#            <button type="submit" name="preview">预览</button>#}
+{#        </form>#}
+{#    </div>#}
+{##}
+{##}
+{#</body>#}
+{#</html>#}

@@ -1,22 +1,16 @@
+{% extends 'base.html' %}
 {% load static %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>question_bank</title>
+{% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/teacher_side/question_bank.css' %}">
-</head>
-<body>
-{#<p>username: {{ username}}</p>#}
-    <!-- Header container -->
-{#更新#}
+{% endblock %}
+
+{% block content %}
     <div class="header">
         <button onclick="window.location.href='{% url 'teacher_index' %}'">返回首页</button>
         <h2>Question Management</h2>
         <button onclick="window.location.href='{% url 'teacher_task_package_add' %}'">New task package</button> <!-- Assuming a click event to navigate -->
     </div>
-    {#待连接数据库，以下为测试数据#}
 
     <h1 style="text-align: center;">媒体素材列表</h1>
     <table>
@@ -33,7 +27,7 @@
                 <td><a href="{% url 'teacher_media_material_detail' material.id %}">{{ forloop.counter0|add:page_obj.start_index }}</a></td>
                 <td>
                     <a href="{% url 'teacher_media_material_detail' material.id %}">{{ material.title }}</a>
-{#                    {{ material.title }}#}
+                    {{ material.title }}
                 </td>
                 <td>
                     <a href="{% url 'teacher_delete_material' material.id %}">删除</a>
@@ -49,8 +43,7 @@
         </tbody>
     </table>
 
-
-    <!-- 分页控件 -->
+    {#    <!-- 分页控件 -->#}
     <div class="pagination">
         {% if page_obj.has_previous %}
             <a href="?page=1">首页</a>
@@ -69,5 +62,86 @@
         {% endif %}
     </div>
 
-</body>
-</html>
+{% endblock %}
+
+
+
+
+
+
+
+
+{##}
+{#{% load static %}#}
+{##}
+{#<!DOCTYPE html>#}
+{#<html lang="en">#}
+{#<head>#}
+{#    <meta charset="UTF-8">#}
+{#    <title>question_bank</title>#}
+{#    <link rel="stylesheet" href="{% static 'css/teacher_side/question_bank.css' %}">#}
+{#</head>#}
+{#<body>#}
+{#<p>username: {{ username}}</p>#}
+{#    <!-- Header container -->#}
+{#更新#}
+{#    <div class="header">#}
+{#        <button onclick="window.location.href='{% url 'teacher_index' %}'">返回首页</button>#}
+{#        <h2>Question Management</h2>#}
+{#        <button onclick="window.location.href='{% url 'teacher_task_package_add' %}'">New task package</button> <!-- Assuming a click event to navigate -->#}
+{#    </div>#}
+    {#待连接数据库，以下为测试数据#}
+{##}
+{#    <h1 style="text-align: center;">媒体素材列表</h1>#}
+{#    <table>#}
+{#        <thead>#}
+{#            <tr>#}
+{#                <th>#</th>#}
+{#                <th>Title</th>#}
+{#                <th>操作</th>#}
+{#            </tr>#}
+{#        </thead>#}
+{#        <tbody>#}
+{#            {% for material in page_obj %}#}
+{#            <tr>#}
+{#                <td><a href="{% url 'teacher_media_material_detail' material.id %}">{{ forloop.counter0|add:page_obj.start_index }}</a></td>#}
+{#                <td>#}
+{#                    <a href="{% url 'teacher_media_material_detail' material.id %}">{{ material.title }}</a>#}
+{#                    {{ material.title }}#}
+{#                </td>#}
+{#                <td>#}
+{#                    <a href="{% url 'teacher_delete_material' material.id %}">删除</a>#}
+{#                    &nbsp;&nbsp;#}
+{#                    <a href="{% url 'teacher_page_create' material.id %}">组卷</a>#}
+{#                </td>#}
+{#            </tr>#}
+{#            {% empty %}#}
+{#            <tr>#}
+{#                <td colspan="2">暂无媒体素材</td>#}
+{#            </tr>#}
+{#            {% endfor %}#}
+{#        </tbody>#}
+{#    </table>#}
+{##}
+{##}
+{#    <!-- 分页控件 -->#}
+{#    <div class="pagination">#}
+{#        {% if page_obj.has_previous %}#}
+{#            <a href="?page=1">首页</a>#}
+{#            <a href="?page={{ page_obj.previous_page_number }}">上一页</a>#}
+{#        {% endif %}#}
+{#        {% for num in page_obj.paginator.page_range %}#}
+{#            {% if page_obj.number == num %}#}
+{#                <span class="active">{{ num }}</span>#}
+{#            {% else %}#}
+{#                <a href="?page={{ num }}">{{ num }}</a>#}
+{#            {% endif %}#}
+{#        {% endfor %}#}
+{#        {% if page_obj.has_next %}#}
+{#            <a href="?page={{ page_obj.next_page_number }}">下一页</a>#}
+{#            <a href="?page={{ page_obj.paginator.num_pages }}">尾页</a>#}
+{#        {% endif %}#}
+{#    </div>#}
+{##}
+{#</body>#}
+{#</html>#}
