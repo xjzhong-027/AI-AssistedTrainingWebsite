@@ -1265,7 +1265,6 @@ def question_integration(request):
                                 'index': sub_question['index_list'][i]
                             })
 
-
             print('question_data: ', question_data)
             return render(request, 'teacher_side/question_preview.html', {'question_data': question_data})
         else:
@@ -1290,10 +1289,9 @@ def question_integration(request):
                 "end": main_info.get('end'),
                 "sub_questions": []
             }]
-            
 
             if question_type == 'choice':
-                question_list = func.extract_choice_questions(sub_text)
+                question_list = func.extract_sub_questions(sub_text)
                 for question in question_list:
                     question_data[0]["sub_questions"].append(func.process_choice_question(question))
 
@@ -1310,25 +1308,23 @@ def question_integration(request):
                             'index': sub_question['index_list'][i]
                         })
 
-
             if question_type == 'matching':
-                questions = func.extract_matching_questions(sub_text)
+                # questions = func.extract_matching_questions(sub_text)
+                questions = func.extract_sub_questions(sub_text)
                 for question in questions:
                     question_data[0]["sub_questions"].append(func.process_matching_question(question))
 
             if question_type == 'comprehension':
-                question_list = func.extract_comprehension_questions(sub_text)
+                question_list = func.extract_sub_questions(sub_text)
                 for question in question_list:
                     question_data[0]["sub_questions"].append(func.process_comprehension_question(question))
 
             if question_type == 'blank':
-                questions = func.extract_blank_questions(sub_text)
+                questions = func.extract_sub_questions(sub_text)
                 for question in questions:
                     question_data[0]["sub_questions"].append(func.extract_subtext_and_answers(question))
 
-
             return render(request, 'teacher_side/question_preview.html', {"question_data": question_data})
-
 
         # 处理保存逻辑
         if 'save' in request.POST:

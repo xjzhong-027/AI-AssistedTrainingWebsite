@@ -5,6 +5,7 @@ def extract_main_question(text):
     # 定义正则表达式模式
     score_pattern = r'\$(\d+(?:\.\d+)?)\$'
     range_pattern = r'\[(\d+)-(\d+)\]'
+    image_pattern = r'\(%(.*?)%\)'
     # time_range_pattern = r'\[(\d{2}:\d{2}:\d{2})-(\d{2}:\d{2}:\d{2})\]'
     time_range_pattern = r'\[([^-]+)-([^\]]+)\]'
     # 初始化结果字典
@@ -14,67 +15,83 @@ def extract_main_question(text):
         'max': 3,
         'start': '',
         'end': '',
-        'score': 1.0
+        'score': 1.0,
+        'image': [],
     }
-    text_match = False
+    # text_match = False
     # 提取 score
+    score_pattern = r'\$(\d+(?:\.\d+)?)\$'
     score_match = re.search(score_pattern, text)
     if score_match:
         result['score'] = float(score_match.group(1))
-        result['question_text'] = text.split(score_match.group(0))[0].strip()
-        text_match = True
+        # result['question_text'] = text.split(score_match.group(0))[0].strip()
+        # text_match = True
         text = text.replace(score_match.group(0), '')  # 移除 score 部分
     # 提取 min 和 max
     range_match = re.search(range_pattern, text)
     if range_match:
         result['min'] = int(range_match.group(1))
         result['max'] = int(range_match.group(2))
-        result['question_text'] = text.split(range_match.group(0))[0].strip()
-        text_match = True
+        # result['question_text'] = text.split(range_match.group(0))[0].strip()
+        # text_match = True
         text = text.replace(range_match.group(0), '')  # 移除 range 部分
     # 提取 start 和 end
     time_range_match = re.search(time_range_pattern, text)
     if time_range_match:
         result['start'] = time_range_match.group(1)
         result['end'] = time_range_match.group(2)
-        result['question_text'] = text.split(time_range_match.group(0))[0].strip()
-        text_match = True
+        # result['question_text'] = text.split(time_range_match.group(0))[0].strip()
+        # text_match = True
         text = text.replace(time_range_match.group(0), '')  # 移除 time range 部分
-    # 提取 question_text
-    if not text_match:
-        result['question_text'] = text.strip()
+
+    # 提取image
+    # image_matches = re.findall(r'\(%(.*?)%\)', question)
+    # if image_matches:
+    #     question_data['image'] = image_matches
+    #     # question = question.replace(image_match.group(0), '')  # 移除 image 部分
+    #     question = re.sub(r'\(%(.*?)%\)', '', question).strip()# 移除 image 部分
+    image_matches = re.findall(image_pattern, text)
+    if image_matches:
+        result['image']= image_matches
+        text = re.sub(image_pattern, '', text).strip()
+
+    result['question_text'] = text.strip()
+    # if not text_match:
+    #     result['question_text'] = text.strip()
+    print('result: ', result)
     return result
 
-    '''
-    # 初始化返回字典
-    result = {
-        'question_text': '',
-        'max': '',
-        'min': '',
-        'start': '',
-        'end': ''
-    }
-    text = text.replace('\n', '').replace('\r', '').replace('\t', '')
-    # 使用正则表达式提取 max, min, start, end 的值
-    max_match = re.search(r'\[max:\s*(\d+)]', text)
-    min_match = re.search(r'\[min:\s*(\d+)]', text)
-    start_match = re.search(r'\[start:\s*([0-9]{2}:[0-9]{2}:[0-9]{2})]', text)
-    end_match = re.search(r'\[end:\s*([0-9]{2}:[0-9]{2}:[0-9]{2})]', text)
-    # 获取 question_text，去除参数部分
-    question_text = re.split(r'\[.*?]', text, maxsplit=1)[0].strip()
-    # 更新字典
-    result['question_text'] = question_text
-    result['max'] = int(max_match.group(1)) if max_match else ''
-    result['min'] = int(min_match.group(1)) if min_match else ''
-    result['start'] = start_match.group(1) if start_match else ''
-    result['end'] = end_match.group(1) if end_match else ''
-    print('main_question result: ', result)
-    return result
-    '''
+'''
+# 初始化返回字典
+result = {
+    'question_text': '',
+    'max': '',
+    'min': '',
+    'start': '',
+    'end': ''
+}
+text = text.replace('\n', '').replace('\r', '').replace('\t', '')
+# 使用正则表达式提取 max, min, start, end 的值
+max_match = re.search(r'\[max:\s*(\d+)]', text)
+min_match = re.search(r'\[min:\s*(\d+)]', text)
+start_match = re.search(r'\[start:\s*([0-9]{2}:[0-9]{2}:[0-9]{2})]', text)
+end_match = re.search(r'\[end:\s*([0-9]{2}:[0-9]{2}:[0-9]{2})]', text)
+# 获取 question_text，去除参数部分
+question_text = re.split(r'\[.*?]', text, maxsplit=1)[0].strip()
+# 更新字典
+result['question_text'] = question_text
+result['max'] = int(max_match.group(1)) if max_match else ''
+result['min'] = int(min_match.group(1)) if min_match else ''
+result['start'] = start_match.group(1) if start_match else ''
+result['end'] = end_match.group(1) if end_match else ''
+print('main_question result: ', result)
+return result
+'''
 
 # 处理选择题（单选+多选）
 # 按题号分割题目，返回包含各个题目的列表，题号格式为(1)
-def extract_choice_questions(text):
+# 分割小题
+def extract_sub_questions(text):
     text = text.replace('\n', '').replace('\r', '').replace('\t', '')
     # 使用正则表达式匹配题号，支持中文括号和英文括号，题号格式为(1)
     question_pattern = r'[\(\（]\d+[\)\）]'
@@ -108,7 +125,12 @@ def process_choice_question(question):
         'D': '',
         'answer': [],
         'tips': '',
-        'analysis': ''
+        'analysis': '',
+        'image': [],
+        'A_image': [],
+        'B_image': [],
+        'C_image': [],
+        'D_image': [],
     }
     # 提取tips
     tips_match = re.search( r'-\*([^*]+)\*-', question)
@@ -126,6 +148,82 @@ def process_choice_question(question):
     option_match = re.search(r'\[\$([A])\]', question)  # 寻找 '[$A]'格式
     if option_match:
         # 如果找到 '[$A]' 格式，提取到该选项之前
+        # question_data['question_text'] = question[:option_match.start()].strip()
+        question_text = question[:option_match.start()].strip()
+        # 提取image
+        image_pattern = r'\(%(.*?)%\)'
+        image_matches = re.findall(image_pattern, question_text)
+        if image_matches:
+            question_data['image'] = image_matches
+            # question = question.replace(image_match.group(0), '')  # 移除 image 部分
+            question_text = re.sub(image_pattern, '', question_text).strip()  # 移除 image 部分
+        question_data['question_text'] = question_text
+    else:
+        # 如果没有 '[$A]' 格式，寻找 '[A]' 格式
+        option_match = re.search(r'\[([A-D])\]', question)  # 寻找 '[A]', '[B]' 等格式
+
+        if option_match:
+            # 提取到第一个 '[A]' 格式选项之前
+            # question_data['question_text'] = question[:option_match.start()].strip()
+            question_text = question[:option_match.start()].strip()
+            # 提取小题题干image
+            image_matches = re.findall(r'\(%(.*?)%\)', question_text)
+            if image_matches:
+                question_data['image'] = image_matches
+                # question = question.replace(image_match.group(0), '')  # 移除 image 部分
+                question_text = re.sub(r'\(%(.*?)%\)', '', question_text).strip()  # 移除 image 部分
+            question_data['question_text'] = question_text
+
+    # 提取选项
+    options = re.findall(r'([A-D])\]([^\[\n]+)', question)
+    for label, option in options:
+        # question_data[label] = option.strip()
+        question_data['label_count'] += 1
+        label_content = option.strip()
+        print(f'label_content_before: {label_content}')
+        # 提取选项_image
+        image_pattern = r'\(%(.*?)%\)'
+        image_matches = re.findall(image_pattern, label_content)
+        if image_matches:
+            question_data[f'{label}_image'] = image_matches
+            label_content = re.sub(image_pattern, '', label_content).strip()
+        print(f'label_content_after: {label_content}')
+        question_data[label] = label_content
+
+    # 提取答案 (假设答案是以[$X]格式给出的)
+    answer_match = re.findall(r'\[\$(\w+)\]', question)
+    question_data['answer'] = answer_match
+
+    print(f'question_data: {question_data}')
+    return question_data
+
+'''
+# 移除转义序列 \r\n\t
+# question = question.replace('\n', '').replace('\r', '').replace('\t', '')
+# 默认值
+question_data = {
+    'question_text': '',
+    'score': 1.0,
+    'label_count': 0,
+    'A': '',
+    'B': '',
+    'C': '',
+    'D': '',
+    'answer': [],
+    'tips': '',
+    'analysis': ''
+}
+# 1. 优先匹配 '$数字$' 格式符号
+score_match = re.search(r'\$(\d+)\$', question)
+if score_match:
+    # 如果找到 '$数字$'，则提取题干到该符号之前
+    question_data['question_text'] = question[:score_match.start()].strip()
+    question_data['score'] = float(score_match.group(1))
+else:
+    # 2. 如果没有 '$数字$' 格式符号，检查是否存在 '[$A]' 格式
+    option_match = re.search(r'\[\$([A])\]', question)  # 寻找 '[$A]', '[$B]' 等格式
+    if option_match:
+        # 如果找到 '[$A]' 格式，提取到该选项之前
         question_data['question_text'] = question[:option_match.start()].strip()
     else:
         # 如果没有 '[$A]' 格式，寻找 '[A]' 格式
@@ -134,76 +232,28 @@ def process_choice_question(question):
             # 提取到第一个 '[A]' 格式选项之前
             question_data['question_text'] = question[:option_match.start()].strip()
 
-    # 提取选项
-    options = re.findall(r'([A-D])\]([^\[\n]+)', question)
-    for label, option in options:
-        question_data[label] = option.strip()
-        question_data['label_count'] += 1
+# 提取选项
+options = re.findall(r'([A-D])\]([^\[\n]+)', question)
+for label, option in options:
+    question_data[label] = option.strip()
+    question_data['label_count'] += 1
 
-    # 提取答案 (假设答案是以[$X]格式给出的)
-    answer_match = re.findall(r'\[\$(\w+)\]', question)
-    question_data['answer'] = answer_match
+# 提取答案 (假设答案是以[$X]格式给出的)
+answer_match = re.findall(r'\[\$(\w+)\]', question)
+question_data['answer'] = answer_match
 
+# 提取tips
+tips_match = re.search(r'\[tips:([^\]]+)\]', question)
+if tips_match:
+    question_data['tips'] = tips_match.group(1).strip()
 
-    print(f'question_data: {question_data}')
-    return question_data
-    '''
-    # 移除转义序列 \r\n\t
-    # question = question.replace('\n', '').replace('\r', '').replace('\t', '')
-    # 默认值
-    question_data = {
-        'question_text': '',
-        'score': 1.0,
-        'label_count': 0,
-        'A': '',
-        'B': '',
-        'C': '',
-        'D': '',
-        'answer': [],
-        'tips': '',
-        'analysis': ''
-    }
-    # 1. 优先匹配 '$数字$' 格式符号
-    score_match = re.search(r'\$(\d+)\$', question)
-    if score_match:
-        # 如果找到 '$数字$'，则提取题干到该符号之前
-        question_data['question_text'] = question[:score_match.start()].strip()
-        question_data['score'] = float(score_match.group(1))
-    else:
-        # 2. 如果没有 '$数字$' 格式符号，检查是否存在 '[$A]' 格式
-        option_match = re.search(r'\[\$([A])\]', question)  # 寻找 '[$A]', '[$B]' 等格式
-        if option_match:
-            # 如果找到 '[$A]' 格式，提取到该选项之前
-            question_data['question_text'] = question[:option_match.start()].strip()
-        else:
-            # 如果没有 '[$A]' 格式，寻找 '[A]' 格式
-            option_match = re.search(r'\[([A-D])\]', question)  # 寻找 '[A]', '[B]' 等格式
-            if option_match:
-                # 提取到第一个 '[A]' 格式选项之前
-                question_data['question_text'] = question[:option_match.start()].strip()
-
-    # 提取选项
-    options = re.findall(r'([A-D])\]([^\[\n]+)', question)
-    for label, option in options:
-        question_data[label] = option.strip()
-        question_data['label_count'] += 1
-
-    # 提取答案 (假设答案是以[$X]格式给出的)
-    answer_match = re.findall(r'\[\$(\w+)\]', question)
-    question_data['answer'] = answer_match
-
-    # 提取tips
-    tips_match = re.search(r'\[tips:([^\]]+)\]', question)
-    if tips_match:
-        question_data['tips'] = tips_match.group(1).strip()
-
-    # 提取analysis
-    analysis_match = re.search(r'\[analysis:([^\]]+)\]', question)
-    if analysis_match:
-        question_data['analysis'] = analysis_match.group(1).strip()
-    print(f'question_data: {question_data}')
-    return question_data
-    '''
+# 提取analysis
+analysis_match = re.search(r'\[analysis:([^\]]+)\]', question)
+if analysis_match:
+    question_data['analysis'] = analysis_match.group(1).strip()
+print(f'question_data: {question_data}')
+return question_data
+'''
 
 
 
@@ -411,7 +461,9 @@ def process_matching_question(question_text):
         'option_label': '',
         'option_content': '',
         'tips': '',
-        'analysis': ''
+        'analysis': '',
+        'image': [],
+        'option_image': [],
     }
     # 提取tips
     tips_match = re.search(r'-\*([^*]+)\*-', question_text)
@@ -426,13 +478,29 @@ def process_matching_question(question_text):
 
     # 提取到第一个选项[A]或[B]等选项之前的部分作为题干
     question_text_match = re.match(r'([^\[]+)', question_text)
+    image_pattern = r'\(%(.*?)%\)'
     if question_text_match:
-        result['question_text'] = question_text_match.group(1).strip()
+        # result['question_text'] = question_text_match.group(1).strip()
+        sub_text = question_text_match.group(1).strip()
+        image_matches = re.findall(image_pattern, sub_text)
+        if image_matches:
+            result['image'] = image_matches
+            sub_text = re.sub(image_pattern, '', sub_text).strip()  # 移除 image 部分
+        result['question_text'] = sub_text
+
     # 提取选项标签和选项内容 (格式: [A] A website)
     option_match = re.search(r'\[([A-Z])\](.*?)\s*(?=\[|$)', question_text)
     if option_match:
         result['option_label'] = option_match.group(1)
         result['option_content'] = option_match.group(2).strip()
+        option_content = option_match.group(2).strip()
+        # 提取image
+        image_matches = re.findall(image_pattern, option_content)
+        if image_matches:
+            result['option_image'] = image_matches
+            option_content = re.sub(image_pattern, '', option_content).strip()  # 移除 image 部分
+        result['option_content'] = option_content
+    print(f'Result-Matching: {result}')
     return result
 
 '''
@@ -514,6 +582,7 @@ def process_comprehension_question(question):
         'answer': "",
         'tips': "",
         'analysis': "",
+        'image': [],
     }
     # 提取tips
     tips_match = re.search(r'-\*([^*]+)\*-', question)
@@ -525,11 +594,18 @@ def process_comprehension_question(question):
     if analysis_match:
         result['analysis'] = analysis_match.group(1).strip()
         question = question.replace(analysis_match.group(0), '')  # 移除 analysis 部分
+    # 提取image
+    image_pattern = r'\(%(.*?)%\)'
+    image_matches = re.findall(image_pattern, question)
+    if image_matches:
+        result['image'] = image_matches
+        question = re.sub(image_pattern, '', question).strip()  # 移除 image 部分
     # 提取答案部分
     match_answer = re.search(r'\[\$([^\]]+)\]', question)
     if match_answer:
         result['answer'] = match_answer.group(1).strip()
         result['question_text'] = question.split('[$')[0].strip() #提取第一个[answer: 任意字符]之前的内容作为题干
+    print(f'Result-Comprehension: {result}')
     return result
 
 
