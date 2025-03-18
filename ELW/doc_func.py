@@ -7,7 +7,7 @@ def main_process(text):
     for question in questions:
         main_question = parse_main_question(question)
         question_data.append(main_question)
-        print('main_question: ', main_question)
+        print(f'main_question: {main_question}')
     return question_data
 
 # 分割各道大题
@@ -22,7 +22,8 @@ def extract_questions(text):
         print(title, content)
         # result.append(f"{title}{content}")
         result.append(content)
-    print('result: ', result)
+    # print('result: ', result)
+    print(f'extract_questions: {result}')
     return result
 
 
@@ -36,6 +37,7 @@ def parse_main_question(text):
         'max': 3,
         'start': '',
         'end': '',
+        'image': [], # 大题题干图片
         'sub_questions': [],
     }
 
@@ -45,45 +47,41 @@ def parse_main_question(text):
         main_question['question_type'] = question_type.group(1).strip()
         text = text.replace(question_type.group(0), '')  # 移除 question_type 部分
 
-    text_match = False
+    # 提取大题题干
+    qt_match = re.search(r'\(([1-4])\)', text)  # 寻找第一个 '(1)'格式
+    if qt_match:
+        # 如果找到 '(1)' 格式，提取到该格式文本之前
+        question_text = text[:qt_match.start()].strip()
+        text = text.replace(text[:qt_match.start()].strip(), '')  # 移除 question_text 部分
+
     # 提取 score
     score_pattern = r'\$(\d+(?:\.\d+)?)\$'
-    score_match = re.search(score_pattern, text)
+    score_match = re.search(score_pattern, question_text)
     if score_match:
         main_question['score'] = float(score_match.group(1))
-        main_question['question_text'] = text.split(score_match.group(0))[0].strip()
-        text_match = True
-        text = text.replace(text.split(score_match.group(0))[0].strip(), '')  # 移除 question_text 部分
-        text = text.replace(score_match.group(0), '')  # 移除 score 部分
+        question_text = question_text.replace(score_match.group(0), '')  # 移除 score 部分
     # 提取 min 和 max
     range_pattern = r'\[(\d+)-(\d+)\]'
-    range_match = re.search(range_pattern, text)
+    range_match = re.search(range_pattern, question_text)
     if range_match:
         main_question['min'] = int(range_match.group(1))
         main_question['max'] = int(range_match.group(2))
-        if not text_match:
-            main_question['question_text'] = text.split(range_match.group(0))[0].strip()
-            text_match = True
-            text = text.replace(text.split(range_match.group(0))[0].strip(), '')   # 移除 question_text 部分
-        text = text.replace(range_match.group(0), '')  # 移除 range 部分
+        question_text = question_text.replace(range_match.group(0), '')  # 移除 range 部分
     # 提取 start 和 end
     time_range_pattern = r'\[([^\[\]-]+:[^\[\]-]+:[^\[\]-]+)-([^\[\]-]+:[^\[\]-]+:[^\[\]-]+)\]'
-    time_range_match = re.search(time_range_pattern, text)
+    time_range_match = re.search(time_range_pattern, question_text)
     if time_range_match:
         main_question['start'] = time_range_match.group(1)
         main_question['end'] = time_range_match.group(2)
-        if not text_match:
-            main_question['question_text'] = text.split(time_range_match.group(0))[0].strip()
-            text_match = True
-            text = text.replace(text.split(time_range_match.group(0))[0].strip(), '')   # 移除 question_text 部分
-        text = text.replace(time_range_match.group(0), '')  # 移除 time range 部分
-    if not text_match:
-        qt_match = re.search(r'\(([1-4])\)', text)  # 寻找第一个 '(1)'格式
-        if qt_match:
-            # 如果找到 '(1)' 格式，提取到该格式文本之前
-            main_question['question_text'] = text[:qt_match.start()].strip()
-            text_match = True
-            text = text.replace(text[:qt_match.start()].strip(), '') # 移除 question_text 部分
+        question_text = question_text.replace(time_range_match.group(0), '')  # 移除 time range 部分
+    # 提取 images
+    image_pattern = r'\(%(.*?)%\)'
+    image_matches = re.findall(image_pattern, question_text)
+    if image_matches:
+        main_question['image']= image_matches
+        question_text = re.sub(image_pattern, '', question_text).strip()  # 移除 image 部分
+    main_question['question_text'] = question_text
+
     print('text: ', text)
     parse_sub_question(text, main_question)
 

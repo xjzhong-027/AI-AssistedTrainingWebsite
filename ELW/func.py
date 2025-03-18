@@ -16,7 +16,7 @@ def extract_main_question(text):
         'start': '',
         'end': '',
         'score': 1.0,
-        'image': [],
+        'image': [], # 大题题干图片
     }
     # text_match = False
     # 提取 score
@@ -53,7 +53,7 @@ def extract_main_question(text):
     image_matches = re.findall(image_pattern, text)
     if image_matches:
         result['image']= image_matches
-        text = re.sub(image_pattern, '', text).strip()
+        text = re.sub(image_pattern, '', text).strip()  # 移除 image 部分
 
     result['question_text'] = text.strip()
     # if not text_match:
@@ -126,8 +126,8 @@ def process_choice_question(question):
         'answer': [],
         'tips': '',
         'analysis': '',
-        'image': [],
-        'A_image': [],
+        'image': [], # 小题题干图片
+        'A_image': [], #小题选项_A图片
         'B_image': [],
         'C_image': [],
         'D_image': [],
@@ -180,21 +180,21 @@ def process_choice_question(question):
         # question_data[label] = option.strip()
         question_data['label_count'] += 1
         label_content = option.strip()
-        print(f'label_content_before: {label_content}')
+        # print(f'label_content_before: {label_content}')
         # 提取选项_image
         image_pattern = r'\(%(.*?)%\)'
         image_matches = re.findall(image_pattern, label_content)
         if image_matches:
             question_data[f'{label}_image'] = image_matches
             label_content = re.sub(image_pattern, '', label_content).strip()
-        print(f'label_content_after: {label_content}')
+        # print(f'label_content_after: {label_content}')
         question_data[label] = label_content
 
     # 提取答案 (假设答案是以[$X]格式给出的)
     answer_match = re.findall(r'\[\$(\w+)\]', question)
     question_data['answer'] = answer_match
 
-    print(f'question_data: {question_data}')
+    print(f'Result_Choice: {question_data}')
     return question_data
 
 '''
@@ -332,6 +332,16 @@ def parse_text_modifications(input_text):
     if last_end < len(input_text):
         sub_list[-1] = sub_list[-1] + input_text[last_end:]
         # sub_list.append(input_text[last_end:])
+    print('Result_Correction: ',
+          {
+              'sub_list': sub_list,
+              'text_list': text_list,
+              'type_list': type_list,
+              'answer_list': answer_list,
+              'index_list': index_list
+              # 'split_texts': split_texts,
+          }
+          )
     # 返回结果
     return {
         'sub_list': sub_list,
@@ -462,8 +472,8 @@ def process_matching_question(question_text):
         'option_content': '',
         'tips': '',
         'analysis': '',
-        'image': [],
-        'option_image': [],
+        'image': [], # 小题题干图片
+        'option_image': [], # 小题选项图片
     }
     # 提取tips
     tips_match = re.search(r'-\*([^*]+)\*-', question_text)
@@ -723,6 +733,6 @@ def extract_subtext_and_answers(question):
         for answer in answers:
             if answer:
                 question_datas[i]['answer_list'].append(answer)
-    # print('question_datas: ', question_datas)
+    print('Result_Blank: ', question_datas)
     return question_datas
 
