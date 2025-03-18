@@ -10,6 +10,12 @@ urlpatterns = [
 
     path('class/', views.teacher_class, name='teacher_class'),
 
+    path('week_task/', views.teacher_week_task, name='teacher_week_task'),
+
+    path('week_task_package_add/', views.teacher_week_task_package_add, name='teacher_week_task_package_add'),
+
+    path('week_file_import/', views.teacher_week_file_import, name='teacher_week_file_import'),
+
     path('question_bank/', views.teacher_question_bank, name='teacher_question_bank'),
 
     path('delete_material/<int:material_id>', views.teacher_delete_material, name='teacher_delete_material'),

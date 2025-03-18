@@ -251,6 +251,79 @@ def teacher_index(request):
         })
     return redirect('login')
 
+
+def teacher_week_task(request):
+    return render(request, 'teacher_side/week_task.html')
+
+def teacher_week_task_package_add(request):
+    if request.method == 'POST':
+        # 全球唯一标识符
+        media_uuid = uuid.uuid4().hex
+        # 存储音频/视频
+        media_file = request.FILES.get('media_file')
+        media_file_path = os.path.join(settings.MEDIA_ROOT, 'media\\', media_uuid)
+        media_url = os.path.join('\\media_material\\media\\', media_uuid)
+        print('media_path: ', media_file_path)
+        print('media_url: ', media_url)
+        os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
+        with open(media_file_path, 'wb+') as destination:
+            for chunk in media_file.chunks():
+                destination.write(chunk)
+        # 存储图片
+        image_files = request.FILES.getlist('image_file')
+        if image_files:
+            image_urls = ''
+            for image_file in image_files:
+                image_file_path = os.path.join(f'{settings.MEDIA_ROOT}\\image\\{media_uuid}\\{image_file.name}')
+                image_url = os.path.join(f'\\media_material\\image\\{media_uuid}\\{image_file.name}')
+                print('image_path: ', image_file_path)
+                print('image_url: ', image_url)
+                image_urls = image_urls + image_url + ','
+                os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
+                with open(image_file_path, 'wb+') as destination:
+                    for chunk in image_file.chunks():
+                        destination.write(chunk)
+            new_task_package = models.MediaMaterial.objects.create(
+                title=request.POST.get('title'),
+                theme=request.POST.get('theme'),
+                abstract=request.POST.get('abstract'),
+                keywords=request.POST.get('keywords'),
+                transcript=request.POST.get('transcript'),
+                media_url=media_url,
+                image_url=image_urls,
+            )
+            print('new_task_package', new_task_package)
+            id = new_task_package.id
+            params = {'task_package_id': id}
+            query_string = urlencode(params)
+            url = reverse('teacher_week_file_import')
+            return HttpResponseRedirect(f"{url}?{query_string}")
+    return render(request, 'teacher_side/week_task_package_add.html')
+
+def teacher_week_file_import(request):
+    task_package_id = request.GET.get('task_package_id')
+    print(f'task_package_id: {task_package_id}')
+
+    # word文档导入
+    if request.method == 'POST' and request.FILES.get('word_file'):
+        def extract_text_from_word(doc_file):
+            # 读取Word文档内容
+            doc = Document(doc_file)
+            text = ''
+            for para in doc.paragraphs:
+                text += para.text
+            return text
+        form = WordUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            word_file = request.FILES['word_file']
+            # 提取文本内容
+            text_content = extract_text_from_word(word_file)
+            print(f'text_content: {text_content}')
+            # question_data = doc_func.main_process(text_content)
+
+    form = WordUploadForm()
+    return render(request, 'teacher_side/week_file_import.html', {'form': form})
+
 # 题库管理
 def teacher_question_bank(request):
     if request.session.get('is_login', None):
@@ -745,7 +818,7 @@ def teacher_task_package_add(request):
         media_uuid = uuid.uuid4().hex
         # 存储音频/视频
         media_file = request.FILES.get('media_file')
-        media_file_path = os.path.join(settings.MEDIA_ROOT, 'media_material\\', media_uuid)
+        media_file_path = os.path.join(settings.MEDIA_ROOT, 'media\\', media_uuid)
         media_url = os.path.join('\\media_material\\media\\', media_uuid)
         print('media_path: ', media_file_path)
         print('media_url: ', media_url)

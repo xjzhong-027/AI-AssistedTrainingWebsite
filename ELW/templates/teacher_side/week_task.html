@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/teacher_side/week_task.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="content">
+        <div class="header">
+            <button onclick="window.location.href='{% url 'teacher_index' %}'">返回首页</button>
+            <h2>周任务</h2>
+            <button onclick="window.location.href='{% url 'teacher_week_task_package_add' %}'">New task package</button> <!-- Assuming a click event to navigate -->
+        </div>
+        <h1>周任务</h1>
+        <p>点击左侧边栏中的栏目以进行相应操作。</p>
+    </div>
+{% endblock %}
