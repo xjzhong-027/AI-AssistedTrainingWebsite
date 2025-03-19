@@ -67,6 +67,32 @@ body {
     margin-bottom: 10px;
 }
 
+
+/* 新增的 .subImages 样式 */
+.image {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+img.image,
+.image img {
+    max-width: 300px;
+    max-height: 150px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    object-fit: cover; /* 确保图片比例不变 */
+}
+
+img.image
+
+.image p {
+    font-size: 14px;
+    color: #777;
+    margin: 5px 0;
+}
+
 /* 改错题样式 */
 .correction {
     margin-top: 15px;

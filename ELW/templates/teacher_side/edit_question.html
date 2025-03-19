@@ -10,59 +10,66 @@
     <div class="main">
         <form method="post" action="/teacher/media_material_detail/{{media_material.id}}/" enctype="multipart/form-data">
             {% csrf_token %}
-
+            {% if edit_type == 'sub' %}
 {#小题信息#}
-            <div class="sub_question">
-                <input type="number" name="sub_question_id" value="{{ sub_question.id }}" hidden>
-                <label for="question_text">题干：</label>
-                <textarea name="sub_question_text" id="question_text" required>{{ sub_question.question_text }}</textarea>
-                <label for="tips">提示：</label>
-                <textarea name="sub_question_tips" id="tips" required>{{ sub_question.tips }}</textarea>
-                <label for="answer">答案：</label>
-                <input type="text" name="sub_question_answer" id="answer" value="{{ sub_question.answer }}" required>
-                <label for="analsis">分析：</label>
-                <textarea name="sub_question.analysis" id="analysis">{{ sub_question.analysis }}</textarea>
-                <label for="score">分值：</label>
-                <input type="number" name="sub_question_score" id="score" value="{{ sub_question.score }}" min="0" step="0.5" required><br>
-{#                <div class="subPreviewImage"><img src="\media_material\image\510a56c07d324cc899ba9f22a83113ca\11.png" alt="picture"></div>#}
-                {% if sub_question.image_url %}
-                    <div class="subImages">
-                        {% with image_urls=sub_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
-                            {% for url in image_urls %}
-                                <img src="{{ url }}" alt="Image {{ forloop.counter }}">
-                            {% endfor %}
-                        {% endwith %}
-                    </div>
-                {% else %}
-                    <p>no images.</p>
-                {% endif %}
-                <div class="sub_image">
-                    <label for="subImageUpload">上传小题图片：</label>
-                    <input type="file" name="sub_images" id="subImageUpload" accept="image/*" multiple>
-                    <div id="subImagePreview"></div>
-                </div>
-            </div>
+                <div class="sub_question">
+                    <input type="number" name="sub_question_id" value="{{ sub_question.id }}" hidden>
+                    <label for="question_text">题干：</label>
+                    <textarea name="sub_question_text" id="sub_question_text" required>{{ sub_question.question_text }}</textarea>
+                    {% if sub_question.image_url %}
+                        <div class="subImages">
+                            {% with image_urls=sub_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
+                                {% for url in image_urls %}
+                                    <img src="{{ url }}" alt="Image {{ forloop.counter }}">
+                                {% endfor %}
+                            {% endwith %}
+                        </div>
+                    {% else %}
+                        <p>no images.</p>
+                    {% endif %}
+                    <label for="tips">提示：</label>
+                    <textarea name="sub_question_tips" id="tips" required>{{ sub_question.tips }}</textarea>
+                    <label for="answer">答案：</label>
+                    <input type="text" name="sub_question_answer" id="answer" value="{{ sub_question.answer }}" required>
+                    <label for="analsis">分析：</label>
+                    <textarea name="sub_question.analysis" id="analysis">{{ sub_question.analysis }}</textarea>
+                    <label for="score">分值：</label>
+                    <input type="number" name="sub_question_score" id="score" value="{{ sub_question.score }}" min="0" step="0.5" required><br>
 
-{#选择题-选项#}
-            {% if main_question.question_type == 'choice' %}
-                <textarea name="option_count" id="option_count" cols="30" rows="10" hidden>{{ sub_question.options.all.count }}</textarea>
-                {% for option in sub_question.options.all %}
-                    <div class="option">
-                        {% if option.option_label in sub_question.answer %}
-                            <input type="checkbox" value="{{ option.option_label }}" data-value="{{ option.option_label }}" checked>
-                        {% else %}
-                            <input type="checkbox" value="{{ option.option_label }}" data-value="{{ option.option_label }}">
-                        {% endif %}
-                        <label for="{{ option.option_label }}">{{ option.option_label }}</label>
-                        <textarea name="option_{{ option.option_label }}" id="{{ option.option_label }}" cols="50" rows="1">
-                            {{ option.option_content }}
-                        </textarea>
+                    <div class="sub_images">
+                        <label for="subImageUpload">上传小题图片：</label>
+                        <input type="file" name="sub_images" id="subImageUpload" accept="image/*" multiple>
+                        <div id="subImagePreview"></div>
                     </div>
-                {% endfor %}
-                <span>更改后答案：</span>
-                <span id="show_answer">{{ sub_question.answer }}</span>
-                <textarea name="new_sub_question_answer" id="new_answer" cols="30" rows="10" hidden></textarea>
+                </div>
+    {#选择题-选项#}
+                {% if main_question.question_type == 'choice' %}
+                    <input type="text" name="edit_type" value="choice" hidden>
+                    <textarea name="option_count" id="option_count" cols="30" rows="10" hidden>{{ sub_question.options.all.count }}</textarea>
+                    {% for option in sub_question.options.all %}
+                        <div class="option">
+                            {% if option.option_label in sub_question.answer %}
+                                <input type="checkbox" value="{{ option.option_label }}" data-value="{{ option.option_label }}" checked>
+                            {% else %}
+                                <input type="checkbox" value="{{ option.option_label }}" data-value="{{ option.option_label }}">
+                            {% endif %}
+                            <label for="{{ option.option_label }}">{{ option.option_label }}</label>
+                            <textarea class="option_content" name="option_{{ option.option_label }}" id="{{ option.option_label }}" cols="50" rows="1">{{ option.option_content }}</textarea>
+                            <div class="choice_images">
+                                {% with image_urls=option.image_url|split_image_urls %}
+                                    {% for url in image_urls %}
+                                        <img src="{{ url }}"></img>
+                                    {% endfor %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                    <span>更改后答案：</span>
+                    <span id="show_answer">{{ sub_question.answer }}</span>
+                    <textarea name="new_sub_question_answer" id="new_answer" cols="30" rows="10" hidden></textarea>
+                {% endif %}
             {% endif %}
+
 
 
             <button type="submit">提交</button>
@@ -72,54 +79,53 @@
 
 {% block extra_script %}
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // 获取所有 checkbox 元素
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-            const showAnswerSpan = document.getElementById('show_answer');
-            const newAnswer = document.getElementById('new_answer');
+        {% if edit_type == 'sub' %}
+            document.addEventListener('DOMContentLoaded', () => {
+                // 获取所有 checkbox 元素
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                const showAnswerSpan = document.getElementById('show_answer');
+                const newAnswer = document.getElementById('new_answer');
+                // 遍历每个 checkbox，添加事件监听器
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', () => {
+                        // 获取所有被选中的 checkbox 的 value
+                        const selectedValues = Array.from(checkboxes)
+                            .filter(cb => cb.checked) // 过滤出被选中的 checkbox
+                            .map(cb => cb.getAttribute('data-value')); // 获取它们的 data-value
+                        // 更新 show_answer 的内容
+                        showAnswerSpan.textContent = selectedValues.join(', ');
+                        newAnswer.textContent = showAnswerSpan.textContent;
+                    });
+                });
 
-            // 遍历每个 checkbox，添加事件监听器
-            checkboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', () => {
-                    // 获取所有被选中的 checkbox 的 value
-                    const selectedValues = Array.from(checkboxes)
-                        .filter(cb => cb.checked) // 过滤出被选中的 checkbox
-                        .map(cb => cb.getAttribute('data-value')); // 获取它们的 data-value
+            });
 
-                    // 更新 show_answer 的内容
-                    showAnswerSpan.textContent = selectedValues.join(', ');
-                    newAnswer.textContent = showAnswerSpan.textContent;
-
+            document.addEventListener('DOMContentLoaded', () => {
+                const subImageUpload = document.getElementById('subImageUpload');
+                const subImagePreview = document.getElementById('subImagePreview');
+                // 监听小题文件上传输入框的变化
+                subImageUpload.addEventListener('change', (event) => {
+                    const files = event.target.files; // 获取用户选择的所有文件
+                    if (files && files.length > 0) {
+                        // 清空之前的预览
+                        subImagePreview.innerHTML = '';
+                        // 遍历所有文件
+                        Array.from(files).forEach(file => {
+                            const reader = new FileReader(); // 创建 FileReader 对象
+                            // 文件读取完成时的回调函数
+                            reader.onload = (e) => {
+                                const img = document.createElement('img');
+                                img.src = e.target.result; // 设置图片的 src
+                                img.classList.add('subPreviewImage'); // 添加样式类
+                                subImagePreview.appendChild(img); // 将图片添加到预览容器
+                            };
+                            reader.readAsDataURL(file); // 读取文件内容
+                        });
+                    }
                 });
             });
+        {% endif %}
 
-        });
-
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const subImageUpload = document.getElementById('subImageUpload');
-            const subImagePreview = document.getElementById('subImagePreview');
-            // 监听小题文件上传输入框的变化
-            subImageUpload.addEventListener('change', (event) => {
-                const files = event.target.files; // 获取用户选择的所有文件
-                if (files && files.length > 0) {
-                    // 清空之前的预览
-                    subImagePreview.innerHTML = '';
-                    // 遍历所有文件
-                    Array.from(files).forEach(file => {
-                        const reader = new FileReader(); // 创建 FileReader 对象
-                        // 文件读取完成时的回调函数
-                        reader.onload = (e) => {
-                            const img = document.createElement('img');
-                            img.src = e.target.result; // 设置图片的 src
-                            img.classList.add('subPreviewImage'); // 添加样式类
-                            subImagePreview.appendChild(img); // 将图片添加到预览容器
-                        };
-                        reader.readAsDataURL(file); // 读取文件内容
-                    });
-                }
-            });
-        });
     </script>
 {% endblock %}
 

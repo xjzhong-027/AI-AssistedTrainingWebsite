@@ -119,10 +119,6 @@ def submit_question(request):
 # 登录板块
 def user_login(request):
     if request.method == 'GET':
-        sub_question = SubQuestion.objects.get(pk=1)
-        sub_question.image_url = r'\media_material\image\510a56c07d324cc899ba9f22a83113ca\11.png, \media_material\image\510a56c07d324cc899ba9f22a83113ca\task_package.jpg, \media_material\image\510a56c07d324cc899ba9f22a83113ca\题目内容.jpg'
-        # sub_question.image_url = 'media_material/510a56c07d324cc899ba9f22a83113ca/11.png, media_material/510a56c07d324cc899ba9f22a83113ca/task_package.jpg, media_material/510a56c07d324cc899ba9f22a83113ca/题目内容.jpg'
-        sub_question.save()
         return render(request, 'login.html')
     if request.method == 'POST':
         role = request.POST['role']
@@ -635,28 +631,24 @@ def teacher_delete_material(request, material_id):
     return redirect('teacher_question_bank')
 
 def teacher_edit_question(request, sub_id, material_id, question_type):
-
     if question_type == 'sub':
+        media_material = MediaMaterial.objects.get(id=material_id)
         sub_question = SubQuestion.objects.get(id=sub_id)
         main_question = MainQuestion.objects.get(id=sub_question.main_question_id)
-        media_material = MediaMaterial.objects.get(id=material_id)
-        if sub_question.image_url:
-            sub_images = sub_question.image_url.split(',')
-            print(f'sub_images: {sub_images}')
-            return render(request, 'teacher_side/edit_question.html', {
-                'main_question': main_question,
-                'sub_question': sub_question,
-                'media_material': media_material,
-                'sub_images': sub_images,
-            })
+        return render(request, 'teacher_side/edit_question.html', {
+            'edit_type': 'sub',
+            'media_material': media_material,
+            'main_question': main_question,
+            'sub_question': sub_question,
+        })
     elif question_type == 'main':
         print(f'edit_main_question')
         return render(request, 'teacher_side/index.html')
-    return render(request, 'teacher_side/edit_question.html', {
-        'main_question': main_question,
-        'sub_question': sub_question,
-        'media_material': media_material,
-    })
+    # return render(request, 'teacher_side/edit_question.html', {
+    #     'main_question': main_question,
+    #     'sub_question': sub_question,
+    #     'media_material': media_material,
+    # })
 
 def teacher_page_create(request, material_id):
     material = get_object_or_404(MediaMaterial, id=material_id)
@@ -988,20 +980,28 @@ def teacher_media_material_detail(request, material_id):
         images = request.FILES.getlist('sub_images')  # 获取所有上传的文件
         data = request.POST
         print('data: ', data)
-
-        sub_id = data.get('sub_question_id')
-        sub_instance = SubQuestion.objects.get(id=sub_id)
-        main_instance = MainQuestion.objects.get(id=sub_instance.main_question_id)
-        question_text = data.get('sub_question_text')
-        tips = data.get('sub_question_tips')
-        analysis = data.get('sub_question_analysis')
-        if data.get('new_sub_question_answer'):
-            answer = data.get('new_sub_question_answer')
-        else:
-            answer = data.get('sub_question_answer')
-        if main_instance.question_type == 'choice':
+        edit_type = request.POST.get('edit_type')
+        if edit_type == 'choice':
+            sub_id = data.get('sub_question_id')
+            sub_instance = SubQuestion.objects.get(id=sub_id)
+            main_instance = MainQuestion.objects.get(id=sub_instance.main_question_id)
+            sub_question_text = data.get('sub_question_text')
+            score = data.get('sub_question_score')
+            tips = data.get('sub_question_tips')
+            analysis = data.get('sub_question_analysis')
+            if data.get('new_sub_question_answer'):
+                answer = data.get('new_sub_question_answer')
+            else:
+                answer = data.get('sub_question_answer')
             option_count = data.get('option_count')
-            print('option_count: ', option_count)
+            sub_instance.question_text = sub_question_text or ''
+            sub_instance.tips = tips or ''
+            sub_instance.analysis = analysis or ''
+            sub_instance.answer = answer
+            if score:
+                sub_instance.score = float(score)
+            sub_instance.save()
+
 
 
 

@@ -25,6 +25,11 @@
                         {{ forloop.counter }}.
                         {{ main_question.question_text }} ({{ main_question.get_question_type_display }})
                     </h3>
+                   {% with image_urls=main_question.image_url|split_image_urls %}
+                       {% for url in image_urls %}
+                           <img class="image" src="{{ url }}" alt="">
+                       {% endfor %}
+                   {% endwith %}
                     <span>{{ sub_question.question_text }}</span>
 {#改错题#}
                     {% if main_question.question_type == 'correction' %}
@@ -88,8 +93,15 @@
                                                 ({{ sub_question.score }})
                                             {% endif %}
                                         </h4>
+{#小题图片#}
                                         {% if sub_question.image_url %}
-                                            <img src="{{ sub_question.image_url.url }}" alt="Image" width="50">
+                                            <div class="image">
+                                                {% with image_urls=sub_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
+                                                    {% for url in image_urls %}
+                                                        <img src="{{ url }}" alt="Image {{ forloop.counter }}">
+                                                    {% endfor %}
+                                                {% endwith %}
+                                            </div>
                                         {% endif %}
                                         <button onclick="edit_sub_question({{ sub_question.id }}, {{ material.id }})">编辑</button>
                                     </div>
@@ -99,6 +111,12 @@
                                             <div class="choice">
                                                {% if choice %}
                                                    <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
+{#选择题-选项图片#}
+                                                   {% with image_urls=choice.image_url|split_image_urls %}
+                                                       {% for url in image_urls %}
+                                                           <img class="image" src="{{ url }}" alt="">
+                                                       {% endfor %}
+                                                   {% endwith %}
                                                 {% endif %}
                                             </div>
                                         {% endfor %}
@@ -109,6 +127,11 @@
                                             {% if matchingOption %}
                                                 <div class="matching">
                                                     <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
+                                                   {% with image_urls=matchingOption.image_url|split_image_urls %}
+                                                       {% for url in image_urls %}
+                                                           <img class="image" src="{{ url }}" alt="">
+                                                       {% endfor %}
+                                                   {% endwith %}
                                                 </div>
                                             {% endif %}
                                         {% endfor %}

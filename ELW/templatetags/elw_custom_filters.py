@@ -59,6 +59,6 @@ def split_image_urls(value):
     :return: 分割后的 URL 列表，例如 ["/media/a.jpg", "/media/b.jpg", "/media/c.jpg"]
     """
     if value:
-        print(f"url: {[url.strip() for url in value.split(',')]}")
+        # print(f"url: {[url.strip() for url in value.split(',')]}")
         return [url.strip() for url in value.split(',')]
     return []
