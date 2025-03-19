@@ -1,0 +1,157 @@
+/* 分页控件 */
+.pagination-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+.page {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.page.active {
+    display: grid;
+}
+/* 左侧区域 */
+.left-column {
+    padding: 10px;
+    background-color: #f4f4f4;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+/* 右侧区域 */
+.right-column {
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+input, textarea {
+    width: 90%;
+    padding: 8px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+.left-column input{
+    width: 50%;
+}
+fieldset {
+    margin: 20px;
+    padding: 20px;
+    background-color: #f7f7f7;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+legend {
+    width: 100%;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+.question-divider {
+    width: 100%;
+    border-top: 2px solid #ccc;
+    margin: 20px 0;
+}
+#modal {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    width: 400px;
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px solid #ccc;
+    z-index: 1000;
+}
+#modal h1 {
+    margin-top: 0;
+    color: #007BFF;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    text-align: center;
+}
+#modal label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 300;
+}
+#modal input[type="text"],
+#modal input[type="number"],
+#modal select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+#modal select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="black" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+    background-repeat: no-repeat;
+    background-position-x: 98%;
+    background-position-y: 50%;
+}
+#modal .time_management {
+    margin-bottom: 10px;
+}
+#modal .exam_time_management {
+    margin-bottom: 10px;
+}
+#modal #confirm-unit {
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+}
+#modal #confirm-unit:hover {
+    background-color: #0056b3;
+}
+#modal p[style*="color: red"] {
+    color: red;
+    margin-top: 5px;
+    margin-bottom: 20px;
+}
+#close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+
+    background-color: transparent;
+    border: none;
+
+    font-size: 20px;
+    color: black;
+
+    cursor: pointer;
+    padding: 5px;
+}
+#close-modal:hover {
+    color: #da5454;
+}
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}

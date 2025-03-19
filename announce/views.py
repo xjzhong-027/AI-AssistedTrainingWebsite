@@ -13,7 +13,7 @@ from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse, HttpResponse
 from ELW.models import Class, Course
-from ELW.models import Teachers,Students
+from Account.models import Teachers,Students
 from forum.models import Post
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync

@@ -108,6 +108,7 @@ class MainQuestion(models.Model):
     media_material = models.ForeignKey(MediaMaterial, on_delete=models.CASCADE, related_name='main_questions')
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='choice', verbose_name="题目类型")
     question_text = models.TextField(verbose_name="大题题干", blank=False)  # 存储题干
+    image_url = models.CharField(verbose_name="大题图片", max_length=10000, default='', blank=True, null=True)
     maximum_play = models.IntegerField(default=3)
     minimum_play = models.IntegerField(default=0)
     start_time = models.TimeField(blank=True, null=True)
@@ -131,8 +132,7 @@ class Document(models.Model):
 class SubQuestion(models.Model):
     main_question = models.ForeignKey(MainQuestion, on_delete=models.CASCADE, related_name='sub_questions')
     question_text = models.TextField(verbose_name='小题内容', blank=False, null=False)
-    # image_url = models.ImageField(verbose_name="图片", upload_to=images_upload_to, blank=True, null=True)
-    image_url = models.CharField(verbose_name="小题图片", max_length=1000, blank=True, null=True, default=None)
+    image_url = models.CharField(verbose_name='图片', max_length=10000, default='', blank=True, null=True)
     tips = models.TextField(verbose_name='提示', blank=True, null=True)
     answer = models.TextField(verbose_name='参考答案', default='test', blank=False)
     analysis = models.TextField(verbose_name='解析', blank=True, null=True)
@@ -146,8 +146,8 @@ class SubQuestion(models.Model):
 class ChoiceOption(models.Model):
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='options')
     option_label = models.CharField(max_length=1, verbose_name="选项字母")
-    option_content = models.TextField(verbose_name="选项内容")
-    option_image = models.CharField(verbose_name="选项图片", max_length=1000, blank=True, null=True, default=None)
+    option_content = models.TextField(verbose_name="选项内容", blank=True, null=True)
+    image_url = models.CharField(verbose_name="选项图片", max_length=10000, default='', blank=True, null=True)
     is_answer = models.BooleanField(default=False, verbose_name="是否为答案")
 
     def __str__(self):
@@ -157,8 +157,8 @@ class ChoiceOption(models.Model):
 class MatchingOption(models.Model):
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='matchingOptions')
     option_label = models.CharField(max_length=1, verbose_name='选项字母', blank=False, null=False)
-    option_content = models.TextField(verbose_name='选项内容')
-    image_url = models.ImageField(verbose_name='选项图片', upload_to=images_upload_to, blank=True, null=True)
+    option_content = models.TextField(verbose_name='选项内容', blank=True, null=True)
+    image_url = models.CharField(verbose_name="选项图片", max_length=10000, default='', blank=True, null=True)
 
     def __str__(self):
         return f"{self.sub_question}-{self.option_label}"
@@ -206,7 +206,7 @@ class PaperPage(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='paper_pages')
     order = models.IntegerField(verbose_name='页面顺序', blank=False, null=False)
     text = models.TextField(verbose_name='页面文本', blank=True, null=True)
-    limited_time = models.TimeField(verbose_name='时间限制', blank=True, null=True, default=None)
+    limited_time = models.TimeField(blank=True, null=True, default=None)
     created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
 
 class PageMainQuestion(models.Model):

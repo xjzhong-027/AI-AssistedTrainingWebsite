@@ -305,8 +305,18 @@ def teacher_week_task_package_add(request):
     return render(request, 'teacher_side/week_task_package_add.html')
 
 def teacher_week_file_import(request):
+    username = request.session.get('username')
+    teacher_instance = Teachers.objects.get(username=username)
+    classes = Class.objects.filter(teacher_id=teacher_instance.id)
     task_package_id = request.GET.get('task_package_id')
-    print(f'task_package_id: {task_package_id}')
+    # print(f'task_package_id: {task_package_id}')
+    media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+    # 获取图片路径根目录
+    first_path = media_material_instance.image_url.split(',')[0]
+    match = re.match(r"(.+\\)[^\\]+$", first_path)
+    img_directory = ""
+    if match:
+        img_directory = match.group(1)
 
     # word文档导入
     if request.method == 'POST' and request.FILES.get('word_file'):
@@ -317,13 +327,264 @@ def teacher_week_file_import(request):
             for para in doc.paragraphs:
                 text += para.text
             return text
+
         form = WordUploadForm(request.POST, request.FILES)
         if form.is_valid():
             word_file = request.FILES['word_file']
             # 提取文本内容
             text_content = extract_text_from_word(word_file)
-            print(f'text_content: {text_content}')
-            print(f'word_page_process: {doc_page_func.main_process(text_content)}')
+            # print(f'text_content: {text_content}')
+            # print(f'word_page_process: {doc_page_func.main_process(text_content)}')
+            question_data = doc_page_func.main_process(text_content)
+
+            # 将每道改错题的sub_list、type_list、answer_list、index_list合并为一个列表，列表中每个集合包含这四个值
+            for page_question in question_data:
+                for main_question in page_question['page_content']:
+                    main_question['media_instance'] = media_material_instance
+                    main_question['img_directory'] = img_directory
+                    if main_question['question_type'] == 'correction':
+                        for sub_question in main_question['sub_questions']:
+                            sub_question['questions'] = []
+                            for i in range(len(sub_question['sub_list'])):
+                                sub_question['questions'].append({
+                                    'sub': sub_question['sub_list'][i],
+                                    'type': sub_question['type_list'][i],
+                                    'answer': sub_question['answer_list'][i],
+                                    'index': sub_question['index_list'][i]
+                                })
+
+            print('question_data: ', question_data)
+            return render(request, 'teacher_side/week_task_preview.html', {'question_data': question_data, 'classes':classes})
+        else:
+            return JsonResponse({'status': 'error', 'message': '文件上传失败'})
+
+    elif request.method == 'POST':
+        if 'save' in request.POST:
+            # 把POST数据转为字典
+            post_data = request.POST.dict()
+            print(request.POST)
+
+            page_data = {}
+            for key in post_data:
+                if key.startswith('page['):
+                    parts = key.split('.')
+                    page_idx = int(parts[0][5:-1])
+                    field_path = parts[1:]
+
+                    # 构建嵌套字典结构
+                    current = page_data.setdefault(page_idx, {})
+                    for part in field_path[:-1]:
+                        if '[' in part:
+                            name, idx = part[:-1].split('[')
+                            idx = int(idx)
+                            current = current.setdefault(name, {}).setdefault(idx, {})
+                        else:
+                            current = current.setdefault(part, {})
+                    current[field_path[-1]] = post_data[key]
+            print('page_data:', page_data)
+
+            # 获取单元信息
+            class_id = int(post_data.get('selected_class'))
+            order = post_data.get('week')
+            title = post_data.get('title')
+            type = post_data.get('selected_type')
+            if post_data.get('exam_time'):
+                duration = int(post_data.get('exam_time'))
+            if post_data.get('exam_date'):
+                exam_date = datetime.date.fromisoformat(post_data.get('exam_date'))
+                start_time = datetime.time.fromisoformat(post_data.get('start_time'))
+                end_time = datetime.time.fromisoformat(post_data.get('end_time'))
+
+            # 创建试卷
+            class_instance = Class.objects.get(pk=class_id)
+            unit_instance = Unit.objects.create(
+                class_instance=class_instance,
+                order=order,
+                title=title,
+                type=type,
+            )
+            unit_instance.save()
+            print('unit_instance: ', unit_instance)
+            # 如果为考试，则创建时间管理表
+            if type == 'exam':
+                time_management_instance = TimeManagement.objects.create(
+                    unit=unit_instance,
+                    duration=duration,
+                    exam_date=exam_date,
+                    start_time=start_time,
+                    end_time=end_time,
+                )
+                time_management_instance.save()
+            if type == 'quiz':
+                time_management_instance = TimeManagement.objects.create(
+                    unit=unit_instance,
+                    week=order,
+                    duration=duration,
+                )
+                time_management_instance.save()
+
+            # 遍历所有页面
+            for page_idx, page_item in page_data.items():
+                # 保存 PaperPage
+                paper_page_instance = PaperPage(
+                    unit=unit_instance,
+                    order=page_idx,
+                    text=f'第{page_idx+1}个页面',
+                    limited_time=datetime.time.fromisoformat(page_item.get('limited_time')) if page_item.get(
+                        'limited_time') else None
+                )
+                paper_page_instance.save()
+                # 遍历所有大题
+                for main_idx, main_item in page_item.get('main', {}).items():
+                    # 保存大题
+                    media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+
+                    main_instance = MainQuestion(
+                        media_material=media_material_instance,
+                        question_type=main_item.get('question_type'),
+                        question_text=main_item.get('main_question_text'),
+                        maximum_play=int(main_item.get('max', 3)),
+                        minimum_play=int(main_item.get('min', 1)),
+                        start_time=datetime.time.fromisoformat(main_item.get('start')) if main_item.get(
+                            'start') else None,
+                        end_time=datetime.time.fromisoformat(main_item.get('end')) if main_item.get('end') else None,
+                        allow_pause=str(main_item.get('allow_pause', 'false')).lower() == 'true',
+                        limited_time=datetime.time.fromisoformat(main_item.get('limited_time')) if main_item.get(
+                            'limited_time') else None
+                    )
+                    main_instance.save()
+
+                    # 保存大题图片
+                    main_images = {k: v for k, v in main_item.items() if k.startswith('main_question_images[')}
+                    if main_images:
+                        main_instance.image_url = ','.join(main_images.values())
+                        main_instance.save()
+
+                    # 保存 PageMainQuestion
+                    page_main_question_instance = PageMainQuestion(
+                        page=paper_page_instance,
+                        main_question=main_instance
+                    )
+                    page_main_question_instance.save()
+
+
+
+                    # 保存改错题
+                    if main_item['question_type'] == 'correction':
+                        for sub_idx, sub_item in main_item.get('sub', {}).items():
+                            for corr_idx, correction in sub_item.get('corrections', {}).items():
+                                sub_question = SubQuestion(
+                                    main_question=main_instance,
+                                    question_text=correction.get('question_text'),
+                                    score=float(correction.get('score', 0)),
+                                    answer=correction.get('answer'),
+                                    tips=correction.get('tips'),
+                                    analysis=correction.get('analysis')
+                                )
+                                sub_question.save()
+                                correction_instance = Correction(
+                                    sub_question=sub_question,
+                                    type=correction.get('correction_type'),
+                                    index=int(correction.get('index', 0)),
+                                )
+                                correction_instance.save()
+                                # 保存 PageSubQuestion
+                                page_sub_question_instance = PageSubQuestion(
+                                    page_main_question=page_main_question_instance,
+                                    sub_question=sub_question
+                                )
+                                page_sub_question_instance.save()
+
+                    # 保存填空题
+                    elif main_item['question_type'] == 'blank':
+                        for sub_idx, sub_item in main_item.get('sub', {}).items():
+                            for blank_idx, blank in sub_item.get('blanks', {}).items():
+                                sub_question = SubQuestion(
+                                    main_question=main_instance,
+                                    question_text=blank.get('question_text'),
+                                    score=float(blank.get('score', 0)),
+                                    answer=blank.get('answer'),
+                                    tips=blank.get('tips'),
+                                    analysis=blank.get('analysis')
+                                )
+                                sub_question.save()
+                                blank_instance = Blank(
+                                    sub_question=sub_question,
+                                    index=int(blank.get('index', 0))
+                                )
+                                blank_instance.save()
+                                # 保存 PageSubQuestion
+                                page_sub_question_instance = PageSubQuestion(
+                                    page_main_question=page_main_question_instance,
+                                    sub_question=sub_question
+                                )
+                                page_sub_question_instance.save()
+
+                    # 保存其他题型（选择题、连线题）
+                    else:
+                        for sub_idx, sub_item in main_item.get('sub', {}).items():
+                            sub_question = SubQuestion(
+                                main_question=main_instance,
+                                question_text=sub_item.get('question_text'),
+                                score=float(sub_item.get('score', 0)),
+                                answer=sub_item.get('answer'),
+                                tips=sub_item.get('tips'),
+                                analysis=sub_item.get('analysis')
+                            )
+                            sub_question.save()
+
+                            # 保存小题图片
+                            sub_images = {k: v for k, v in sub_item.items() if k.startswith('question_images[')}
+                            if sub_images:
+                                sub_question.image_url = ','.join(sub_images.values())
+                                sub_question.save()
+                            # 保存 PageSubQuestion
+                            page_sub_question_instance = PageSubQuestion(
+                                page_main_question=page_main_question_instance,
+                                sub_question=sub_question
+                            )
+                            page_sub_question_instance.save()
+
+                            # 保存选择题
+                            if main_item['question_type'] == 'choice':
+                                label_list = ['A', 'B', 'C', 'D']
+                                label_count = int(sub_item.get('label_count', 4))
+                                for i in range(label_count):
+                                    option_label = label_list[i]
+                                    option_content = sub_item.get(option_label)
+
+                                    is_answer = option_label in sub_item.get('answer', '')  # 判断是否为答案
+                                    choice_option = ChoiceOption(
+                                        sub_question=sub_question,
+                                        option_label=option_label,
+                                        option_content=option_content,
+                                        is_answer=is_answer
+                                    )
+                                    choice_option.save()
+
+                                    # 保存选项图片
+                                    option_images = {k: v for k, v in sub_item.items() if
+                                                     k.startswith(f'{option_label}_images[')}
+                                    if option_images:
+                                        choice_option.image_url = ','.join(option_images.values())
+                                        choice_option.save()
+
+                            # 保存连线题
+                            elif main_item['question_type'] == 'matching':
+                                matching_instance = MatchingOption(
+                                    sub_question=sub_question,
+                                    option_label=sub_item.get('option_label'),
+                                    option_content=sub_item.get('option_content'),
+                                )
+                                matching_instance.save()
+
+                                # 保存连线题图片
+                                option_images = {k: v for k, v in sub_item.items() if k.startswith('option_images[')}
+                                if option_images:
+                                    matching_instance.image_url = ','.join(option_images.values())
+                                    matching_instance.save()
+            return redirect('teacher_question_bank')
+
 
     form = WordUploadForm()
     return render(request, 'teacher_side/week_file_import.html', {'form': form})
@@ -1308,6 +1569,13 @@ def teacher_matching(request):
 
 def question_integration(request):
     task_package_id = request.GET.get('task_package_id')
+    media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+    # 获取图片路径根目录
+    first_path = media_material_instance.image_url.split(',')[0]
+    match = re.match(r"(.+\\)[^\\]+$", first_path)
+    img_directory = ""
+    if match:
+        img_directory = match.group(1)
     '''
     start_time = datetime.time.fromisoformat("00:30:00").isoformat()
     end_time = datetime.time.fromisoformat("14:00:00").isoformat()
@@ -1344,6 +1612,8 @@ def question_integration(request):
 
             # 将每道改错题的sub_list、type_list、answer_list、index_list合并为一个列表，列表中每个集合包含这四个值
             for main_question in question_data:
+                main_question['media_instance'] = media_material_instance
+                main_question['img_directory'] = img_directory
                 if main_question['question_type'] == 'correction':
                     for sub_question in main_question['sub_questions']:
                         sub_question['questions'] = []
@@ -1362,16 +1632,17 @@ def question_integration(request):
 
     # 传统表单导入
     elif request.method == 'POST':
-        print("-----------post-----------")
+        media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
         question_type = request.POST.get('question_type')
         # 处理预览
         if 'preview' in request.POST:
-            print('-------------preview---------------')
             main_text = request.POST.get('MainQuestion')
             sub_text = request.POST.get('SubQuestion')
             main_info = func.extract_main_question(main_text)
 
             question_data = [{
+                "media_instance": media_material_instance, # new
+                "img_directory": img_directory, # new
                 "question_type": question_type,
                 "question_text": main_info.get('question_text'),
                 "score": main_info.get('score'),
@@ -1379,6 +1650,7 @@ def question_integration(request):
                 "max": main_info.get('max'),
                 "start": main_info.get('start'),
                 "end": main_info.get('end'),
+                "image": main_info.get('image'), # new
                 "sub_questions": []
             }]
 
@@ -1420,7 +1692,6 @@ def question_integration(request):
 
         # 处理保存逻辑
         if 'save' in request.POST:
-            print('------------save-------------')
             # 把POST数据转为字典
             post_data = request.POST.dict()
             print(request.POST)
@@ -1447,6 +1718,7 @@ def question_integration(request):
             for main_idx, main_item in main_data.items():
                 # 保存大题
                 media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+
                 main_instance = MainQuestion(
                     media_material=media_material_instance,
                     question_type=main_item.get('question_type'),
@@ -1459,6 +1731,13 @@ def question_integration(request):
                     limited_time=datetime.time.fromisoformat(main_item.get('limited_time')) if main_item.get('limited_time') else None
                 )
                 main_instance.save()
+                # 保存大题图片
+                main_images = {k: v for k, v in main_item.items() if k.startswith('main_question_images[')}
+                if main_images:
+                    # 将所有图片路径用逗号拼接
+                    main_instance.image_url = ','.join(main_images.values())
+                    main_instance.save()
+
 
                 # 保存改错题
                 if main_item['question_type'] == 'correction':
@@ -1499,6 +1778,7 @@ def question_integration(request):
                             blank_instance.save()
                 else:
                     for sub_idx, sub_item in main_item.get('sub', {}).items():
+
                         sub_question = SubQuestion(
                             main_question=main_instance,
                             question_text=sub_item.get('question_text'),
@@ -1508,6 +1788,11 @@ def question_integration(request):
                             analysis=sub_item.get('analysis')
                         )
                         sub_question.save()
+                        # 保存小题图片
+                        sub_images = {k: v for k, v in sub_item.items() if k.startswith('question_images[')}
+                        if sub_images:
+                            sub_question.image_url = ','.join(sub_images.values())
+                            sub_question.save()
 
                         # 保存选择题
                         if main_item['question_type'] == 'choice':
@@ -1517,14 +1802,19 @@ def question_integration(request):
                                 option_label = label_list[i]
                                 option_content = sub_item.get(option_label)
 
-                                if option_content:
-                                    is_answer = option_label in sub_item.get('answer')  # 判断是否为答案
-                                    choice_option = ChoiceOption(
-                                        sub_question=sub_question,
-                                        option_label=option_label,
-                                        option_content=option_content,
-                                        is_answer=is_answer
-                                    )
+                                is_answer = option_label in sub_item.get('answer')  # 判断是否为答案
+                                choice_option = ChoiceOption(
+                                    sub_question=sub_question,
+                                    option_label=option_label,
+                                    option_content=option_content,
+                                    is_answer=is_answer
+                                )
+                                choice_option.save()
+                                # 保存选项图片
+                                option_images = {k: v for k, v in sub_item.items() if
+                                                 k.startswith(f'{option_label}_images[')}
+                                if option_images:
+                                    choice_option.image_url = ','.join(option_images.values())
                                     choice_option.save()
 
                         # 保存连线题
@@ -1535,6 +1825,11 @@ def question_integration(request):
                                 option_content=sub_item.get('option_content'),
                             )
                             matching_instance.save()
+                            # 保存连线题图片
+                            option_images = {k: v for k, v in sub_item.items() if k.startswith('option_images[')}
+                            if option_images:
+                                matching_instance.image_url = ','.join(option_images.values())
+                                matching_instance.save()
             return redirect('teacher_question_bank')
 
     form = WordUploadForm()

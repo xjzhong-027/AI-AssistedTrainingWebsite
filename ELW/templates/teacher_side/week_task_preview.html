@@ -1,0 +1,391 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>题目预览</title>
+    <link rel="stylesheet" href="{% static 'css/teacher_side/week_task_preview.css' %}">
+</head>
+<body>
+    <form method="post">
+        {% csrf_token %}
+        <div id="page-container">
+            {% for page in question_data %}
+                <div class="page {% if forloop.first %}active{% endif %}" data-page="{{ forloop.counter0 }}">
+                    <button type="button" name="confirm" id="confirm-question">确认题目</button><br>
+                    <label>页面限制时间：</label>
+                    <input type="text" name="page[{{ forloop.counter0 }}].limited_time" value="{{ page.limited_time }}">
+
+                    {% for main_question in page.page_content %}
+                        <!-- 左侧媒体信息 -->
+                        <div class="left-column">
+
+                            <div class="video-box">
+                                <video width="95%" height="auto" controls>
+                                    <source src="{{ main_question.media_instance.media_url }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+
+                            <input type="checkbox" style="width:20px;" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].allow_pause" value="true">允许手动暂停媒体播放<br>
+
+                            <label>最小播放次数：</label>
+                            <input type="number" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].min" value="{{ main_question.min }}"><br>
+
+                            <label>最大播放次数：</label>
+                            <input type="number" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].max" value="{{ main_question.max }}"><br>
+
+                            <label>开始播放时间：</label>
+                            <input type="text" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].start" value="{{ main_question.start }}"><br>
+
+                            <label>结束播放时间：</label>
+                            <input type="text" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].end" value="{{ main_question.end }}"><br>
+                        </div>
+
+                        <!-- 右侧题目信息 -->
+                        <div class="right-column">
+                            <label>大题类型：</label>
+                            <input type="text" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].question_type" value="{{ main_question.question_type }}" readonly><br>
+                            <label>大题题干：</label>
+                            <input type="text" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].main_question_text" value="{{ main_question.question_text }}" required><br>
+                            {% for img in main_question.image %}
+                                <img src="{{ main_question.img_directory}}{{ img }}" alt="Question Image" width="30%" height="auto">
+                                <input type="hidden" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].main_question_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
+                            {% endfor %}
+
+                            {% for sub in main_question.sub_questions %}
+                                {% if main_question.question_type == 'choice' %}
+                                    <!-- 选择题 -->
+                                    <fieldset class="choice-question-container">
+                                        <legend>
+                                            <label for="question_text">选择题{{ forloop.counter }}：</label>
+                                            <input type="text" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].question_text" value="{{ sub.question_text }}" required>
+{#                                            <p>page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}]</p>#}
+                                            {% for img in sub.image %}
+                                                <img src="{{ main_question.img_directory}}{{ img }}" alt="Question Image" width="20%" height="auto">
+                                                <input type="hidden" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].question_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
+{#                                                <p>page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].question_images[{{ forloop.counter0 }}]</p>#}
+                                            {% endfor %}
+                                        </legend>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                            <div>
+                                                <label for="A">选项 A：</label>
+                                                <input type="text" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].A" value="{{ sub.A }}" placeholder="请输入选项文本">
+                                                {% for img in sub.A_image %}
+                                                    <img src="{{ main_question.img_directory}}{{ img }}" alt="Answer Image" width="20%" height="auto">
+                                                    <input type="hidden" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].A_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
+{#                                                    <p>page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].A_images[{{ forloop.counter0 }}]</p>#}
+                                                {% endfor %}
+                                                <br>
+
+                                                <label for="B">选项 B：</label>
+                                                <input type="text" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].B" value="{{ sub.B }}" placeholder="请输入选项文本">
+                                                {% for img in sub.B_image %}
+                                                    <img src="{{ main_question.img_directory}}{{ img }}" alt="Answer Image" width="20%" height="auto">
+                                                    <input type="hidden" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].B_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
+{#                                                    <p>page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].B_images[{{ forloop.counter0 }}]</p>#}
+                                                {% endfor %}
+                                                <br>
+
+                                                <label for="C">选项 C：</label>
+                                                <input type="text" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].C" value="{{ sub.C }}" placeholder="请输入选项文本">
+                                                {% for img in sub.C_image %}
+                                                    <img src="{{ main_question.img_directory}}{{ img }}" alt="Answer Image" width="20%" height="auto">
+                                                    <input type="hidden" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].C_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
+                                                {% endfor %}
+                                                <br>
+
+                                                <label for="D">选项 D：</label>
+                                                <input type="text" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].D" value="{{ sub.D }}" placeholder="请输入选项文本">
+                                                {% for img in sub.D_image %}
+                                                    <img src="{{ main_question.img_directory}}{{ img }}" alt="Answer Image" width="20%" height="auto">
+                                                    <input type="hidden" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].D_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
+                                                {% endfor %}
+                                                <br>
+
+                                                <label for="tips">提示：</label>
+                                                <textarea name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].tips">{{ sub.tips }}</textarea><br>
+                                            </div>
+                                            <div>
+                                                <label for="score">分值：</label>
+                                                <input type="number" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].score" value="{{ main_question.score }}" min="0" step="0.5" required><br>
+
+                                                <label for="label_count">选项数量：</label>
+                                                <input type="number" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].label_count" value="{{ sub.label_count }}" min="2" max="4" required><br>
+
+                                                <label for="answer">答案：</label>
+                                                <input type="text" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].answer" value="{{ sub.answer|join:'' }}" required><br>
+
+                                                <label for="analysis">解析：</label>
+                                                <textarea name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].analysis">{{ sub.analysis }}</textarea><br>
+                                            </div>
+                                        </div>
+                                    </fieldset>
+
+                                {% elif main_question.question_type == 'correction' %}
+                                    <!-- 改错题 -->
+                                    <fieldset class="correction-question-container">
+                                        <legend>改错题{{ forloop.counter }}</legend>
+                                        {% for question in sub.questions %}
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px">
+                                                <div>
+                                                    <label for="question_text">文本：</label>
+                                                    <textarea name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].question_text" required>{{ question.sub }}</textarea><br>
+
+                                                    <label for="tips">提示：</label>
+                                                    <textarea name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].tips">{{ question.tips }}</textarea><br>
+
+                                                    <label for="analysis">解析：</label>
+                                                    <textarea name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].analysis">{{ question.analysis }}</textarea>
+                                                </div>
+                                                <div>
+                                                    <label for="score">分值：</label>
+                                                    <input type="number" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].score" value="{{ main_question.score }}" min="0" step="0.5" required><br>
+
+                                                    <label for="correction_type">改错类型：</label>
+                                                    <select name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].correction_type" required>
+                                                        <option value="revise" {% if question.type == 'revise' %}selected{% endif %}>revise</option>
+                                                        <option value="insert" {% if question.type == 'insert' %}selected{% endif %}>insert</option>
+                                                        <option value="delete" {% if question.type == 'delete' %}selected{% endif %}>delete</option>
+                                                    </select><br>
+
+                                                    <label for="answer">答案：</label>
+                                                    <input name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].answer" value="{{ question.answer }}" required><br>
+
+                                                    <label for="tips">原文位置索引：</label>
+                                                    <input type="text" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].index" value="{{ question.index }}" required>
+{#                                                    <p>page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}]</p>#}
+                                                </div>
+                                            </div>
+                                            <hr class="question-divider">
+                                        {% endfor %}
+                                    </fieldset>
+
+                                {% elif main_question.question_type == 'matching' %}
+                                    <!-- 连线题 -->
+                                    <fieldset class="matching-question-container">
+                                        <legend>
+                                            <label for="question_text">连线题{{ forloop.counter }}：</label>
+                                            <input type="text" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].question_text" value="{{ sub.question_text }}" required>
+                                            {% for img in sub.image %}
+                                                <img src="{{ main_question.img_directory}}{{ img }}" alt="Question Image" width="20%" height="auto">
+                                                <input type="hidden" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].question_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
+                                            {% endfor %}
+                                        </legend>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                            <div>
+                                                <label for="option_label">选项：</label>
+                                                <input type="text" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].option_label" value="{{ sub.option_label }}" required>
+                                                <input type="text" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].option_content" value="{{ sub.option_content }}" placeholder="请输入答案文本">
+                                                {% for img in sub.option_image %}
+                                                    <img src="{{ main_question.img_directory}}{{ img }}" alt="Answer Image" width="20%" height="auto">
+                                                    <input type="hidden" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].option_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
+                                                {% endfor %}
+                                                <br>
+
+                                                <label for="score">分值：</label>
+                                                <input type="number" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].score" value="{{ main_question.score }}" min="0" step="0.5" required>
+
+                                                <label for="answer">答案：</label>
+                                                <input type="text" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].answer" value="{{ sub.option_label }}" required><br>
+                                            </div>
+                                            <div>
+                                                <label for="tips">提示：</label>
+                                                <textarea name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].tips">{{ sub.tips }}</textarea><br>
+
+                                                <label for="analysis">解析：</label>
+                                                <textarea name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].analysis">{{ sub.analysis }}</textarea><br>
+                                            </div>
+                                        </div>
+                                    </fieldset>
+
+                                {% elif main_question.question_type == 'comprehension' %}
+                                    <!-- 简答题 -->
+                                    <fieldset class="comprehension-question-container">
+                                        <legend>简答题{{ forloop.counter }}</legend>
+                                        <div>
+                                            <label for="question_text">题目：</label>
+                                            <textarea name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].question_text" required>{{ sub.question_text }}</textarea>
+                                            {% for img in sub.image %}
+                                                <img src="{{ main_question.img_directory}}{{ img }}" alt="Question Image" width="20%" height="auto">
+                                                <input type="hidden" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].question_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
+                                            {% endfor %}
+                                            <br>
+
+                                            <label for="score">分值：</label>
+                                            <input type="number" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].score" value="{{ main_question.score }}" min="0" step="0.5" required><br>
+
+                                            <label for="answer">答案：</label>
+                                            <textarea name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].answer" required>{{ sub.answer }}</textarea><br>
+
+                                            <label for="tips">提示：</label>
+                                            <textarea name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].tips">{{ sub.tips }}</textarea><br>
+
+                                            <label for="analysis">解析：</label>
+                                            <textarea name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].sub[{{ forloop.counter0 }}].analysis">{{ sub.analysis }}</textarea>
+                                        </div>
+                                    </fieldset>
+
+                                {% elif main_question.question_type == 'blank' %}
+                                    <!-- 填空题 -->
+                                    <fieldset class="blank-question-container">
+                                        <legend>填空题{{ forloop.counter }}</legend>
+                                        {% for question in sub %}
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px">
+                                                <div>
+                                                    <label for="question_text">文本{{ forloop.counter }}：</label>
+                                                    <textarea name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].question_text" required>{{ question.question_text }}</textarea><br>
+
+                                                    <label for="tips">提示：</label>
+                                                    <textarea name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].tips">{{ question.tips }}</textarea><br>
+
+                                                    <label for="analysis">解析：</label>
+                                                    <textarea name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].analysis">{{ question.analysis }}</textarea>
+                                                </div>
+                                                <div>
+                                                    <label for="score">分值：</label>
+                                                    <input type="number" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].score" value="{{ main_question.score }}" min="0" step="0.5" required>
+
+                                                    <label for="answer">答案：</label>
+                                                    <input type="text" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].answer" id="blank_answer" value="{{ question.answer_list }}" required>
+
+                                                    <label for="tips">原文位置索引：</label>
+                                                    <input type="text" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].index" value="{{ question.index }}" required>
+{#                                                    <p>page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}]</p>#}
+                                                </div>
+                                            </div>
+                                            <hr class="question-divider">
+                                        {% endfor %}
+                                    </fieldset>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+        </div>
+
+        <!-- 分页控制 -->
+        <div class="pagination-controls">
+            <button type="button" id="prev-page">上一页</button>
+            <span id="current-page">1</span>/<span id="total-pages">{{ question_data|length }}</span>
+            <button type="button" id="next-page">下一页</button>
+        </div>
+
+        <!-- 弹窗结构 -->
+        <div id="modal">
+            <button type="button" id="close-modal">X</button>
+            <label for="selected_class">班级：</label>
+            <select name="selected_class" id="selected_class">
+                {% for class in classes %}
+                    {% if class %}
+                        <option value="{{ class.id }}">{{ class.class_name}}</option>
+                    {% else %}
+                        <p style="color: red">您当前没有正在教授的班级，无法进行组卷！</p>
+                    {% endif %}
+                {% endfor %}
+            </select>
+
+            <label for="title">单元名称</label>
+            <input type="text" name="title" id="title">
+            <label for="selected_type">组卷类型：</label>
+            <select name="selected_type" id="selected_type" onchange="toggleExamTimeInput()">
+                <option value="practice">练习</option>
+                <option value="exam">考试</option>
+                <option value="task">作业</option>
+                <option value="quiz">小测</option>
+            </select>
+
+            <div class="time_management" id="time_management" style="display: none">
+                <label for="exam_time" id="exam_time_label">时长限制: </label>
+                <input type="number" name="exam_time" id="exam_time"><span>分钟</span>
+            </div>
+
+            <div class="exam_time_management" id="exam_time_management" style="display: none">
+                <label>开放时间：</label>
+                <input type="date" id="exam_date" name="exam_date">
+                <input type="time" id="start_time" name="start_time">
+                <input type="time" id="end_time" name="end_time">
+            </div>
+
+            <div class="open_week" id="open_week">
+                <label for="week">开放周次</label>
+                <input type="number" name="week" id="week">
+            </div>
+
+            <button id="confirm-unit" name="save">确认组卷</button>
+        </div>
+
+        <!-- 遮罩层 -->
+        <div id="overlay"></div>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let currentPage = 0;
+            const pages = document.querySelectorAll('.page');
+            const totalPages = pages.length;
+
+            function updatePage() {
+                pages.forEach((page, index) => {
+                    page.classList.toggle('active', index === currentPage);
+                });
+                document.getElementById('current-page').textContent = currentPage + 1;
+            }
+
+            document.getElementById('prev-page').addEventListener('click', () => {
+                if (currentPage > 0) {
+                    currentPage--;
+                    updatePage();
+                }
+            });
+
+            document.getElementById('next-page').addEventListener('click', () => {
+                if (currentPage < totalPages - 1) {
+                    currentPage++;
+                    updatePage();
+                }
+            });
+
+            // 显示弹窗
+            document.getElementById('confirm-question').addEventListener('click', function() {
+                document.getElementById('modal').style.display = 'block';
+                document.getElementById('overlay').style.display = 'block';
+            });
+
+            // 关闭弹窗
+            document.getElementById('close-modal').addEventListener('click', function() {
+                document.getElementById('modal').style.display = 'none';
+                document.getElementById('overlay').style.display = 'none';
+            });
+
+
+        });
+        function toggleExamTimeInput() {
+        const selectedType = document.getElementById('selected_type');
+        const examDiv = document.getElementById('time_management');
+        const examTime = document.getElementById('exam_time_management');
+        {#const openWeek = document.getElementById('open_week');#}
+        if (selectedType.value === 'exam') {
+            console.log('exam')
+            examDiv.style.display = 'block';
+            examTime.style.display = 'block';
+            {#openWeek.style.display = 'none';#}
+        }else if (selectedType.value === 'quiz'){
+            console.log('quiz')
+            examDiv.style.display = 'block';
+            examTime.style.display = 'none';
+            {#openWeek.style.display = 'block';#}
+        }
+        else {
+            console.log('else')
+            examDiv.style.display = 'none';
+            examTime.style.display = 'none';
+            {#openWeek.style.display = 'block';#}
+        }
+    }
+    </script>
+</body>
+</html>

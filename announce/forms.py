@@ -1,7 +1,7 @@
 # announce/forms.py
 from django import forms
 from .models import Message,Announcement
-from ELW.models import Students,Class
+from Account.models import Students,Class
 from django.forms.widgets import CheckboxSelectMultiple
 
 class MessageForm(forms.ModelForm):

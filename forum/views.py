@@ -5,7 +5,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from .models import Post, Comment,Anonymous
 from .forms import PostForm,CommentForm
-from ELW.models import Teachers,Students
+from Account.models import Teachers,Students
 import random
 import string
 from .filters import PostFilter
