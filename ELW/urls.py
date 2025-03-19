@@ -20,7 +20,7 @@ urlpatterns = [
 
     path('delete_material/<int:material_id>', views.teacher_delete_material, name='teacher_delete_material'),
 
-    path('edit_question/<int:sub_id>/<int:material_id>', views.teacher_edit_question, name='teacher_edit_question'),
+    path('edit_question/<int:sub_id>/<int:material_id>/<str:question_type>', views.teacher_edit_question, name='teacher_edit_question'),
 
     path('page_create/<int:material_id>', views.teacher_page_create, name='teacher_page_create'),
 

@@ -119,6 +119,10 @@ def submit_question(request):
 # 登录板块
 def user_login(request):
     if request.method == 'GET':
+        sub_question = SubQuestion.objects.get(pk=1)
+        sub_question.image_url = r'\media_material\image\510a56c07d324cc899ba9f22a83113ca\11.png, \media_material\image\510a56c07d324cc899ba9f22a83113ca\task_package.jpg, \media_material\image\510a56c07d324cc899ba9f22a83113ca\题目内容.jpg'
+        # sub_question.image_url = 'media_material/510a56c07d324cc899ba9f22a83113ca/11.png, media_material/510a56c07d324cc899ba9f22a83113ca/task_package.jpg, media_material/510a56c07d324cc899ba9f22a83113ca/题目内容.jpg'
+        sub_question.save()
         return render(request, 'login.html')
     if request.method == 'POST':
         role = request.POST['role']
@@ -327,19 +331,27 @@ def teacher_week_file_import(request):
 # 题库管理
 def teacher_question_bank(request):
     if request.session.get('is_login', None):
+
         if request.method == 'POST':
             try:
                 data = json.loads(request.body)
-                sub_id = int(data.get('question_id'))
+                question_type = data.get('question_type')
                 material_id = int(data.get('material_id'))
+                if question_type == 'sub':
+                    sub_id = int(data.get('sub_id'))
+                    # 在这里处理接收到的变量
+                    print(f"Received: sub_id: {sub_id}\n material_id: {material_id}")
+                    redirect_url = reverse('teacher_edit_question', args=[sub_id, material_id, question_type])
 
-                # 在这里处理接收到的变量
-                print(f"Received: sub_id: {sub_id}\n material_id: {material_id}")
-                redirect_url = reverse('teacher_edit_question', args=[sub_id, material_id])
+                elif question_type == 'main':
+                    main_id = int(data.get('main_id'))
+                    print(f'Received: main_id: {main_id}\n material_id: {material_id}')
+                    redirect_url = reverse('teacher_edit_question', args=[main_id, material_id, question_type])
                 # 返回 JSON 响应，包含重定向 URL
                 return JsonResponse({'status': 'success', 'redirect_url': redirect_url})
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
         else:
             username = request.session.get('username', None)
             media_materials = MediaMaterial.objects.all()
@@ -361,19 +373,24 @@ def teacher_delete_material(request, material_id):
     media_material.delete()
     return redirect('teacher_question_bank')
 
-def teacher_edit_question(request, sub_id, material_id):
-    sub_question = SubQuestion.objects.get(id=sub_id)
-    main_question = MainQuestion.objects.get(id=sub_question.main_question_id)
-    media_material = MediaMaterial.objects.get(id=material_id)
-    if sub_question.image_url:
-        images = sub_question.image_url.split(',')
-        print(images)
-        return render(request, 'teacher_side/edit_question.html', {
-            'main_question': main_question,
-            'sub_question': sub_question,
-            'media_material': media_material,
-            'image': images,
-        })
+def teacher_edit_question(request, sub_id, material_id, question_type):
+
+    if question_type == 'sub':
+        sub_question = SubQuestion.objects.get(id=sub_id)
+        main_question = MainQuestion.objects.get(id=sub_question.main_question_id)
+        media_material = MediaMaterial.objects.get(id=material_id)
+        if sub_question.image_url:
+            sub_images = sub_question.image_url.split(',')
+            print(f'sub_images: {sub_images}')
+            return render(request, 'teacher_side/edit_question.html', {
+                'main_question': main_question,
+                'sub_question': sub_question,
+                'media_material': media_material,
+                'sub_images': sub_images,
+            })
+    elif question_type == 'main':
+        print(f'edit_main_question')
+        return render(request, 'teacher_side/index.html')
     return render(request, 'teacher_side/edit_question.html', {
         'main_question': main_question,
         'sub_question': sub_question,

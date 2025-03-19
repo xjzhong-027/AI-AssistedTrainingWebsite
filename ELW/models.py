@@ -131,7 +131,8 @@ class Document(models.Model):
 class SubQuestion(models.Model):
     main_question = models.ForeignKey(MainQuestion, on_delete=models.CASCADE, related_name='sub_questions')
     question_text = models.TextField(verbose_name='小题内容', blank=False, null=False)
-    image_url = models.ImageField(verbose_name="图片", upload_to=images_upload_to, blank=True, null=True)
+    # image_url = models.ImageField(verbose_name="图片", upload_to=images_upload_to, blank=True, null=True)
+    image_url = models.CharField(verbose_name="小题图片", max_length=1000, blank=True, null=True, default=None)
     tips = models.TextField(verbose_name='提示', blank=True, null=True)
     answer = models.TextField(verbose_name='参考答案', default='test', blank=False)
     analysis = models.TextField(verbose_name='解析', blank=True, null=True)
@@ -146,6 +147,7 @@ class ChoiceOption(models.Model):
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='options')
     option_label = models.CharField(max_length=1, verbose_name="选项字母")
     option_content = models.TextField(verbose_name="选项内容")
+    option_image = models.CharField(verbose_name="选项图片", max_length=1000, blank=True, null=True, default=None)
     is_answer = models.BooleanField(default=False, verbose_name="是否为答案")
 
     def __str__(self):

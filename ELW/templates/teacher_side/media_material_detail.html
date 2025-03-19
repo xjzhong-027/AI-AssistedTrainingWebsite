@@ -26,79 +26,49 @@
                         {{ main_question.question_text }} ({{ main_question.get_question_type_display }})
                     </h3>
                     <span>{{ sub_question.question_text }}</span>
-
+{#改错题#}
                     {% if main_question.question_type == 'correction' %}
-                        <div class="correction_text">
-                        &nbsp;&nbsp;&nbsp;&nbsp;
+                        <div class="correction">
+                            <button onclick="edit_main_question({{ main_question.id }}, {{ material.id }})">编辑</button>
                             {% for sub_question in main_question.sub_questions.all %}
-                                {% for correction in sub_question.corrections.all %}
-                                    {% if correction %}
-                                        <span>{{ sub_question.question_text }} </span>
-                                    {% endif %}
-                                {% endfor %}
-                            {% endfor %}
-                        </div>
-                        <div class="correction_answer">
-                            {% for sub_question in main_question.sub_questions.all %}
-                                <p><{{ forloop.counter }}>
                                     {% for correction in sub_question.corrections.all %}
                                         {% if correction %}
-                                            {{ correction.type }} - {{ sub_question.answer }}
-                                            <span>({{ sub_question.score }})</span>
-                                        {% endif %}
-                                    {% endfor %}
-                                </p>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-
-                    {% if main_question.question_type == 'blank' %}
-                        <div class="blank_text">
-                        &nbsp;&nbsp;&nbsp;&nbsp;
-                            {% for sub_question in main_question.sub_questions.all %}
-                                {% for blank in sub_question.blanks.all %}
-                                    {% if blank %}
-                                        <span>{{ sub_question.question_text }} </span>
-                                    {% endif %}
-                                {% endfor %}
-                            {% endfor %}
-                        </div>
-                        <div class="blank_answer">
-                            {% for sub_question in main_question.sub_questions.all %}
-                                <p><{{ forloop.counter }}>
-                                    {% for blank in sub_question.blanks.all %}
-                                        {% if blank %}
-{#                                            {% with text = sub_question.question_text.insert(blank.index, sub_question.answer) %}#}
-{#                                                {{ text }}#}
-{#                                            {% endwith %}#}
-{#                                            <p>index: {{ blank.index }}</p>#}
-
-
-                                            {# 将问题文本按空格分割成单词列表 #}
-                                            {% with words=sub_question.question_text.split %}
-                                                {# 找到插入位置 #}
-                                                <p>words: {{ words }}</p>
-                                                {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
-                                                    {# 检查 index 是否超出范围 #}
-                                                    {% if index < words|length %}
-                                                        {# 如果 index 在范围内，正常截取 before 和 after #}
-                                                        <p>index: {{ index }}</p>
-                                                        {% with before=words|custom_slice:":index" after=words|custom_slice:"index:" %}
-                                                            {# 重新拼接字符串，并在 index 的位置插入答案 #}
-{#                                                            {{ before|join:" " }} {{ sub_question.answer }} {{ after|join:" " }}#}
-                                                            <p>before: {{ before }}</p>
-                                                            <p>after: {{ after }}</p>
+                                            {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
+                                                {% with index=correction.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
+                                                    {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
+                                                        {% with before=words|custom_before:index after=words|custom_after:index %}
+                                                            {{ before|join:" " }} __[{{ correction.type }} : {{ sub_question.answer }}]__ {{ after|join:" " }}
                                                         {% endwith %}
-                                                    {% else %}
-                                                        {# 如果 index 超出范围，直接将答案插入到末尾 #}
-                                                        {{ words|join:" " }} {{ sub_question.answer }}
+                                                    {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
+                                                        {{ words|join:" " }} __[{{ correction.type }} : {{ sub_question.answer }}]__
                                                     {% endif %}
                                                 {% endwith %}
                                             {% endwith %}
-
                                         {% endif %}
                                     {% endfor %}
-                                </p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+{#填空题#}
+                    {% if main_question.question_type == 'blank' %}
+                        <div class="blank">
+                            <button onclick="edit_main_question({{ main_question.id }}, {{ material.id }})">编辑</button>
+                            {% for sub_question in main_question.sub_questions.all %}
+                                    {% for blank in sub_question.blanks.all %}
+                                        {% if blank %}
+                                            {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
+                                                {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
+                                                    {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
+                                                        {% with before=words|custom_before:index after=words|custom_after:index %}
+                                                            {{ before|join:" " }} __{{ sub_question.answer }}__ {{ after|join:" " }}
+                                                        {% endwith %}
+                                                    {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
+                                                        {{ words|join:" " }} __{{ sub_question.answer }}__
+                                                    {% endif %}
+                                                {% endwith %}
+                                            {% endwith %}
+                                        {% endif %}
+                                    {% endfor %}
                             {% endfor %}
                         </div>
                     {% endif %}
@@ -107,20 +77,11 @@
                     {% for sub_question in main_question.sub_questions.all %}
                         {% if sub_question %}
 
-{#改错题#}
+{#改错题/填空题自定义#}
                                 {% if main_question.question_type == 'correction' %}
-{#                                    {% for correction in sub_question.corrections.all %}#}
-{#                                        {% if correction %}#}
-{#                                            <span>{{ sub_question.question_text }} </span>#}
-{#                                            <span style="text-decoration: underline">[{{ correction.type }}: {{ sub_question.answer }}]</span>#}
-{#                                            <span>({{ sub_question.score }})</span>#}
-{#                                        {% endif %}#}
-{#                                    {% endfor %}#}
                                 {% elif main_question.question_type == 'blank' %}
-
                                 {% else %}
-
-
+{#小题题干信息#}
                                     <div class="sub_info">
                                         <h4>({{ forloop.counter }}) {{ sub_question.question_text }}
                                             {% if sub_question.score %}
@@ -130,7 +91,7 @@
                                         {% if sub_question.image_url %}
                                             <img src="{{ sub_question.image_url.url }}" alt="Image" width="50">
                                         {% endif %}
-                                        <button onclick="edit_question({{ sub_question.id }}, {{ material.id }})">编辑</button>
+                                        <button onclick="edit_sub_question({{ sub_question.id }}, {{ material.id }})">编辑</button>
                                     </div>
 {#选择题#}
                                     {% if main_question.question_type == 'choice' %}
@@ -186,30 +147,6 @@
 
 {% block extra_script %}
     <script>
-        function edit_question(question_id, material_id) {
-            console.log("question_id = " + question_id)
-            console.log("material_id = " + material_id)
-            fetch('/teacher/question_bank/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({ question_id:  question_id, material_id: material_id })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // 手动跳转到重定向 URL
-                    window.location.href = data.redirect_url;
-                } else {
-                    console.error('Error:', data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
         // 获取 CSRF token
         function getCookie(name) {
             let cookieValue = null;
@@ -224,6 +161,58 @@
                 }
             }
             return cookieValue;
+        }
+{#再编辑选择题/连线题/主观题#}
+        function edit_sub_question(sub_id, material_id) {
+            console.log("sub_id = " + sub_id)
+            console.log("material_id = " + material_id)
+            const question_type = 'sub'
+            fetch('/teacher/question_bank/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ sub_id:  sub_id, material_id: material_id, question_type: question_type })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // 手动跳转到重定向 URL
+                    window.location.href = data.redirect_url;
+                } else {
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+{#再编辑改错题/填空题#}
+        function edit_main_question(main_id, material_id) {
+            console.log("main_id = " + main_id)
+            console.log("material_id = " + material_id)
+            const question_type = 'main'
+            fetch('/teacher/question_bank/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ main_id:  main_id, material_id: material_id, question_type: question_type })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // 手动跳转到重定向 URL
+                    window.location.href = data.redirect_url;
+                } else {
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         }
     </script>
 
