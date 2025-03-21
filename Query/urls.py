@@ -34,8 +34,11 @@ urlpatterns = [
     path('unit/<int:unit_id>/detail/<int:student_id>/', views.unit_detail, name='unit_detail'),
     path('update-integrity-score/', views.update_integrity_score, name='update_integrity_score'),
     path('update-question-score/', views.update_question_score, name='update_question_score'),
+    # path('update-unit-score/', views.update_unit_score, name='update_unit_score'),
     path('unit/<int:unit_id>/student/<int:student_id>/delete_answer_records/', views.delete_answer_records,
          name='delete_answer_records'),
+    path('unit/<int:unit_id>/student/<int:student_id>/delete_media_records/', views.delete_media_records,
+         name='delete_media_records'),
 
 
 
@@ -53,4 +56,6 @@ urlpatterns = [
     path('statistic/search/', views.class_statistic_search, name='class_statistic_search'),
     path('units/<int:class_id>/', views.class_unit, name='class_unit'),
     path('unit/<int:unit_id>/statistic/<int:class_id>/', views.unit_statistic, name='unit_statistic'),
+    path('statistic_announce/<int:class_id>/', views.statistic_announce, name='statistic_announce'),
+
 ]

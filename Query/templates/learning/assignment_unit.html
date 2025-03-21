@@ -27,48 +27,77 @@
                     <th>单元</th>
                     <th>任务类型</th>
                     <th>开放周次</th>
-                    <th>开放时间</th>
+                    <th>截止时间</th>
                     <th>提交状态</th>
                     <th>提交时间</th>
                     <th>
                         分数
-                        <span data-toggle="tooltip" data-placement="top" title="总分=所有页面的分数与页面诚信分的乘积的总和">?</span>
+                        <span data-toggle="tooltip" data-placement="top"
+                              title="总分=所有页面的分数与页面诚信分的乘积的总和。若逾期完成，则在总分的基础上 x 0.8">?</span>
                     </th>
                     <th>操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for data in assignments_data %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ data.unit.title }}</td>
-                    <td>{{ data.unit.type }}</td>
-                    <td>
-                        {% if data.unit.type == "exam" or data.unit.type == "quiz" %}
-                            Week {{ data.unit_data.week }}
-                        {% else %}
-                            Week {{ data.unit.order }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if data.unit.type == "exam" %}
-                            {{ data.unit_data.exam_date }} - {{ data.unit_data.start_time }} - {{ data.unit_data.end_time }}
-                        {% else %}
-                            ——
-                        {% endif %}
-                    </td>
-                    <td
-                        {% if not data.record.submitted %}
-                            style="color: #ea5e5a;"
-                        {% endif %}
-                    >
-                        {{ data.record.submitted|yesno:"已提交,未提交" }}</td>
-                    <td>{{ data.record.finished_at }}</td>
-                    <td>{{ data.record.score }}</td>
-                    <td>
-                        <a href="{% url 'Query:unit_detail' data.unit.id student.id %}" class="btn btn-info btn-sm">查看详情</a>
-                    </td>
-                </tr>
+                    <tr data-record-id="{{ data.exam_record.id }}">
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ data.unit.title }}</td>
+                        <td>{{ data.unit.type }}</td>
+                        <td>
+                            {% if data.unit.type == "quiz" %}
+                                Week {{ data.week }}
+                            {% elif data.unit.type == "exam" %}
+                                ————
+                            {% else %}
+                                Week {{ data.unit.order }}
+                            {% endif %}
+                        </td>
+                        <td class="unit-time">{{ data.unit_time_data }}</td>
+                        <td
+                            {% if not data.exam_record.submitted %}
+                                style="color: #ea5e5a;"
+                            {% endif %}
+                        >
+                            {{ data.exam_record.submitted|yesno:"已提交,未提交" }}</td>
+                        <td class="finished-at"
+                            {% if data.is_late %}
+                                style="color:#ea5e5a;"
+                            {% endif %}
+                        >{{ data.exam_record.finished_at }}</td>
+                        <td><a href="#" class="exam_final_score" data-unit-id="{{ data.exam_record.id }}">{{ data.exam_record.score }}</a></td>
+                        <td>
+                            <a href="{% url 'Query:unit_detail' data.unit.id student.id %}" class="btn btn-info btn-sm">查看详情</a>
+                        </td>
+                    </tr>
+                    <tr class="detail_score" data-unit-id="{{ data.exam_record.id }}" style="display: none;">
+                        <td colspan="9">
+                            <button class="close-detail" type="button" style="float: right; margin-bottom: 10px;">关闭</button>
+                            <!-- 展示单元具体得分数据 -->
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>页面</th>
+                                        <th>页面原始分</th>
+                                        <th>诚信分</th>
+                                        <th>页面最终得分</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in data.page_records %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ record.page_record.page_score }}</td>
+                                        <td>{{ record.page_record.integrity_score }}</td>
+                                        <td>{{ record.page_final_score }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <p><strong>单元原始分：</strong>{{ data.exam_initial_score }}</p>
+                            <p><strong>总分：</strong>{{ data.exam_final_score }} ({{ data.exam_initial_score }} * 0.8)</p>
+                        </td>
+                    </tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -123,6 +152,39 @@
                         row.style.display = 'none';
                     }
                 });
+            });
+
+
+
+            // 显示总分具体情况
+            $('.exam_final_score').on('click', function(e) {
+                e.preventDefault();
+
+                // 获取当前点击的exam_record的 ID
+                var unitId = $(this).data('unit-id');
+                console.log("unitId:", unitId)
+
+                // 找到对应的 detail_score tr
+                var detailRow = $('.detail_score[data-unit-id="' + unitId + '"]');
+                console.log("detailRow:", detailRow)
+
+                // 切换显示/隐藏
+                detailRow.toggle();
+
+                // 如果 detailRow 是可见的，滚动到该行
+                if (detailRow.is(':visible')) {
+                    $('html, body').animate({
+                        scrollTop: detailRow.offset().top
+                    }, 500);
+                }
+            });
+
+            // 点击 detail_score 中的关闭按钮时
+            $('.detail_score').on('click', '.close-detail', function(e) {
+                e.preventDefault();
+
+                // 隐藏当前的 detail_score tr
+                $(this).closest('.detail_score').hide();
             });
         });
     </script>

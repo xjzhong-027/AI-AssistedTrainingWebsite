@@ -47,6 +47,25 @@
             left: 0.2em;
             font-size: 1.2em;
         }
+        {#显示填空题作答数据的文本框#}
+        .answer-box {
+            position: absolute;
+            {#width: 200px;#}
+            background-color: #a0c3a0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            max-width: 300px;
+            font-size: 14px;
+            color: #ffffff;
+            display: none;  /* 初始状态隐藏文本框 */
+            z-index: 1000;
+        }
+
+        .blank_correct_rate {
+            cursor: pointer;
+        }
     </style>
 
     <h2>{{ unit.type }} - {{ unit.title }} - {{ class_instance }}</h2>
@@ -68,21 +87,70 @@
             <div class="page-content" data-page-index="{{ forloop.counter0  }}" style="display: none;">
                 {% for main_question in page_data.main_questions %}
                     <div class="main-question">
+                        {% if not main_question.main_question.no_media %}
+                            <div class="video-box">
+                                <video width="50%" height="auto" controls>
+                                    <source src="{{ main_question.main_question.media_material.media_url }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+                        {% endif %}
                         <h4>题目： {{ main_question.main_question.question_text }}</h4>
+                        <p>
+                            {% if main_question.main_images %}
+                                {% for img in main_question.main_images %}
+                                    <img src="{{ img }}" alt="Question Image" width="10%" height="auto">
+                                {% endfor %}
+                            {% endif %}
+                        </p>
                         <!-- 选择题 -->
                         {% if main_question.main_question.question_type == 'choice' %}
                             {% for sub_question in main_question.sub_questions %}
-                                <div class="sub-question">
-                                    <p>{{ forloop.counter }}. {{ sub_question.sub_question.question_text }}</p>
-                                    {% for choice in sub_question.choices %}
-                                        <ul>
-                                            <p
-                                                {% if choice.is_answer %}
-                                                    style="color: #007bff;"
-                                                {% endif %}
-                                            >{{ choice.option_label}}. {{ choice.option_content }}</p>
-                                        </ul>
-                                    {% endfor %}
+                                <div class="sub-question" style="display: flex; align-items: flex-start;">
+                                    <!-- 题目展示（左边） -->
+                                    <div style="flex: 1; margin-right: 20px;">
+                                        <p>{{ forloop.counter }}. {{ sub_question.sub_question.question_text }}
+                                            {% if sub_question.sub_images %}
+                                                {% for img in sub_question.sub_images %}
+                                                    <img src="{{ img }}" alt="Question Image" width="10%" height="auto">
+                                                {% endfor %}
+                                            {% endif %}
+                                            <span style="margin-left: 10px; color: #489748">正确率：{{ sub_question.correct_rate_percentage }}%({{ sub_question.total_correct }}/{{ sub_question.total_answered }})</span>
+                                        </p>
+
+                                        {% for choice in sub_question.choices %}
+                                            <div>
+                                                <p
+                                                    {% if choice.choice.is_answer %}
+                                                        style="color: #007bff;"
+                                                    {% endif %}
+                                                >{{ choice.choice.option_label}}. {{ choice.choice.option_content }}
+                                                    {% for img in choice.choice_images %}
+                                                        <img src="{{ img }}" alt="Question Image" width="10%" height="auto">
+                                                    {% endfor %}
+                                                </p>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <!-- 表格展示（右边） -->
+                                    <div style="flex: 1;">
+                                        <table class="table table-bordered table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>作答内容</th>
+                                                    <th>人数及比率</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for answer in sub_question.student_answers %}
+                                                    <tr>
+                                                        <td>{{ answer.answer }}</td>
+                                                        <td>{{ answer.count }}人, {{ answer.percentage }}%</td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             {% endfor %}
 
@@ -92,29 +160,84 @@
                                 <span>{{ sub_question.corrected_text }}</span>
                             {% endfor %}
 
-
-                            {% for sub_question in main_question.sub_questions %}
-                                {% for correction in sub_question.corrections %}
-                                    <p>{{ correction.index }} - {{ correction.type }} - {{ sub_question.sub_question.answer }}</p>
-                                {% endfor %}
-                            {% endfor %}
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>参考答案</th>
+                                        <th>答题人数</th>
+                                        <th>答对人数</th>
+                                        <th>答对率</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sub_question in main_question.sub_questions %}
+                                        {% for correction in sub_question.corrections %}
+                                            <tr>
+                                                <td>{{ correction.type }} - {{ sub_question.sub_question.answer }}</td>
+                                                <td>{{ sub_question.total_answered }}</td>
+                                                <td>{{ sub_question.total_correct }}</td>
+                                                <td>{{ sub_question.correct_rate_percentage }}%</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
 
                         <!-- 填空题 -->
                         {% elif main_question.main_question.question_type == 'blank' %}
                             {% for sub_question in main_question.sub_questions %}
-                                <span>{{ sub_question.sub_question.question_text }} ___{{ forloop.counter }}___</span>
+                                <span>{{ sub_question.blank_text }}</span>
                             {% endfor %}
 
                             {% for sub_question in main_question.sub_questions %}
-                                <p>{{ forloop.counter }}. {{ sub_question.sub_question.answer }}</p>
+                                <div id="answer_box_{{ sub_question.sub_question.id }}" class="answer-box">
+                                    {% for answer in sub_question.student_answers %}
+                                        <p>
+                                            <span style="color: {% if answer.answer == sub_question.sub_question.answer %}#008000{% endif %};">
+                                              {{ answer.answer }}
+                                            </span>
+                                            ：（{{ answer.count }}人，{{ answer.percentage }}%）</p>
+                                    {% endfor %}
+                                    <p>正确率：{{ sub_question.correct_rate_percentage }}%【{{ sub_question.total_correct }}/{{ sub_question.total_answered }}】</p>
+                                </div>
                             {% endfor %}
+
+
+
 
                         <!-- 简答题 -->
                         {% elif main_question.main_question.question_type == 'comprehension' %}
                             {% for sub_question in main_question.sub_questions %}
-                                <div class="sub-question">
-                                    <p>{{ forloop.counter }}. {{ sub_question.sub_question.question_text }}</p>
-                                    <p>参考答案：{{ sub_question.sub_question.answer }}</p>
+                                <div class="sub-question" style="display: flex; align-items: flex-start;">
+                                    <!-- 题目展示（左边） -->
+                                    <div style="flex: 1; margin-right: 20px;">
+                                        <p>{{ forloop.counter }}. {{ sub_question.sub_question.question_text }}</p>
+                                        {% if sub_question.sub_images %}
+                                            {% for img in sub_question.sub_images %}
+                                                <img src="{{ img }}" alt="Question Image" width="10%" height="auto">
+                                            {% endfor %}
+                                        {% endif %}
+                                        <p style="color: #70a7e3;"><span style="font-weight: bolder;">参考答案：</span>{{ sub_question.sub_question.answer }}</p>
+                                    </div>
+                                    <!-- 表格展示（右边） -->
+                                    <div style="flex: 1;">
+                                        <table class="table table-bordered table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>答题人数</th>
+                                                    <th>答对人数（得分大于分值的 70% 视为答对）</th>
+                                                    <th>答对率</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>{{ sub_question.total_answered }}</td>
+                                                    <td>{{ sub_question.total_correct }}</td>
+                                                    <td>{{ sub_question.correct_rate_percentage }}%</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             {% endfor %}
 
@@ -122,12 +245,47 @@
                         <!-- 连线题 -->
                         {% elif main_question.main_question.question_type == 'matching' %}
                             {% for sub_question in main_question.sub_questions %}
-                                {% for matching in sub_question.matchings %}
-                                    <div class="sub-question">
-                                        <p>{{ forloop.parentloop.counter }}. {{ sub_question.sub_question.question_text }}</p>
-                                        <p>{{ sub_question.sub_question.answer }}. {{ matching.option_content }}</p>
+{#                                {% for matching in sub_question.matchings %}#}
+                                <div class="sub-question" style="display: flex; align-items: flex-start;">
+                                        <!-- 题目展示（左边） -->
+                                        <div style="flex: 1; margin-right: 20px;">
+                                            <p>{{ forloop.parentloop.counter }}. {{ sub_question.sub_question.question_text }}
+                                                {% for img in sub_question.sub_images %}
+                                                    <img src="{{ img }}" alt="Question Image" width="10%" height="auto">
+                                                {% endfor %}
+                                                <span style="margin-left: 10px; color: #489748">正确率：{{ sub_question.correct_rate_percentage }}%({{ sub_question.total_correct }}/{{ sub_question.total_answered }})</span>
+                                            </p>
+
+                                            <p>{{ sub_question.sub_question.answer }}. {{ sub_question.matching.option_content }}
+                                                {% if sub_question.matching_images %}
+                                                    {% for img in sub_question.matching_images %}
+                                                        <img src="{{ img }}" alt="Option Image" width="10%" height="auto">
+                                                    {% endfor %}
+                                                {% endif %}
+                                            </p>
+                                        </div>
+
+                                        <!-- 表格展示（右边） -->
+                                        <div style="flex: 1;">
+                                            <table class="table table-bordered table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>作答内容</th>
+                                                        <th>人数及比率</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for answer in sub_question.student_answers %}
+                                                        <tr>
+                                                            <td>{{ answer.answer }}</td>
+                                                            <td>{{ answer.count }}人, {{ answer.percentage }}%</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
-                                {% endfor %}
+{#                                {% endfor %}#}
                             {% endfor %}
                         {% endif %}
                     </div>
@@ -136,6 +294,8 @@
         {% endfor %}
 
     </div>
+
+
 
     <script>
         // 获取所有分页按钮和页面内容
@@ -167,6 +327,34 @@
 
                 // 为当前分页按钮添加高亮效果
                 item.classList.add('active');
+            });
+        });
+
+        // 显示填空题作答数据
+        document.addEventListener("DOMContentLoaded", function() {
+            // 获取所有的 span 元素，鼠标悬停时触发显示答案框
+            const spanElements = document.querySelectorAll("[id^='blank_correct_rate']");
+            console.log("spanElements:",spanElements)
+
+            spanElements.forEach(spanElement => {
+                const subQuestionId = spanElement.id.replace('blank_correct_rate', ''); // 获取小题id
+                console.log("subQuestionId:", subQuestionId)
+                const answerBox = document.getElementById('answer_box_' + subQuestionId); // 对应的答案框
+                console.log("answer_box_" + subQuestionId, "answerBox:", answerBox)
+
+                // 鼠标悬停显示答案框
+                spanElement.addEventListener("mouseenter", function() {
+                    // 获取 span 元素的位置
+                    const rect = spanElement.getBoundingClientRect();
+                    answerBox.style.left = rect.left-150 + "px";  // 设置文本框的位置
+                    answerBox.style.top = rect.bottom + "px";
+                    answerBox.style.display = "block";  // 显示文本框
+                });
+
+                // 鼠标离开隐藏答案框
+                spanElement.addEventListener("mouseleave", function() {
+                    answerBox.style.display = "none";  // 隐藏文本框
+                });
             });
         });
     </script>

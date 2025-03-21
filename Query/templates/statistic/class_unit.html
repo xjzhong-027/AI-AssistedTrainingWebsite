@@ -1,6 +1,25 @@
 {% extends "query_base.html" %}
 
 {% block content %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        .chart-container {
+            margin-bottom: 30px;
+            height: 400px;
+        }
+        .chart-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .no-data {
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+
     <div class="container-fluid">
         {% if units_data %}
             <h2 class="mb-4">班级任务统计 — {{ class_instance }}</h2>
@@ -27,37 +46,62 @@
                     <th>单元</th>
                     <th>任务类型</th>
                     <th>开放周次</th>
-                    <th>开放时间</th>
+                    <th>截止时间</th>
+                    <th>完成人数</th>
                     <th>操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for data in units_data %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ data.unit.title }}</td>
-                    <td>{{ data.unit.type }}</td>
-                    <td>
-                        {% if data.unit.type == "exam" or data.unit.type == "quiz" %}
-                            Week {{ data.unit_data.week }}
-                        {% else %}
-                            Week {{ data.unit.order }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if data.unit.type == "exam" %}
-                            {{ data.unit_data.exam_date }} - {{ data.unit_data.start_time }} - {{ data.unit_data.end_time }}
-                        {% else %}
-                            ——
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{% url 'Query:unit_statistic' data.unit.id class_instance.id %}" class="btn btn-info btn-sm">查看详情</a>
-                    </td>
-                </tr>
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ data.unit.title }}</td>
+                        <td>{{ data.unit.type }}</td>
+                        <td>
+                            {% if data.unit.type == "quiz" %}
+                                Week {{ data.week }}
+                            {% elif data.unit.type == "exam" %}
+                                ————
+                            {% else %}
+                                Week {{ data.unit.order }}
+                            {% endif %}
+                        </td>
+                        <td>{{ data.unit_time_data }}</td>
+                        <td><a href="#" class="completed_percentage" data-unit-id="{{ data.unit.id }}">{{ data.completed_count }} / {{ data.total_count }}</a></td>
+                        <td>
+                            <a href="{% url 'Query:unit_statistic' data.unit.id class_instance.id %}" class="btn btn-info btn-sm">查看详情</a>
+                        </td>
+                    </tr>
+                    <tr class="uncompleted_students_info" data-unit-id="{{ data.unit.id }}" style="display: none;">
+                        <td colspan="8">
+                            <button class="close-detail" type="button" style="float: right; margin-bottom: 10px;">关闭</button>
+                            <p>
+                                <strong>未完成作业的学生：</strong>
+                                <a href="{% url 'Query:statistic_announce' class_instance.id %}?students={{ data.uncompleted_students_json }}" class="btn btn-warning btn-sm">前往通知</a>
+                            </p>
+                            <!-- 展示未完成作业的学生 -->
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>学号</th>
+                                        <th>姓名</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for student in data.uncompleted_students_info %}
+                                        <tr>
+                                            <td>{{ student.username }}</td>
+                                            <td>{{ student.name }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
                 {% endfor %}
             </tbody>
         </table>
+
 
         <!-- 分页控件 -->
         <div class="pagination">
@@ -81,11 +125,88 @@
                 {% endif %}
             </ul>
         </div>
+
+
+        <!-- 成绩分布图表 -->
+        {% if units_data %}
+            <h3 style="text-align:center;">单元成绩区间分布
+                <button id="export-pdf" class="btn btn-warning">导出为 PDF</button>
+            </h3>
+        {% endif %}
+
+
+        {% for unit_data in units_data %}
+            {% if unit_data.unit_record.exists %}
+                <div class="chart-container">
+                    <div class="chart-title">
+                        {{ unit_data.unit.title }} - 类型: {{ unit_data.unit.type }}
+                    </div>
+    {#                {% if unit_data.unit_record.exists %}#}
+                        <canvas id="chart-{{ unit_data.unit.id }}" width="400" height="200"></canvas>
+                        <script>
+                            // 使用立即执行函数 (IIFE) 限定作用域
+                            (function() {
+                                // 获取当前单元的成绩分布数据
+                                const labels = {{ unit_data.score_distribution.labels|safe }};
+                                const data = {{ unit_data.score_distribution.data|safe }};
+
+                                // 渲染柱状图
+                                const ctx = document.getElementById('chart-{{ unit_data.unit.id }}').getContext('2d');
+                                new Chart(ctx, {
+                                    type: 'bar',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [{
+                                            label: '学生成绩分布',
+                                            data: data,
+                                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                                            borderColor: 'rgba(54, 162, 235, 1)',
+                                            borderWidth: 1
+                                        }]
+                                    },
+                                    options: {
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true,
+                                                title: {
+                                                    display: true,
+                                                    text: '人数'
+                                                },
+                                                ticks: {
+                                                    stepSize: 5,
+                                                    max: Math.max(...data)  // 设置最大值为数据最大值的下一个 5 的倍数
+                                                }
+                                            },
+                                            x: {
+                                                title: {
+                                                    display: true,
+                                                    text: '成绩区间'
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            })();  // 立即执行函数
+                        </script>
+                </div>
+            {% else %}
+                <div style="margin-bottom: 20px;">
+                    <div class="chart-title">
+                        {{ unit_data.unit.title }} - 类型: {{ unit_data.unit.type }}
+                    </div>
+                    <div class="no-data">暂无成绩数据</div>
+                </div>
+            {% endif %}
+        {% endfor %}
+
+
     </div>
+
 
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js"></script>
+
     <script>
         $(document).ready(function(){
             // 筛选categories
@@ -107,6 +228,82 @@
                     }
                 });
             });
+
+
+            // 显示未完成作业的学生具体情况
+            $('.completed_percentage').on('click', function(e) {
+                e.preventDefault();
+
+                // 获取当前点击的unit的 ID
+                var unitId = $(this).data('unit-id');
+                console.log("unitId:", unitId)
+
+                // 找到对应的 uncompleted_students_info tr
+                var detailRow = $('.uncompleted_students_info[data-unit-id="' + unitId + '"]');
+                console.log("detailRow:", detailRow)
+
+                // 切换显示/隐藏
+                detailRow.toggle();
+
+            });
+
+            // 点击关闭按钮时
+            $('.uncompleted_students_info').on('click', '.close-detail', function(e) {
+                e.preventDefault();
+
+                // 隐藏当前的tr
+                $(this).closest('.uncompleted_students_info').hide();
+            });
+
+
+            // 把图表导出为PDF
+             document.getElementById('export-pdf').addEventListener('click', function () {
+                 // 确保字体加载完成
+                document.fonts.ready.then(() => {
+                    // 创建一个新的 jsPDF 实例
+                    const doc = new jspdf.jsPDF('p', 'mm', 'a4');
+
+                    // 设置 PDF 标题
+                    {#const title = "单元成绩区间分布";#}
+                    {#doc.setFontSize(18);#}
+                    {#doc.text(title, 10, 20);#}
+
+                    // 遍历每个图表容器
+                    const chartContainers = document.querySelectorAll('.chart-container');
+                    let offsetY = 30; // 初始 Y 轴偏移量
+                    const pageHeight = 277; // 每页的可用高度（A4 纸高度 - 上下边距）
+                    let currentPage = 0; // 当前页数
+
+                    chartContainers.forEach((container, index) => {
+                        // 将图表容器转换为图像
+                        html2canvas(container).then(canvas => {
+                            const imgData = canvas.toDataURL('image/png'); // 获取图像数据
+                            const imgWidth = 180; // 图像宽度
+                            const imgHeight = (canvas.height * imgWidth) / canvas.width; // 图像高度（按比例缩放）
+
+                            // 检查是否需要添加新页
+                            if (offsetY + imgHeight > pageHeight) {
+                                doc.addPage(); // 添加新页
+                                offsetY = 20; // 重置 Y 轴偏移量
+                                currentPage++; // 更新当前页数
+                            }
+
+                            // 添加图像到 PDF
+                            doc.addImage(imgData, 'PNG', 15, offsetY, imgWidth, imgHeight);
+
+                            // 更新 Y 轴偏移量
+                            offsetY += imgHeight + 10;
+
+                            // 如果是最后一个图表，保存 PDF
+                            if (index === chartContainers.length - 1) {
+                                doc.save('单元成绩分布.pdf');
+                            }
+                        });
+                    });
+                })
+            });
         });
+
+
     </script>
 {% endblock %}

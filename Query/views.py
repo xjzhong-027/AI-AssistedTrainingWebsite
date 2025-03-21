@@ -1,15 +1,23 @@
 import json, pytz
-from datetime import datetime
+from collections import defaultdict, Counter
+from datetime import datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.contrib import messages
-from django.http import JsonResponse, QueryDict
+from django.core import serializers
+from django.http import JsonResponse, QueryDict, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils.safestring import mark_safe
 from django.views.decorators.csrf import csrf_exempt
 
+from announce.forms import AnnouncementForm
+from announce.models import Announcement, Message
 from .models import ClassroomLayout
 from Account.models import Class, Students, Teachers, Attendance, ClassScheduleAdjustment, ClassScheduleAddition
-from ELW.models import Unit, TimeManagement, PaperPage, PageMainQuestion, PageSubQuestion, Correction, ChoiceOption, MatchingOption
+from ELW.models import Unit, TimeManagement, PaperPage, PageMainQuestion, PageSubQuestion, Correction, ChoiceOption, \
+    MatchingOption, Blank
 from accessment.models import StudentExamRecord, StudentPageRecord, StudentAnswer, StudentMediaPlayRecord
 from .forms import AttendanceQueryForm, ClassScheduleAdjustmentForm, ClassScheduleAdditionForm,  \
     ClassroomLayoutForm
@@ -334,6 +342,7 @@ def batch_delete_schedule_adjustments(request):
 
     return redirect("Query:adjust_schedule")
 
+
 def batch_delete_schedule_additions(request):
     """ 批量删除补课记录 """
     if request.method == 'POST':
@@ -349,6 +358,7 @@ def batch_delete_schedule_additions(request):
         return redirect("Query:adjust_schedule")
 
     return redirect("Query:adjust_schedule")
+
 
 def class_seat_plan(request, class_id):
     """ 班级座位表 """
@@ -408,6 +418,7 @@ def class_seat_plan(request, class_id):
         'students': page_obj,
         'form': form
     })
+
 
 @csrf_exempt
 def update_seat_number(request):
@@ -478,16 +489,70 @@ def assignment_unit(request, student_id):
 
     if units:
         for unit in units:
-            if unit.type == "exam" or unit.type == "quiz":
-                unit_data = TimeManagement.objects.filter(unit=unit).first()
+            week = 0
+
+            if unit.type == "exam":
+                time = TimeManagement.objects.filter(unit=unit).first()
+                unit_time_data = f"{time.exam_date} {time.end_time}"
+                print("unit_time_data:", unit_time_data)
+            elif unit.type == "quiz":
+                # 解析开课日期
+                start_date_obj = datetime.strptime(class_instance.start_date, '%Y-%m-%d')
+                week = TimeManagement.objects.filter(unit=unit).first().week
+                # 计算日期范围
+                date_1 = start_date_obj + timedelta(days=(week - 1) * 7)
+                date_1_str = date_1.strftime('%Y-%m-%d')
+                unit_time_data = f"{date_1_str} {class_instance.end_time}"
+            elif unit.type == "task":
+                # 解析开课日期
+                start_date_obj = datetime.strptime(class_instance.start_date, '%Y-%m-%d')
+                # 计算日期范围
+                # date_1 = start_date_obj + timedelta(days=(unit.order - 1) * 7)
+                # date_1_str = date_1.strftime('%Y-%m-%d')
+                date_2 = start_date_obj + timedelta(days=unit.order * 7)
+                date_2_str = date_2.strftime('%Y-%m-%d')
+                unit_time_data = f"{date_2_str} {class_instance.start_time}"
             else:
-                unit_data = None
-            record = StudentExamRecord.objects.filter(user=student, exam=unit).first()
-            assignments_data.append({
-                'unit': unit,
-                'unit_data': unit_data,
-                'record': record
-            })
+                # 解析开课日期
+                start_date_obj = datetime.strptime(class_instance.start_date, '%Y-%m-%d')
+                # 计算日期范围
+                date_1 = start_date_obj + timedelta(days=(unit.order - 1) * 7)
+                date_1_str = date_1.strftime('%Y-%m-%d')
+                unit_time_data = f"{date_1_str} {class_instance.end_time}"
+
+            unit_time_data_obj = datetime.strptime(unit_time_data, '%Y-%m-%d %H:%M:%S')
+
+            is_late = False
+            exam_record = StudentExamRecord.objects.filter(user=student, exam=unit).first()
+            if exam_record:
+                finished_at = exam_record.finished_at
+                if finished_at and finished_at > unit_time_data_obj:
+                    is_late = True
+
+                page_records = []
+                page_record = StudentPageRecord.objects.filter(student_exam_record=exam_record)
+                exam_initial_score = 0
+
+                for record in page_record:
+                    # 更新页面总分
+                    update_page_score(record)
+                    page_final_score = record.page_score * record.integrity_score
+                    exam_initial_score += page_final_score
+                    page_records.append({"page_record":record, "page_final_score":page_final_score})
+
+                # 更新试卷总分
+                update_exam_score(exam_record, is_late=is_late)
+                exam_final_score = exam_record.score
+                assignments_data.append({
+                    'unit': unit,
+                    'unit_time_data': unit_time_data, # 截止时间
+                    'week': week,   # quiz的开放周次
+                    'is_late': is_late,   # 是否逾期完成
+                    'exam_record': exam_record,
+                    'page_records': page_records,
+                    'exam_initial_score': exam_initial_score,
+                    'exam_final_score': exam_final_score
+                })
 
     # 分页，设置每页显示10条记录
     paginator = Paginator(assignments_data, 10)
@@ -514,7 +579,9 @@ def unit_detail(request, unit_id, student_id):
     exam_record = StudentExamRecord.objects.filter(exam=unit, user=student).first()
     page_record = StudentPageRecord.objects.filter(student_exam_record=exam_record)
     media_record = StudentMediaPlayRecord.objects.filter(student_exam_record=exam_record)
-
+    page_records = []
+    for record in page_record:
+        page_records.append({"page": record.page.order+1, "record": record})
 
     # 获取该单元的所有页面、题目、答案等
     question_data = []
@@ -537,12 +604,15 @@ def unit_detail(request, unit_id, student_id):
 
                 corrections = Correction.objects.filter(sub_question=sub_question)
                 corrected_text = apply_corrections(sub_question, corrections)
+                blank = Blank.objects.filter(sub_question=sub_question)
+                blank_text = apply_blanks(sub_question, blank)
                 student_answers = StudentAnswer.objects.filter(sub_question=sub_question, student_page_record__in=page_record)
 
                 subquestions.append({
                     'sub_question': sub_question,
                     'corrections': corrections,
                     'corrected_text': corrected_text,
+                    'blank_text': blank_text,
                     'student_answers': student_answers
                 })
 
@@ -557,30 +627,6 @@ def unit_detail(request, unit_id, student_id):
             'page': page,
             'main_questions': main_questions
         })
-    # question_data=[]
-    # pages = PaperPage.objects.filter(unit=unit) # 所有页面
-    # page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
-    # page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
-    #
-    #
-    # for page_main_question in page_main_questions:
-    #     subquestions = []
-    #     for page_sub_question in page_sub_questions:
-    #         if page_sub_question.page_main_question == page_main_question:
-    #             sub_question = page_sub_question.sub_question
-    #             corrections = Correction.objects.filter(sub_question=sub_question)
-    #             corrected_text = apply_corrections(sub_question, corrections)
-    #             student_answers = StudentAnswer.objects.filter(sub_question=sub_question, student_page_record__in=page_record)
-    #             subquestions.append({
-    #                 'sub_question': sub_question,
-    #                 'corrections': corrections,
-    #                 'corrected_text': corrected_text,
-    #                 'student_answers': student_answers
-    #             })
-    #     question_data.append({
-    #         'main_question': page_main_question.main_question,
-    #         'sub_questions': subquestions
-    #     })
 
     context = {
         'student': student,
@@ -588,26 +634,73 @@ def unit_detail(request, unit_id, student_id):
         'pages': pages,
         'question_data': question_data,
         'exam_record': exam_record,
-        'page_record': page_record,
+        'page_record': page_records,
         'media_record': media_record
     }
     return render(request, 'learning/unit_detail.html', context)
 
 
 def update_page_score(student_page_record):
-    """ 更新页面总分（所有小题的得分之和） """
-    total_score = sum(answer.score for answer in student_page_record.answers.all())
+    """ 更新页面总分（页面所有小题的得分之和） """
+    total_score = 0
+    student_answer_records = StudentAnswer.objects.filter(student_page_record=student_page_record)
+    for record in student_answer_records:
+        total_score += record.score
     student_page_record.page_score = total_score
     student_page_record.save()
 
 
-def update_exam_score(student_exam_record):
-    """ 更新试卷总分（各页面分数 * 诚信分） """
-    total_score = 0
-    for page in student_exam_record.page_records.all():
-        total_score += page.page_score * page.integrity_score  # 页面分数 * 诚信分
-    student_exam_record.score = total_score
-    student_exam_record.save()
+def update_exam_score(student_exam_record, is_late=False):
+    """ 更新试卷总分（各页面分数 * 诚信分），并根据是否逾期调整总分 """
+    try:
+        total_score = 0
+
+        student_page_records = StudentPageRecord.objects.filter(student_exam_record=student_exam_record)
+        for record in student_page_records:
+            total_score += record.page_score * record.integrity_score  # 页面分数 * 诚信分
+            print("page_score", record.page_score)
+            print("integrity:", record.integrity_score)
+            print("total score:", total_score)
+        print("is_late:", is_late)
+        if is_late:
+            total_score *= Decimal(0.8)
+            # 保留小数点后两位，四舍五入
+            total_score = total_score.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
+
+        print("final_score:", total_score)
+        student_exam_record.score = total_score
+        student_exam_record.save()
+    except Exception as e:
+        print("Exception occurred in update_exam_score:", e)
+        raise
+
+
+
+# @csrf_exempt
+# def update_unit_score(request):
+#     """ 根据是否逾期完成对单元总分进行修改 """
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body)
+#             record_id = data.get('record_id')
+#             is_late = data.get('is_late')
+#
+#             student_exam_record = StudentExamRecord.objects.get(id=record_id)
+#             # 更新总分
+#             update_exam_score(student_exam_record, is_late)
+#
+#             return JsonResponse({
+#                 'status': 'success',
+#                 'message': '分数已更新',
+#                 'new_score': student_exam_record.score,  # 返回更新后的分数
+#             })
+#         except StudentExamRecord.DoesNotExist:
+#             return JsonResponse({'status': 'error', 'message': '未找到对应的作业记录'}, status=404)
+#         except Exception as e:
+#             print("Exception occurred in update_unit_score:", e)
+#             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+#     else:
+#         return JsonResponse({'status': 'error', 'message': '无效的请求方法'}, status=405)
 
 
 @csrf_exempt
@@ -687,6 +780,25 @@ def delete_answer_records(request, unit_id, student_id):
     return unit_detail(request, unit_id, student_id)
 
 
+def delete_media_records(request, unit_id, student_id):
+    """ 删除学生媒体播放记录 """
+    if request.method == 'POST':
+        selected_records = request.POST.getlist('selected_media_records')  # 获取选中的记录ID
+
+        try:
+            if selected_records:
+                StudentMediaPlayRecord.objects.filter(id__in=selected_records).delete()
+                messages.success(request, "选中的媒体播放记录已成功删除")
+            else:
+                messages.warning(request, "未选择媒体播放记录")
+
+        except Exception as e:
+            messages.error(request, f"没有媒体播放数据")
+
+        return redirect(request.path)
+
+    return unit_detail(request, unit_id, student_id)
+
 
 
 
@@ -722,21 +834,100 @@ def class_statistic_search(request):
         'class_name': class_name
     })
 
+
 def class_unit(request, class_id):
     class_instance = Class.objects.get(id=class_id)
+    students = Students.objects.filter(class_instance=class_instance)
     units = Unit.objects.filter(class_instance=class_instance)
     units_data = []
     categories = dict(Unit.TYPES)
 
+    # 定义成绩区间
+    score_ranges = [(0, 59), (60, 69), (70, 79), (80, 89), (90, 100)]
+
     if units:
         for unit in units:
-            if unit.type == "exam" or unit.type == "quiz":
-                unit_data = TimeManagement.objects.filter(unit=unit).first()
+            week = 0
+            if unit.type == "exam":
+                time = TimeManagement.objects.filter(unit=unit).first()
+                unit_time_data = f"{time.exam_date} {time.end_time}"
+            elif unit.type == "quiz":
+                # 解析开课日期
+                start_date_obj = datetime.strptime(class_instance.start_date, '%Y-%m-%d')
+                week = TimeManagement.objects.filter(unit=unit).first().week
+                # 计算日期范围
+                date_1 = start_date_obj + timedelta(days=(week - 1) * 7)
+                date_1_str = date_1.strftime('%Y-%m-%d')
+                unit_time_data = f"{date_1_str} {class_instance.end_time}"
+            elif unit.type == "task":
+                # 解析开课日期
+                start_date_obj = datetime.strptime(class_instance.start_date, '%Y-%m-%d')
+                # 计算日期范围
+                date_2 = start_date_obj + timedelta(days=unit.order * 7)
+                date_2_str = date_2.strftime('%Y-%m-%d')
+                unit_time_data = f"{date_2_str} {class_instance.start_time}"
             else:
-                unit_data = None
+                # 解析开课日期
+                start_date_obj = datetime.strptime(class_instance.start_date, '%Y-%m-%d')
+                # 计算日期范围
+                date_1 = start_date_obj + timedelta(days=(unit.order - 1) * 7)
+                date_1_str = date_1.strftime('%Y-%m-%d')
+                unit_time_data = f"{date_1_str} {class_instance.end_time}"
+
+            # 获取当前单元的成绩记录
+            unit_records = StudentExamRecord.objects.filter(user__in=students, exam=unit)
+
+
+            # 统计当前单元的成绩分布
+            distribution = defaultdict(int)
+            if unit_records.exists():
+                for record in unit_records:
+                    score = record.score
+                    if score is None:
+                        distribution["无成绩"] += 1
+                    else:
+                        for lower, upper in score_ranges:
+                            if lower <= score <= upper:
+                                distribution[f"{lower}-{upper}"] += 1
+                                break
+            else:
+                # 如果没有成绩记录，初始化分布为 0
+                for lower, upper in score_ranges:
+                    distribution[f"{lower}-{upper}"] = 0
+
+            # 对 labels 和 data 进行排序
+            def sort_key(label):
+                if label == "无成绩":
+                    return float('inf')  # 将 "无成绩" 放在最后
+                else:
+                    return int(label.split('-')[0])  # 按区间下限排序
+
+            sorted_labels = sorted(distribution.keys(), key=sort_key)
+            sorted_data = [distribution[label] for label in sorted_labels]
+
+            # 统计完成人数和未完成作业的学生信息
+            completed_students = set(unit_records.values_list('user', flat=True))
+            total_students = set(students.values_list('id', flat=True))
+            uncompleted_students = total_students - completed_students
+
+            # 获取未完成作业的学生信息
+            uncompleted_students_info = Students.objects.filter(id__in=uncompleted_students)
+            uncompleted_students_json = serializers.serialize('json', uncompleted_students_info)
+
+            # 将统计结果添加到单元数据中
             units_data.append({
                 'unit': unit,
-                'unit_data': unit_data,
+                'week': week,
+                'unit_time_data': unit_time_data,
+                'unit_record': unit_records,
+                'score_distribution': {
+                    'labels': sorted_labels,
+                    'data': sorted_data,
+                },
+                'completed_count': len(completed_students),
+                'total_count': len(total_students),
+                'uncompleted_students_info': uncompleted_students_info,
+                'uncompleted_students_json': uncompleted_students_json,
             })
 
     # 分页，设置每页显示10条记录
@@ -744,11 +935,104 @@ def class_unit(request, class_id):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'statistic/class_unit.html',{
+    return render(request, 'statistic/class_unit.html', {
         'class_instance': class_instance,
         'units_data': page_obj,
-        'categories': categories
+        'categories': categories,
+        'score_ranges': score_ranges,
     })
+
+
+def statistic_announce(request, class_id):
+    class_instance = Class.objects.get(id=class_id)
+    students_data = request.GET.get('students')
+    if students_data:
+        try:
+            students_list = json.loads(students_data)  # 将 JSON 字符串解析为 Python 对象
+            students = []
+
+            for student_data in students_list:
+                student_instance = Students.objects.get(pk=student_data['pk'])
+                students.append(student_instance)
+
+        except json.JSONDecodeError:
+            return HttpResponseBadRequest("Invalid JSON format")
+        except Students.DoesNotExist:
+            return HttpResponseBadRequest("Student not found in database")
+    else:
+        students = []
+    print("Class:", class_instance)
+    print("students", students)
+    username = request.session.get('username')
+    role = request.session.get('role', 'none')
+    if role != 'teacher':
+        return JsonResponse({'error': '只有教师可以管理公告'}, status=403)
+
+    if request.method == 'POST':
+        p_type = request.POST.get('type')
+        if p_type == 'delete':
+            a_id = request.POST.get('a_id')
+            Announcement.objects.filter(id=a_id).delete()
+            return JsonResponse({'success': '公告已删除'}, status=200)
+        elif p_type == 'create':
+            form = AnnouncementForm(request.POST)
+            if form.is_valid():
+                receivers = form.cleaned_data['receivers']
+                select_all = form.cleaned_data.get('select_all', False)
+
+                if not receivers and not select_all:
+                    return JsonResponse({'error': '必须选择接收者或全选'}, status=400)
+
+                a_title = form.cleaned_data['a_title']
+                a_content = form.cleaned_data['a_content']
+                announcement = form.save(commit=False)
+                announcement.teachers = Teachers.objects.get(username=username)
+                announcement.save()
+
+                if select_all:
+                    receivers = Students.objects.all()
+                announcement.receivers.set(receivers)
+
+                for receiver in receivers:
+                    Message.objects.create(
+                        sender=username,
+                        receiver=receiver.username,
+                        content=a_content,
+                        is_announcement=True,
+                        announcement_id=announcement.id
+                    )
+                    async_to_sync(get_channel_layer().group_send)(
+                        f'user_{receiver.username}',
+                        {
+                            'type': 'notification_message',
+                            'message': f"New announcement: {a_title}",
+                            'announcement_id': announcement.id
+                        }
+                    )
+                return JsonResponse({'success': '公告已发布'}, status=200)
+            else:
+                # 返回具体的表单错误信息
+                return JsonResponse({'error': form.errors.as_json()}, status=400)
+
+
+    elif request.method == 'GET':
+        form = AnnouncementForm()
+        announcements = Announcement.objects.all().order_by('-created_at').prefetch_related('receivers')
+        paginator = Paginator(announcements, 3)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        # 按班级分组学生
+        students_by_class = defaultdict(list)
+        for student in students:
+            students_by_class[class_instance].append(student)
+
+        return render(request, 'announce/announcements.html', {
+            'form': form,
+            'page_obj': page_obj,
+            'students_by_class': students_by_class.items()
+        })
+
+
 
 def apply_corrections(sub_question, corrections):
     """
@@ -776,11 +1060,46 @@ def apply_corrections(sub_question, corrections):
     return mark_safe(' '.join(words))
 
 
+def apply_blanks(sub_question, blanks):
+    """
+    根据 blank 的位置，在题目文段中添加下划线
+    """
+    text = sub_question.question_text
+    words = text.split()
+
+    for blank in blanks:
+        index = blank.index
+        if 0 <= index < len(words):
+            word = words[index]
+            words[index] = f'{word}______'
+
+    return mark_safe(' '.join(words))
+
+
+def statistic_apply_blanks(sub_question, blanks, correct_rate_percentage):
+    """
+    根据 blank 的位置，在题目文段中添加答对率和答案
+    """
+    text = sub_question.question_text
+    answer = sub_question.answer
+    words = text.split()
+
+    for blank in blanks:
+        index = blank.index
+        if 0 <= index < len(words):
+            word = words[index]
+            words[index] = f'{word}<span id="blank_correct_rate{sub_question.id}" class="blank_correct_rate" style="color: #007bff; margin-left: 7px;"><u>{correct_rate_percentage}%</u></span><span style="color: green; margin-right: 9px;"><u>{answer}</u></span>'
+
+    return mark_safe(' '.join(words))
+
+
 def unit_statistic(request, unit_id, class_id):
-    # 获取班级
+    # 获取班级和学生
     class_instance = get_object_or_404(Class, id=class_id)
+    students = Students.objects.filter(class_instance=class_instance)
     # 获取指定的单元信息
     unit = get_object_or_404(Unit, id=unit_id)
+
 
     # 获取该单元的所有页面、题目、答案等
     question_data = []
@@ -793,6 +1112,12 @@ def unit_statistic(request, unit_id, class_id):
         main_questions = []
 
         for page_main_question in page_main_questions:
+            main_question = page_main_question.main_question
+            if main_question.image_url:
+                main_images = main_question.image_url.split(',')
+            else:
+                main_images = None
+
             # 获取当前大题的所有小题
             page_sub_questions = PageSubQuestion.objects.filter(page_main_question=page_main_question)
 
@@ -800,23 +1125,91 @@ def unit_statistic(request, unit_id, class_id):
 
             for page_sub_question in page_sub_questions:
                 sub_question = page_sub_question.sub_question
+                if sub_question.image_url:
+                    sub_images = sub_question.image_url.split(',')
+                else:
+                    sub_images = None
+                max_score = sub_question.score
 
+                choices_data = []
                 choices = ChoiceOption.objects.filter(sub_question=sub_question)
+                if choices:
+                    for choice in choices:
+                        if choice.image_url:
+                            choices_data.append({"choice": choice, "choice_images": choice.image_url.split(',')})
+                        else:
+                            choices_data.append({"choice": choice, "choice_images": None})
+
                 corrections = Correction.objects.filter(sub_question=sub_question)
-                matchings = MatchingOption.objects.filter(sub_question=sub_question)
+                matching = MatchingOption.objects.filter(sub_question=sub_question).first()
+                if matching and matching.image_url:
+                    matching_images = matching.image_url.split(',')
+                else:
+                    matching_images = []
+
                 corrected_text = apply_corrections(sub_question, corrections)
+
+
+
+                # 筛选出所有学生的答题记录
+                student_page_records = StudentPageRecord.objects.filter(
+                    student_exam_record__user__in=students,
+                    page__unit=unit,
+                    page__in=pages,
+                )
+
+                # 筛选出每个学生对应的小题作答数据
+                student_records = StudentAnswer.objects.filter(
+                    sub_question=sub_question,
+                    student_page_record__in=student_page_records
+                )
+                student_answers = []
+                for record in student_records:
+                    student_answers.append(record.text)
+
+                # 得分大于分值的 70% 视为答对(针对简答题）
+                passing_score = max_score * 0.7
+                # 统计答题人数
+                total_answered = student_records.count()
+                # 统计答对人数
+                total_correct = student_records.filter(score__gt=passing_score).count()
+                # 计算答对率
+                correct_rate_percentage = round(total_correct / total_answered * 100) if total_answered > 0 else 0
+
+                # 统计答案出现次数
+                answer_counts = Counter(student_answers)
+                # 计算每个答案的比例
+                answer_statistics = []
+                for answer, count in answer_counts.items():
+                    percentage = (count / total_answered) * 100
+                    answer_statistics.append({
+                        'answer': answer,
+                        'count': count,
+                        'percentage': round(percentage, 2)
+                    })
+
+                blank = Blank.objects.filter(sub_question=sub_question)
+                blank_text = statistic_apply_blanks(sub_question, blank, correct_rate_percentage)
 
                 subquestions.append({
                     'sub_question': sub_question,
-                    'choices': choices,
+                    'sub_images': sub_images,
+                    'choices': choices_data,
                     'corrections': corrections,
-                    'matchings': matchings,
-                    'corrected_text': corrected_text
+                    'matching': matching,
+                    'matching_images': matching_images,
+                    'corrected_text': corrected_text,
+                    'blank_text': blank_text,
+                    'total_answered': total_answered,
+                    'total_correct': total_correct,
+                    'correct_rate_percentage': correct_rate_percentage,
+                    'student_answers': answer_statistics,
                 })
 
             # 将大题及其小题数据添加到 main_questions 列表中
             main_questions.append({
                 'main_question': page_main_question.main_question,
+                'main_images': main_images,
                 'sub_questions': subquestions
             })
 

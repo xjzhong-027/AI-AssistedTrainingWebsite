@@ -128,7 +128,7 @@
                                 {% for sub_question in main_question.sub_questions %}
                                     <ul>
                                         {% for correction in sub_question.corrections %}
-                                            <p>{{ correction.index }} - {{ correction.type }} - {{ sub_question.sub_question.answer }}</p>
+                                            <p>{{ correction.type }} - {{ sub_question.sub_question.answer }}</p>
                                         {% endfor %}
                                     </ul>
                                 {% endfor %}
@@ -176,7 +176,7 @@
 
                         {% elif main_question.main_question.question_type == 'blank' %}
                             {% for sub_question in main_question.sub_questions %}
-                                <span>{{ sub_question.sub_question.question_text }} ___{{ forloop.counter }}___</span>
+                                <span>{{ sub_question.blank_text }}</span>
                             {% endfor %}
 
                             <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id %}">
@@ -337,27 +337,35 @@
         <p>暂无学习记录</p>
     {% else %}
         <h4>媒体播放记录：</h4>
-        <table class="table table-bordered table-striped">
+        <form method="post" action="{% url 'Query:delete_media_records' unit.id student.id %}">
+            {% csrf_token %}
+            <table class="table table-bordered table-striped">
             <thead>
                 <tr>
+                    <th></th>
+                    <th>序号</th>
                     <th>大题</th>
                     <th>媒体素材</th>
-                    <th>视频已播次数</th>
+                    <th>视频已播次数 / 最大播放次数</th>
                 </tr>
             </thead>
             <tbody>
                 {% for record in media_record %}
                     <tr>
-                        <td>{{ record.main_question }}</td>
-                        <td>{{ record.media_material }}</td>
-                        <td>{{ record.play_count }}</td>
+                        <td><input type="checkbox" name="selected_media_records" value="{{ record.id }}" /></td>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ record.main_question.question_text }}</td>
+                        <td>{{ record.media_material.title }}</td>
+                        <td>{{ record.play_count }}/{{ record.main_question.maximum_play }}</td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
+            <button type="submit" class="btn btn-danger">删除记录</button>
+        </form>
 
 
-        <h4>页面作答记录：</h4>
+        <h4 style="margin-top: 25px;">页面作答记录：</h4>
         <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
@@ -373,25 +381,31 @@
                 <tbody>
                     {% for record in page_record %}
                         <tr>
-                            <td>{{ record.page }}</td>
+                            <td>页面{{ record.page}}</td>
                             <td
-                                {% if not record.submitted %}
+                                {% if not record.record.submitted %}
                                     style="color: #ea5e5a;"
                                 {% endif %}
                             >
-                                {{ record.submitted|yesno:"已提交,未提交" }}
+                                {{ record.record.submitted|yesno:"已提交,未提交" }}
                             </td>
-                            <td>{{ record.submitted_at }}</td>
-                            <td>{{ record.is_expired|yesno:"超时,未超时" }}</td>
-                            <td>{{ record.remaining_time }}</td>
+                            <td>{{ record.record.submitted_at }}</td>
+                            <td
+                                {% if record.record.is_expired %}
+                                    style="color: #ea5e5a;"
+                                {% endif %}
+                            >
+                                {{ record.record.is_expired|yesno:"超时,未超时" }}
+                            </td>
+                            <td>{{ record.record.remaining_time }}</td>
                             <td>
-                                <span class="integrity" id="integrity-score-{{ record.id }}">{{ record.integrity_score }}</span>
-                                <input type="number" id="integrity-input-{{ record.id }}" value="{{ record.integrity_score }}" step="0.1"  style="display: none;" />
+                                <span class="integrity" id="integrity-score-{{ record.record.id }}">{{ record.record.integrity_score }}</span>
+                                <input type="number" id="integrity-input-{{ record.record.id }}" value="{{ record.record.integrity_score }}" step="0.1"  style="display: none;" />
                             </td>
                             <td>
-                                <button type= "button" class="btn btn-warning btn-sm" id="edit-integrity-btn-{{ record.id }}" onclick="editIntegrity({{ record.id }},event)">编辑</button>
-                                <button type= "button" class="btn btn-success btn-sm" id="save-integrity-btn-{{ record.id }}" onclick="saveIntegrity({{ record.id }},event)" style="display: none;">保存</button>
-                                <button type= "button" class="btn btn-danger btn-sm" id="cancel-integrity-btn-{{ record.id }}" onclick="cancelIntegrityEdit({{ record.id }},event)" style="display: none;">取消</button>
+                                <button type= "button" class="btn btn-warning btn-sm" id="edit-integrity-btn-{{ record.record.id }}" onclick="editIntegrity({{ record.record.id }},event)">编辑</button>
+                                <button type= "button" class="btn btn-success btn-sm" id="save-integrity-btn-{{ record.record.id }}" onclick="saveIntegrity({{ record.record.id }},event)" style="display: none;">保存</button>
+                                <button type= "button" class="btn btn-danger btn-sm" id="cancel-integrity-btn-{{ record.record.id }}" onclick="cancelIntegrityEdit({{ record.record.id }},event)" style="display: none;">取消</button>
                             </td>
                         </tr>
                     {% endfor %}
