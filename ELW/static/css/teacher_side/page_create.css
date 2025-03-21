@@ -104,3 +104,124 @@ button[type="submit"] {
 button[type="submit"]:hover {
     background-color: #0056b3;
 }
+
+
+
+
+
+
+
+
+/* 页面信息部分 */
+.paper_page_info {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    text-align: center; /* 内容居中 */
+}
+
+.paper_page_info h3 {
+    margin: 0 0 10px 0;
+    color: #007BFF;
+    font-size: 18px;
+}
+
+.paper_page_info p {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+/* 表单组 */
+.form-group {
+    display: flex;
+    justify-content: center; /* 水平居中 */
+    gap: 20px; /* 两个表单元素之间的间距 */
+    flex-wrap: wrap; /* 如果屏幕太小，允许换行 */
+}
+
+/* 每个表单项 */
+.form-item {
+    display: flex;
+    align-items: center; /* 垂直居中 */
+    gap: 10px; /* 标签和输入框之间的间距 */
+    margin: 0; /* 去除默认的段落间距 */
+    padding: 10px;
+}
+
+/* 输入框样式 */
+.paper_page_info input[type="checkbox"] {
+    margin: 0; /* 去除默认的复选框外边距 */
+}
+
+.paper_page_info input[type="time"] {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.paper_page_info span {
+    font-size: 14px;
+    color: #777;
+}
+
+
+/*!* 页面信息部分 *!*/
+/*.paper_page_info {*/
+/*    margin-top: 20px;*/
+/*    padding: 15px;*/
+/*    background-color: #f9f9f9;*/
+/*    border: 1px solid #ddd;*/
+/*    border-radius: 8px;*/
+/*    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);*/
+/*}*/
+
+
+/*.paper_page_info p {*/
+/*    margin: 0 0 10px 0;*/
+/*    font-size: 14px;*/
+/*    color: #555;*/
+/*}*/
+
+/*.paper_page_info label {*/
+/*    font-weight: bold;*/
+/*    color: #007BFF;*/
+/*    margin-right: 10px;*/
+/*}*/
+
+/*.paper_page_info input[type="checkbox"] {*/
+/*    margin-right: 5px;*/
+/*}*/
+
+/*.paper_page_info input[type="time"] {*/
+/*    padding: 5px;*/
+/*    border: 1px solid #ccc;*/
+/*    border-radius: 4px;*/
+/*    font-size: 14px;*/
+/*}*/
+
+/*.paper_page_info span {*/
+/*    font-size: 14px;*/
+/*    color: #777;*/
+/*}*/
+
+/*!* 页面预览中的页面信息部分 *!*/
+/*.page_info {*/
+/*    margin-bottom: 10px;*/
+/*    padding: 10px;*/
+/*    background-color: #f9f9f9;*/
+/*    border: 1px solid #ddd;*/
+/*    border-radius: 8px;*/
+/*    font-size: 14px;*/
+/*    color: #555;*/
+/*}*/
+
+/*.page_info span {*/
+/*    margin-right: 10px;*/
+/*    color: #007BFF;*/
+/*    font-weight: bold;*/
+/*}*/

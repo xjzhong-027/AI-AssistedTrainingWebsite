@@ -12,14 +12,14 @@ from .models import (
     PageSubQuestion,
 )
 
-def preview_page(selected_questions):
+def preview_page(selected_questions, page_info):
     preview_page = []
     main_id_list = []
     for question_id in selected_questions:
         if question_id.startswith('main_'):
             main_id = int(question_id.split('main_')[1])
             main_question = MainQuestion.objects.get(id=main_id)
-            preview_page.append({'main_question': main_question})
+            preview_page.append({'main_question': main_question, 'page_info': page_info})
             main_id_list.append(main_id)
         elif question_id.startswith('sub_'):
             sub_id = int(question_id.split('sub_')[1])
@@ -32,6 +32,6 @@ def preview_page(selected_questions):
                         pre_page['sub_questions'].append(sub_question)
             else:
 
-                preview_page.append({'main_question': main_question, 'sub_questions': [sub_question]})
+                preview_page.append({'main_question': main_question, 'sub_questions': [sub_question], 'page_info': page_info})
                 main_id_list.append(main_id)
     return preview_page

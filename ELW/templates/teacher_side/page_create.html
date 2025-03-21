@@ -113,13 +113,34 @@
                 {% endfor %}
 
 
+{#            <div class="paper_page_info">#}
+{#                <h3>页面信息</h3>#}
+{#                <p>默认页面无时长限制且允许返回修改答案！</p>#}
+{#                <p>#}
+{#                    <label for="can_modify">是否允许返回页面修改答案</label>#}
+{#                    <input type="checkbox" name="can_modify" id="can_modify" value="true">#}
+{##}
+{#                </p>#}
+{#                <p>#}
+{#                    <label for="limited_time">页面时长限制： </label>#}
+{#                    <input type="time" name="limited_time" id="limited_time"><span>（小时：分钟）</span>#}
+{#                </p>#}
+{##}
+{#            </div>#}
             <div class="paper_page_info">
-                <p style="color: red"><------------------------------------------------------------页面信息------------------------------------------------------------></p>
-                <p>默认页面无时长限制且允许返回修改答案！</p>
-                <input type="checkbox" name="can_modify" id="can_modify" value="true">
-                <label for="can_modify">是否允许返回页面修改答案</label>
-                <label for="limited_time">页面时长限制： </label>
-                <input type="time" name="limited_time" id="limited_time"><span>（小时：分钟）</span>
+                <h3>页面信息</h3><span>(默认页面无时长限制且允许返回修改答案)</span>
+            {#    <p>默认页面无时长限制且允许返回修改答案！</p>#}
+                <div class="form-group">
+                    <p class="form-item">
+                        <label for="can_modify">允许返回页面修改答案：</label>
+                        <input type="checkbox" name="can_modify" id="can_modify" value="true">
+                    </p>
+                    <p class="form-item">
+                        <label for="limited_time">页面时长限制：</label>
+                        <input type="time" name="limited_time" id="limited_time">
+                        <span>（小时：分钟）</span>
+                    </p>
+                </div>
             </div>
             <button type="submit" name="add_page">添加页面</button>
 
@@ -137,64 +158,76 @@
                 {% if preview_page %}
                     <div class="preview_page" id="{{ forloop.counter0 }}">
 
-                    <h3>页面{{ forloop.counter }}</h3>
-                    <button onclick="removeDiv({{ forloop.counter0 }})">删除页面</button>
-                    {% for question in preview_page %}
-                        <h4>{{ forloop.counter }}. {{ question.main_question.question_text }}</h4>
+                        <h3>页面{{ forloop.counter }}</h3>
+                        <div class="page_info">
+                            {% if preview_page.0.page_info.can_modify %}
+                                <span>允许返回页面修改答案 /</span>
+                            {% else %}
+                                <span>不允许返回页面修改答案/</span>
+                            {% endif %}
+                            {% if preview_page.0.page_info.limited_time %}
+                                <span>时长限制：{{ preview_page.0.page_info.limited_time }}:00</span>
+                            {% else %}
+                                <span>时长限制：无</span>
+                            {% endif %}
+                        </div>
+                        <button onclick="removeDiv({{ forloop.counter0 }})">删除页面</button>
+                        {% for question in preview_page %}
+                            <h4>{{ forloop.counter }}. {{ question.main_question.question_text }}</h4>
 {#改错题预览#}
-                        {% if question.main_question.question_type == 'correction' %}
-                            {% for sub_question in question.main_question.sub_questions.all %}
-                                    {% for correction in sub_question.corrections.all %}
-                                        {% if correction %}
-                                            <span>{{ sub_question.question_text }} </span>
+                            {% if question.main_question.question_type == 'correction' %}
+                                {% for sub_question in question.main_question.sub_questions.all %}
+                                        {% for correction in sub_question.corrections.all %}
+                                            {% if correction %}
+                                                <span>{{ sub_question.question_text }} </span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+{#填空题预览#}
+                            {% elif question.main_question.question_type == 'blank' %}
+                                {% for sub_question in question.main_question.sub_questions.all %}
+                                    {% for blank in sub_question.blanks.all %}
+                                        {% if blank %}
+                                            {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
+                                                {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
+                                                    {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
+                                                        {% with before=words|custom_before:index after=words|custom_after:index %}
+                                                            {{ before|join:" " }} ___ {{ after|join:" " }}
+                                                        {% endwith %}
+                                                    {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
+                                                        {{ words|join:" " }} ___
+                                                    {% endif %}
+                                                {% endwith %}
+                                            {% endwith %}
                                         {% endif %}
                                     {% endfor %}
-                                {% endfor %}
-{#填空题预览#}
-                        {% elif question.main_question.question_type == 'blank' %}
-                            {% for sub_question in question.main_question.sub_questions.all %}
-                                {% for blank in sub_question.blanks.all %}
-                                    {% if blank %}
-                                        {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
-                                            {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
-                                                {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
-                                                    {% with before=words|custom_before:index after=words|custom_after:index %}
-                                                        {{ before|join:" " }} ___ {{ after|join:" " }}
-                                                    {% endwith %}
-                                                {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
-                                                    {{ words|join:" " }} ___
-                                                {% endif %}
-                                            {% endwith %}
-                                        {% endwith %}
-                                    {% endif %}
-                                {% endfor %}
 
-                            {% endfor %}
-                            {% else %}
-                                {% for sub_question in question.sub_questions %}
-                                    {% if sub_question %}
-                                        <p>({{ forloop.counter }}) {{ sub_question.question_text }}({{ sub_question.score }})</p>
-                                        {% if question.main_question.question_type == 'choice' %}
-                                            {% for option in sub_question.options.all %}
-                                                {% if option %}
-                                                    <p>{{ option.option_label }}. {{ option.option_content }}</p>
-                                                {% endif %}
-                                            {% endfor %}
-                                        {% elif question.main_question.question_type == 'matching' %}
-                                            {% for matching_option in sub_question.matchingOptions.all %}
-                                                {% if matching_option %}
-                                                    <p>{{ matching_option.option_label }}. {{ matching_option.option_content }}</p>
-                                                {% endif %}
-                                            {% endfor %}
+                                {% endfor %}
+                                {% else %}
+                                    {% for sub_question in question.sub_questions %}
+                                        {% if sub_question %}
+                                            <p>({{ forloop.counter }}) {{ sub_question.question_text }}({{ sub_question.score }})</p>
+                                            {% if question.main_question.question_type == 'choice' %}
+                                                {% for option in sub_question.options.all %}
+                                                    {% if option %}
+                                                        <p>{{ option.option_label }}. {{ option.option_content }}</p>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% elif question.main_question.question_type == 'matching' %}
+                                                {% for matching_option in sub_question.matchingOptions.all %}
+                                                    {% if matching_option %}
+                                                        <p>{{ matching_option.option_label }}. {{ matching_option.option_content }}</p>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endif %}
+
+
+
                                         {% endif %}
+                                    {% endfor %}
+                            {% endif %}
 
-
-
-                                    {% endif %}
-                                {% endfor %}
-                        {% endif %}
-
-                    {% endfor %}
+                        {% endfor %}
                     </div>
                 {% endif %}
             {% endfor %}

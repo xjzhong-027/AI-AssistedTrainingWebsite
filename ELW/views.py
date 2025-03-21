@@ -661,17 +661,10 @@ def teacher_page_create(request, material_id):
         # 本次提交的页面信息
         this_selected_questions = request.POST.getlist('questions')
         print('this_selected_questions: ', this_selected_questions)
-        if request.POST.get('can_modify'):
-            can_modify = request.POST.get('can_modify')
-            print(f'can_modify: {can_modify}')
-        else:
-            can_modify = None
-        limited_time = request.POST.get('limited_time')
-        if limited_time:
-            print(f'limited_time: {limited_time}')
-        else:
-            limited_time = None
+        can_modify = request.POST.get('can_modify', False)
+        limited_time = request.POST.get('limited_time', False)
         page_info = {'can_modify': can_modify, 'limited_time': limited_time}
+        print(f'page_info: {page_info}')
 
         # test_selected_questions = ['sub_1', 'sub_2', 'sub_3']
         # 前面已提交的页面信息
@@ -712,7 +705,7 @@ def teacher_page_create(request, material_id):
 
             preview_pages = []
             for pre_selected_question in pre_selected_questions:
-                preview_page = pre_page.preview_page(pre_selected_question)
+                preview_page = pre_page.preview_page(pre_selected_question, page_info)
                 preview_pages.append(preview_page)
             print('preview_pages: ', preview_pages)
             # print('receive: ', request.POST['pre_selected_questions'])
@@ -835,10 +828,12 @@ def teacher_page_save(request, material_id):
             # 遍历所有待创建页面
             for order, preview_data in enumerate(preview_datas):
                 # 创建页面
+                print(f'preview_data:   {preview_data}')
                 page_instance = PaperPage.objects.create(
                     unit=unit_instance,
                     order=order,
                     text=f'第{order+1}个页面',
+
                 )
                 page_instance.save()
                 main_id_list = []
