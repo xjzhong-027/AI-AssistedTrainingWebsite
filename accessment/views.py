@@ -9,8 +9,8 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
 from .models import StudentMediaPlayRecord,StudentPageRecord,StudentExamRecord,StudentAnswer
-from ELW.models import (
-                        TimeManagement,
+from Account.models import Students
+from ELW.models import (TimeManagement,
                         Unit,
                         PaperPage,
                         MediaMaterial,
@@ -18,7 +18,7 @@ from ELW.models import (
                         MainQuestion,
                         PageMainQuestion,
                         PageSubQuestion, Correction, )
-from Account.models import Students
+
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib import messages
 from django.db import transaction
@@ -83,16 +83,19 @@ def exam_list(request):
     for unit in exam_units:
         time_management = unit.time_management.first()
         if time_management:
+            exam_date = time_management.exam_date
             start_time = time_management.start_time
             end_time = time_management.end_time
 
             # 将开始时间和结束时间转换为时间戳
-            start_timestamp = int(start_time.timestamp())
-            end_timestamp = int(end_time.timestamp())
+            start_datetime = datetime.combine(exam_date, start_time)
+            end_datetime = datetime.combine(exam_date, end_time)
+            start_timestamp = int(start_datetime.timestamp())
+            end_timestamp = int(end_datetime.timestamp())
             current_timestamp = int(current_datetime.timestamp())
 
             # 计算初始倒计时时间（仅用于页面加载时显示）
-            time_remaining = start_time - current_datetime
+            time_remaining = start_datetime - current_datetime
             if time_remaining.total_seconds() < 0:
                 time_remaining_display = "考试已开始"
             else:
@@ -118,12 +121,19 @@ def start_exam(request, exam_id):
     exam = get_object_or_404(Unit, id=exam_id, type='exam')
     time_management = get_object_or_404(TimeManagement, unit=exam)
 
-
     now = timezone.now()
+
+    exam_date = time_management.exam_date
+    start_time = time_management.start_time
+    end_time = time_management.end_time
+
+    start_datetime = datetime.combine(exam_date, start_time)
+    end_datetime = datetime.combine(exam_date, end_time)
+
     # 检查时间范围
-    if now < time_management.start_time:
+    if now < start_datetime:
         return JsonResponse({'status': 'not_start', 'message': 'It is not exam time now, please wait.'}, status=403)
-    elif now > time_management.end_time:
+    elif now > end_datetime:
         return JsonResponse({'status': 'expired', 'message': 'The exam has already ended.'}, status=403)
 
     # 获取当前登录学生的用户名
@@ -139,7 +149,7 @@ def start_exam(request, exam_id):
     if created:
         # 设置考试记录的开始时间和结束时间
         record.started_at = now
-        record.ended_at = min(now + timezone.timedelta(minutes=time_management.duration), time_management.end_time)
+        record.ended_at = min(now + timezone.timedelta(minutes=time_management.duration), end_datetime)
         record.save()
 
     if not created and record.submitted:
@@ -212,7 +222,7 @@ def exam_page(request, exam_id, order):
         return next_page(request, exam_id, order)
 
     if created:
-        student_page_record.remaining_time = page.duration_minutes * 60
+        student_page_record.remaining_time = page.limited_time.hour * 3600 + page.limited_time.minute * 60 + page.limited_time.second
         student_page_record.save()
 
     if student_page_record.is_expired:
