@@ -1,4 +1,5 @@
 {% load static %}
+{% load elw_custom_filters %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -17,6 +18,7 @@
 <form method="post" id="question_form">
     <div class="container">
 
+{#页面展示#}
         <div class="left-content">
             <h1>组卷 - {{ material.title }}</h1>
 
@@ -28,7 +30,7 @@
                     <div>
                 {#        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">#}
                 {#        <label for="main_{{ main_question.id }}">{{ main_question.question_text }}</label>#}
-                {#    如果是改错题，只允许选择一整道大题#}
+{#如果是改错题，只允许选择一整道大题#}
                         {% if main_question.question_type == 'correction' %}
                             <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
                             <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
@@ -37,15 +39,34 @@
                                     {% for correction in sub_question.corrections.all %}
                                         {% if correction %}
                                             <span>{{ sub_question.question_text }} </span>
-{#                                            <span style="text-decoration: underline">#}
-{#                                                [{{ correction.type }}: {{ sub_question.answer }}]#}
-{#                                            </span>#}
-                {#                            <span>({{ sub_question.score }})</span>#}
                                         {% endif %}
                                     {% endfor %}
                                 {% endfor %}
                             </label>
-
+{#如果是填空题，只允许选择一整道大题#}
+                        {% elif main_question.question_type == 'blank' %}
+                            <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
+                            <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
+                            <label for="main_{{ main_question.id }}">
+                                {% for sub_question in main_question.sub_questions.all %}
+                                    {% for blank in sub_question.blanks.all %}
+                                        {% if blank %}
+                                            {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
+                                                {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
+                                                    {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
+                                                        {% with before=words|custom_before:index after=words|custom_after:index %}
+                                                            {{ before|join:" " }} ___ {{ after|join:" " }}
+                                                        {% endwith %}
+                                                    {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
+                                                        {{ words|join:" " }} ___
+                                                    {% endif %}
+                                                {% endwith %}
+                                            {% endwith %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                            </label>
+{#选择题/连线题/主观题#}
                         {% else %}
 
                             <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
@@ -90,11 +111,25 @@
                         {% endif %}
                     </div>
                 {% endfor %}
+
+
+            <div class="paper_page_info">
+                <p style="color: red"><------------------------------------------------------------页面信息------------------------------------------------------------></p>
+                <p>默认页面无时长限制且允许返回修改答案！</p>
+                <input type="checkbox" name="can_modify" id="can_modify" value="true">
+                <label for="can_modify">是否允许返回页面修改答案</label>
+                <label for="limited_time">页面时长限制： </label>
+                <input type="time" name="limited_time" id="limited_time"><span>（小时：分钟）</span>
+            </div>
             <button type="submit" name="add_page">添加页面</button>
 
         </div>
 
 
+
+
+
+{#组卷预览页面#}
         <div class="right-content">
 
             <h1>组卷-页面预览</h1>
@@ -106,16 +141,35 @@
                     <button onclick="removeDiv({{ forloop.counter0 }})">删除页面</button>
                     {% for question in preview_page %}
                         <h4>{{ forloop.counter }}. {{ question.main_question.question_text }}</h4>
+{#改错题预览#}
                         {% if question.main_question.question_type == 'correction' %}
                             {% for sub_question in question.main_question.sub_questions.all %}
                                     {% for correction in sub_question.corrections.all %}
                                         {% if correction %}
                                             <span>{{ sub_question.question_text }} </span>
-{#                                            <span style="text-decoration: underline">[{{ correction.type }}: {{ sub_question.answer }}]</span>#}
-                {#                            <span>({{ sub_question.score }})</span>#}
                                         {% endif %}
                                     {% endfor %}
                                 {% endfor %}
+{#填空题预览#}
+                        {% elif question.main_question.question_type == 'blank' %}
+                            {% for sub_question in question.main_question.sub_questions.all %}
+                                {% for blank in sub_question.blanks.all %}
+                                    {% if blank %}
+                                        {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
+                                            {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
+                                                {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
+                                                    {% with before=words|custom_before:index after=words|custom_after:index %}
+                                                        {{ before|join:" " }} ___ {{ after|join:" " }}
+                                                    {% endwith %}
+                                                {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
+                                                    {{ words|join:" " }} ___
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+
+                            {% endfor %}
                             {% else %}
                                 {% for sub_question in question.sub_questions %}
                                     {% if sub_question %}

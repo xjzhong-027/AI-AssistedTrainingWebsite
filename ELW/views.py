@@ -657,11 +657,24 @@ def teacher_page_create(request, material_id):
     # pre_selected_questions = [['sub_0', 'sub_0', 'sub_0']]
 
     if request.method == 'POST':
-        print(request.POST)
+        print(f'---------DATA: {request.POST}')
+        # 本次提交的页面信息
         this_selected_questions = request.POST.getlist('questions')
         print('this_selected_questions: ', this_selected_questions)
+        if request.POST.get('can_modify'):
+            can_modify = request.POST.get('can_modify')
+            print(f'can_modify: {can_modify}')
+        else:
+            can_modify = None
+        limited_time = request.POST.get('limited_time')
+        if limited_time:
+            print(f'limited_time: {limited_time}')
+        else:
+            limited_time = None
+        page_info = {'can_modify': can_modify, 'limited_time': limited_time}
 
         # test_selected_questions = ['sub_1', 'sub_2', 'sub_3']
+        # 前面已提交的页面信息
         if request.POST['pre_selected_questions']:
             pre_selected_questions_json = request.POST.get('pre_selected_questions')
             try:
