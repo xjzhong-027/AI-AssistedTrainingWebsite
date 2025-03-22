@@ -104,6 +104,7 @@ class MainQuestion(models.Model):
         ('matching', '连线题'),
         ('correction', '改错题'),
         ('comprehension', '主观题'),
+        ('text', '纯文本'),
     ]
     media_material = models.ForeignKey(MediaMaterial, on_delete=models.CASCADE, related_name='main_questions')
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='choice', verbose_name="题目类型")

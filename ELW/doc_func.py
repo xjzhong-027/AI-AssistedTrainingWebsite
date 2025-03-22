@@ -53,6 +53,8 @@ def parse_main_question(text):
         # 如果找到 '(1)' 格式，提取到该格式文本之前
         question_text = text[:qt_match.start()].strip()
         text = text.replace(text[:qt_match.start()].strip(), '')  # 移除 question_text 部分
+    else:
+        question_text = text
 
     # 提取 score
     score_pattern = r'\$(\d+(?:\.\d+)?)\$'
@@ -83,9 +85,11 @@ def parse_main_question(text):
     main_question['question_text'] = question_text
 
     print('text: ', text)
-    parse_sub_question(text, main_question)
-
-    return main_question
+    if main_question['question_type'] == 'text':
+        return main_question
+    else:
+        parse_sub_question(text, main_question)
+        return main_question
 
 def parse_sub_question(text, main_question):
     # 使用正则表达式匹配题号，支持中文括号和英文括号，题号格式为(1)

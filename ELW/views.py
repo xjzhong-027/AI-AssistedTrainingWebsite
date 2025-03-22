@@ -350,7 +350,7 @@ def teacher_week_file_import(request):
                                 })
 
             print('question_data: ', question_data)
-            return render(request, 'teacher_side/week_task_preview.html', {'question_data': question_data, 'classes':classes})
+            # return render(request, 'teacher_side/week_task_preview.html', {'question_data': question_data, 'classes':classes})
         else:
             return JsonResponse({'status': 'error', 'message': '文件上传失败'})
 
@@ -1638,6 +1638,7 @@ def question_integration(request):
             #     question_data.append(main_question)
             #     print('main_question: ', main_question)
             question_data = doc_func.main_process(text_content)
+            print(f'question_data: {question_data}')
 
             # 将每道改错题的sub_list、type_list、answer_list、index_list合并为一个列表，列表中每个集合包含这四个值
             for main_question in question_data:
@@ -1716,6 +1717,9 @@ def question_integration(request):
                 questions = func.extract_sub_questions(sub_text)
                 for question in questions:
                     question_data[0]["sub_questions"].append(func.extract_subtext_and_answers(question))
+
+            if question_type == 'text':
+                print(f'text_result: {main_info}')
 
             return render(request, 'teacher_side/question_preview.html', {"question_data": question_data})
 
