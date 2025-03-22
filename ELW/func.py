@@ -92,7 +92,8 @@ return result
 # 按题号分割题目，返回包含各个题目的列表，题号格式为(1)
 # 分割小题
 def extract_sub_questions(text):
-    text = text.replace('\n', '').replace('\r', '').replace('\t', '')
+    # text = text.replace('\n', '').replace('\r', '').replace('\t', '')
+    text = text.replace('\t', '')
     # 使用正则表达式匹配题号，支持中文括号和英文括号，题号格式为(1)
     question_pattern = r'[\(\（]\d+[\)\）]'
     # 找到所有匹配的题号位置
@@ -132,6 +133,7 @@ def process_choice_question(question):
         'C_image': [],
         'D_image': [],
     }
+    question = question.replace('\n', '').replace('\r', '').replace('\t', '')
     # 提取tips
     tips_match = re.search( r'-\*([^*]+)\*-', question)
     if tips_match:
@@ -259,6 +261,7 @@ return question_data
 
 # 处理改错题
 def parse_text_modifications(input_text):
+    input_text = input_text.replace('\n', '<br>').replace('\r', '<br>').replace('\t', '')
     # 正则匹配 [text:type:answer]
     pattern = r'\[([^:]*):([^:]*):([^]]+)\]'
     matches = re.finditer(pattern, input_text)
@@ -464,7 +467,7 @@ def extract_matching_questions(text):
 
 # 提取各个问题的信息
 def process_matching_question(question_text):
-    # question_text = question_text.replace('\r\n', '').replace('\n', '').replace('\r', '').replace('\t', '')
+    question_text = question_text.replace('\r\n', '').replace('\n', '').replace('\r', '').replace('\t', '')
     print('question_text: ', question_text)
     result = {
         'question_text': '',
@@ -594,6 +597,7 @@ def process_comprehension_question(question):
         'analysis': "",
         'image': [],
     }
+    question = question.replace('\n', '').replace('\r', '').replace('\t', '')
     # 提取tips
     tips_match = re.search(r'-\*([^*]+)\*-', question)
     if tips_match:
@@ -621,6 +625,7 @@ def process_comprehension_question(question):
 
 # 处理填空题
 def extract_blank_questions(text):
+    text = text.replace('\n', '<br>').replace('\r', '<br>').replace('\t', '')
     # 使用正则表达式匹配题号，支持中文括号和英文括号，题号格式为(1)
     question_pattern = r'[\(\（]\d+[\)\）]'
     # 找到所有匹配的题号位置
@@ -638,7 +643,7 @@ def extract_blank_questions(text):
         question_text = text[start_index:end_index].strip()
         # 移除题号
         question_text = re.sub(r'^[\(\（]\d+[\)\）]', '', question_text).strip()
-        question_text = question_text.replace('\n', '').replace('\r', '').replace('\t', '')
+        question_text = question_text.replace('\n', '<br>').replace('\r', '<br>').replace('\t', '')
         questions.append(question_text)
     return questions
 

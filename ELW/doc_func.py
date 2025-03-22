@@ -109,7 +109,7 @@ def parse_sub_question(text, main_question):
         question_text = text[start_index:end_index].strip()
         # 移除题号
         question_text = re.sub(r'^[\(\（]\d+[\)\）]', '', question_text).strip()
-        question_text = question_text.replace('\n', '').replace('\r', '').replace('\t', '')
+        # question_text = question_text.replace('\n', '').replace('\r', '').replace('\t', '')
         questions.append(question_text)
     for question in questions:
         if main_question['question_type'] == 'choice':
