@@ -93,7 +93,7 @@ form {
     border: 1px solid #ddd;
 }
 
-/* 新增的 .subImages 样式 */
+/* 小题图片展示样式 */
 .subImages {
     display: flex;
     flex-wrap: wrap;
@@ -106,7 +106,7 @@ form {
     max-height: 200px;
     border-radius: 4px;
     border: 1px solid #ddd;
-    object-fit: cover; /* 确保图片比例不变 */
+    object-fit: cover;
 }
 
 .subImages p {
@@ -118,14 +118,18 @@ form {
 /* 选择题选项样式 */
 .option {
     display: flex;
-    flex-direction: column; /* 垂直排列 */
+    flex-direction: column;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    background-color: #fafafa;
 }
 
 .option-content {
     display: flex;
-    align-items: center; /* 复选框、标签、输入框在同一行 */
+    align-items: center;
     gap: 10px;
 }
 
@@ -145,20 +149,19 @@ form {
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
-    background-color: #fafafa;
+    background-color: #fff;
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    resize: vertical; /* 允许输入框垂直调整大小 */
-    min-height: 50px; /* 设置最小高度 */
+    resize: vertical;
+    min-height: 50px;
 }
 
 .option textarea.option_content:focus {
     border-color: #007bff;
     box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
     outline: none;
-    background-color: #fff;
 }
 
-/* 新增的 .choice_images 样式 */
+/* 选项图片展示样式 */
 .choice_images {
     display: flex;
     flex-wrap: wrap;
@@ -171,7 +174,36 @@ form {
     max-height: 100px;
     border-radius: 4px;
     border: 1px solid #ddd;
-    object-fit: cover; /* 确保图片比例不变 */
+    object-fit: cover;
+}
+
+/* 选项图片上传样式 */
+.option_images {
+    margin-top: 10px;
+}
+
+.option_images label {
+    font-weight: 600;
+    color: #555;
+    font-size: 14px;
+}
+
+.option_images input[type="file"] {
+    margin-top: 10px;
+}
+
+#optionImagePreview_{{ option.label }} {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.choicePreviewImage {
+    max-width: 100px;
+    max-height: 100px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
 }
 
 /* 提交按钮样式 */
@@ -186,7 +218,7 @@ button[type="submit"] {
     font-weight: 600;
     width: auto;
     min-width: 150px;
-    margin: 0 auto;
+    margin: 20px auto 0;
     display: block;
     transition: background-color 0.3s ease;
 }
@@ -202,6 +234,241 @@ button[type="submit"]:hover {
     margin-left: 10px;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*!* edit_question.css *!*/
+
+/*!* 全局样式 *!*/
+/*body {*/
+/*    font-family: 'Arial', sans-serif;*/
+/*    background-color: #f5f5f5;*/
+/*    color: #333;*/
+/*    margin: 0;*/
+/*    padding: 0;*/
+/*}*/
+
+/*.main {*/
+/*    background-color: #ffffff;*/
+/*    padding: 30px;*/
+/*    border-radius: 12px;*/
+/*    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);*/
+/*    max-width: 800px;*/
+/*    margin: 40px auto;*/
+/*}*/
+
+/*!* 表单样式 *!*/
+/*form {*/
+/*    display: flex;*/
+/*    flex-direction: column;*/
+/*    gap: 20px;*/
+/*}*/
+
+/*.sub_question {*/
+/*    display: flex;*/
+/*    flex-direction: column;*/
+/*    gap: 15px;*/
+/*}*/
+
+/*.sub_question label {*/
+/*    font-weight: 600;*/
+/*    color: #555;*/
+/*    font-size: 14px;*/
+/*}*/
+
+/*.sub_question textarea,*/
+/*.sub_question input[type="text"],*/
+/*.sub_question input[type="number"] {*/
+/*    padding: 10px;*/
+/*    border: 1px solid #ddd;*/
+/*    border-radius: 6px;*/
+/*    font-size: 14px;*/
+/*    width: 100%;*/
+/*    box-sizing: border-box;*/
+/*    background-color: #fafafa;*/
+/*    transition: border-color 0.3s ease, box-shadow 0.3s ease;*/
+/*}*/
+
+/*.sub_question textarea:focus,*/
+/*.sub_question input[type="text"]:focus,*/
+/*.sub_question input[type="number"]:focus {*/
+/*    border-color: #007bff;*/
+/*    box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);*/
+/*    outline: none;*/
+/*    background-color: #fff;*/
+/*}*/
+
+/*.sub_question textarea {*/
+/*    resize: vertical;*/
+/*    min-height: 100px;*/
+/*}*/
+
+/*!* 图片上传样式 *!*/
+/*.sub_images {*/
+/*    margin-top: 15px;*/
+/*}*/
+
+/*.sub_images label {*/
+/*    font-weight: 600;*/
+/*    color: #555;*/
+/*    font-size: 14px;*/
+/*}*/
+
+/*.sub_images input[type="file"] {*/
+/*    margin-top: 10px;*/
+/*}*/
+
+/*#subImagePreview {*/
+/*    display: flex;*/
+/*    flex-wrap: wrap;*/
+/*    gap: 10px;*/
+/*    margin-top: 10px;*/
+/*}*/
+
+/*.subPreviewImage {*/
+/*    max-width: 100px;*/
+/*    max-height: 100px;*/
+/*    border-radius: 4px;*/
+/*    border: 1px solid #ddd;*/
+/*}*/
+
+/*!* 新增的 .subImages 样式 *!*/
+/*.subImages {*/
+/*    display: flex;*/
+/*    flex-wrap: wrap;*/
+/*    gap: 10px;*/
+/*    margin-top: 10px;*/
+/*}*/
+
+/*.subImages img {*/
+/*    max-width: 400px;*/
+/*    max-height: 200px;*/
+/*    border-radius: 4px;*/
+/*    border: 1px solid #ddd;*/
+/*    object-fit: cover; !* 确保图片比例不变 *!*/
+/*}*/
+
+/*.subImages p {*/
+/*    font-size: 14px;*/
+/*    color: #777;*/
+/*    margin: 5px 0;*/
+/*}*/
+
+/*!* 选择题选项样式 *!*/
+/*.option {*/
+/*    display: flex;*/
+/*    flex-direction: column; !* 垂直排列 *!*/
+/*    gap: 10px;*/
+/*    margin-bottom: 10px;*/
+/*}*/
+
+/*.option-content {*/
+/*    display: flex;*/
+/*    align-items: center; !* 复选框、标签、输入框在同一行 *!*/
+/*    gap: 10px;*/
+/*}*/
+
+/*.option input[type="checkbox"] {*/
+/*    margin: 0;*/
+/*}*/
+
+/*.option label {*/
+/*    font-weight: 600;*/
+/*    color: #555;*/
+/*    font-size: 14px;*/
+/*}*/
+
+/*.option textarea.option_content {*/
+/*    flex: 1;*/
+/*    padding: 8px;*/
+/*    border: 1px solid #ddd;*/
+/*    border-radius: 4px;*/
+/*    font-size: 14px;*/
+/*    background-color: #fafafa;*/
+/*    transition: border-color 0.3s ease, box-shadow 0.3s ease;*/
+/*    resize: vertical; !* 允许输入框垂直调整大小 *!*/
+/*    min-height: 50px; !* 设置最小高度 *!*/
+/*}*/
+
+/*.option textarea.option_content:focus {*/
+/*    border-color: #007bff;*/
+/*    box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);*/
+/*    outline: none;*/
+/*    background-color: #fff;*/
+/*}*/
+
+/*!* 新增的 .choice_images 样式 *!*/
+/*.choice_images {*/
+/*    display: flex;*/
+/*    flex-wrap: wrap;*/
+/*    gap: 10px;*/
+/*    margin-top: 10px;*/
+/*}*/
+
+/*.choice_images img {*/
+/*    max-width: 100px;*/
+/*    max-height: 100px;*/
+/*    border-radius: 4px;*/
+/*    border: 1px solid #ddd;*/
+/*    object-fit: cover; !* 确保图片比例不变 *!*/
+/*}*/
+
+/*!* 提交按钮样式 *!*/
+/*button[type="submit"] {*/
+/*    padding: 12px 20px;*/
+/*    background-color: #007bff;*/
+/*    color: #fff;*/
+/*    border: none;*/
+/*    border-radius: 6px;*/
+/*    cursor: pointer;*/
+/*    font-size: 16px;*/
+/*    font-weight: 600;*/
+/*    width: auto;*/
+/*    min-width: 150px;*/
+/*    margin: 0 auto;*/
+/*    display: block;*/
+/*    transition: background-color 0.3s ease;*/
+/*}*/
+
+/*button[type="submit"]:hover {*/
+/*    background-color: #0056b3;*/
+/*}*/
+
+/*!* 更改后答案样式 *!*/
+/*#show_answer {*/
+/*    font-weight: 600;*/
+/*    color: #007bff;*/
+/*    margin-left: 10px;*/
+/*}*/
+
+
+
+
+/*.choicePreviewImage {*/
+/*    max-width: 100px;*/
+/*    max-height: 100px;*/
+/*    margin: 5px;*/
+/*    border: 1px solid #ccc;*/
+/*}*/
 
 
 

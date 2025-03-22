@@ -16,6 +16,7 @@
                     <input type="number" name="sub_question_id" value="{{ sub_question.id }}" hidden>
                     <label for="question_text">题干：</label>
                     <textarea name="sub_question_text" id="sub_question_text" required>{{ sub_question.question_text }}</textarea>
+{#小题图片#}
                     {% if sub_question.image_url %}
                         <div class="subImages">
                             {% with image_urls=sub_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
@@ -27,6 +28,12 @@
                     {% else %}
                         <p>no images.</p>
                     {% endif %}
+                    <div class="sub_images">
+                        <label for="subImageUpload">更改小题图片：</label>
+                        <input type="file" name="sub_images" id="subImageUpload" accept="image/*" multiple>
+                        <div id="subImagePreview"></div>
+                    </div>
+
                     <label for="tips">提示：</label>
                     <textarea name="sub_question_tips" id="tips" required>{{ sub_question.tips }}</textarea>
                     <label for="answer">答案：</label>
@@ -35,34 +42,38 @@
                     <textarea name="sub_question.analysis" id="analysis">{{ sub_question.analysis }}</textarea>
                     <label for="score">分值：</label>
                     <input type="number" name="sub_question_score" id="score" value="{{ sub_question.score }}" min="0" step="0.5" required><br>
-
-                    <div class="sub_images">
-                        <label for="subImageUpload">上传小题图片：</label>
-                        <input type="file" name="sub_images" id="subImageUpload" accept="image/*" multiple>
-                        <div id="subImagePreview"></div>
-                    </div>
                 </div>
-    {#选择题-选项#}
+
+{#选择题-选项#}
                 {% if main_question.question_type == 'choice' %}
                     <input type="text" name="edit_type" value="choice" hidden>
                     <textarea name="option_count" id="option_count" cols="30" rows="10" hidden>{{ sub_question.options.all.count }}</textarea>
                     {% for option in sub_question.options.all %}
-                        <div class="option">
-                            {% if option.option_label in sub_question.answer %}
-                                <input type="checkbox" value="{{ option.option_label }}" data-value="{{ option.option_label }}" checked>
-                            {% else %}
-                                <input type="checkbox" value="{{ option.option_label }}" data-value="{{ option.option_label }}">
-                            {% endif %}
-                            <label for="{{ option.option_label }}">{{ option.option_label }}</label>
-                            <textarea class="option_content" name="option_{{ option.option_label }}" id="{{ option.option_label }}" cols="50" rows="1">{{ option.option_content }}</textarea>
-                            <div class="choice_images">
-                                {% with image_urls=option.image_url|split_image_urls %}
-                                    {% for url in image_urls %}
-                                        <img src="{{ url }}"></img>
-                                    {% endfor %}
-                                {% endwith %}
+                            <div class="option">
+                                <div class="option-content">
+                                    {% if option.option_label in sub_question.answer %}
+                                        <input type="checkbox" value="{{ option.option_label }}" data-value="{{ option.option_label }}" checked>
+                                    {% else %}
+                                        <input type="checkbox" value="{{ option.option_label }}" data-value="{{ option.option_label }}">
+                                    {% endif %}
+                                    <label for="{{ option.option_label }}">{{ option.option_label }}</label>
+                                    <textarea class="option_content" name="option_{{ option.option_label }}" id="{{ option.option_label }}" cols="50" rows="1">{{ option.option_content }}</textarea>
+                                </div>
+                                <div class="choice_images">
+                                    {% with image_urls=option.image_url|split_image_urls %}
+                                        {% for url in image_urls %}
+                                            <img src="{{ url }}" alt="Option Image">
+                                        {% endfor %}
+                                    {% endwith %}
+                                </div>
+                                <div class="option_images">
+                                    <label for="optionImageUpload_{{ option.label }}">更改选项图片：</label>
+                                    <input type="file" name="option_image_{{ option.label }}" id="optionImageUpload_{{ option.label }}" data-preview-id="optionImagePreview_{{ option.label }}" accept="image/*" multiple>
+                                    <div id="optionImagePreview_{{ option.label }}"></div>
+                                </div>
                             </div>
-                        </div>
+
+
                     {% endfor %}
                     <span>更改后答案：</span>
                     <span id="show_answer">{{ sub_question.answer }}</span>
@@ -78,55 +89,246 @@
 {% endblock %}
 
 {% block extra_script %}
-    <script>
-        {% if edit_type == 'sub' %}
-            document.addEventListener('DOMContentLoaded', () => {
-                // 获取所有 checkbox 元素
-                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                const showAnswerSpan = document.getElementById('show_answer');
-                const newAnswer = document.getElementById('new_answer');
-                // 遍历每个 checkbox，添加事件监听器
-                checkboxes.forEach(checkbox => {
-                    checkbox.addEventListener('change', () => {
-                        // 获取所有被选中的 checkbox 的 value
-                        const selectedValues = Array.from(checkboxes)
-                            .filter(cb => cb.checked) // 过滤出被选中的 checkbox
-                            .map(cb => cb.getAttribute('data-value')); // 获取它们的 data-value
-                        // 更新 show_answer 的内容
-                        showAnswerSpan.textContent = selectedValues.join(', ');
-                        newAnswer.textContent = showAnswerSpan.textContent;
-                    });
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 处理小题图片上传和预览
+    const subImageUpload = document.getElementById('subImageUpload');
+    if (subImageUpload) {
+        subImageUpload.addEventListener('change', function(event) {
+            handleImageUpload(event, 'subImagePreview');
+        });
+    }
+
+    // 处理选项图片上传和预览
+    const optionImageUploads = document.querySelectorAll('input[type="file"][name^="option_image_"]');
+    optionImageUploads.forEach(input => {
+        input.addEventListener('change', function(event) {
+            {#const previewId = event.target.id.replace('Upload', 'Preview');#}
+            const previewId = event.target.dataset.previewId; // 从 data-preview-id 属性中获取预览区域 ID
+            console.log('previewId: ', previewId); // 调试
+            handleImageUpload(event, previewId);
+        });
+    });
+
+    /**
+     * 处理图片上传和预览
+     * @param {Event} event - 文件上传事件
+     * @param {string} previewId - 预览区域的 ID
+     */
+    function handleImageUpload(event, previewId) {
+        const files = event.target.files;
+        const previewDiv = document.getElementById(previewId);
+
+        // 清空之前的预览
+        previewDiv.innerHTML = '';
+
+        // 遍历所有上传的文件
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                // 创建图片元素
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.maxWidth = '100px'; // 设置图片最大宽度
+                img.style.margin = '5px'; // 设置图片间距
+
+                // 创建删除按钮
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '删除';
+                deleteButton.style.marginLeft = '5px';
+                deleteButton.addEventListener('click', function() {
+                    previewDiv.removeChild(img);
+                    previewDiv.removeChild(deleteButton);
                 });
 
-            });
+                // 添加到预览区域
+                previewDiv.appendChild(img);
+                previewDiv.appendChild(deleteButton);
+            };
 
-            document.addEventListener('DOMContentLoaded', () => {
-                const subImageUpload = document.getElementById('subImageUpload');
-                const subImagePreview = document.getElementById('subImagePreview');
-                // 监听小题文件上传输入框的变化
-                subImageUpload.addEventListener('change', (event) => {
-                    const files = event.target.files; // 获取用户选择的所有文件
-                    if (files && files.length > 0) {
-                        // 清空之前的预览
-                        subImagePreview.innerHTML = '';
-                        // 遍历所有文件
-                        Array.from(files).forEach(file => {
-                            const reader = new FileReader(); // 创建 FileReader 对象
-                            // 文件读取完成时的回调函数
-                            reader.onload = (e) => {
-                                const img = document.createElement('img');
-                                img.src = e.target.result; // 设置图片的 src
-                                img.classList.add('subPreviewImage'); // 添加样式类
-                                subImagePreview.appendChild(img); // 将图片添加到预览容器
-                            };
-                            reader.readAsDataURL(file); // 读取文件内容
-                        });
-                    }
-                });
-            });
-        {% endif %}
+            // 读取文件内容
+            reader.readAsDataURL(file);
+        }
+    }
+});
+</script>
 
-    </script>
+
+
+
+
+
+
+
+
+
+{#<script>#}
+{#    {% if edit_type == 'sub' %}#}
+{#        document.addEventListener('DOMContentLoaded', () => {#}
+{#            // 获取所有 checkbox 元素#}
+{#            const checkboxes = document.querySelectorAll('input[type="checkbox"]');#}
+{#            const showAnswerSpan = document.getElementById('show_answer');#}
+{#            const newAnswer = document.getElementById('new_answer');#}
+{##}
+{#            // 遍历每个 checkbox，添加事件监听器#}
+{#            checkboxes.forEach(checkbox => {#}
+{#                checkbox.addEventListener('change', () => {#}
+{#                    // 获取所有被选中的 checkbox 的 value#}
+{#                    const selectedValues = Array.from(checkboxes)#}
+{#                        .filter(cb => cb.checked) // 过滤出被选中的 checkbox#}
+{#                        .map(cb => cb.getAttribute('data-value')); // 获取它们的 data-value#}
+{#                    // 更新 show_answer 的内容#}
+{#                    showAnswerSpan.textContent = selectedValues.join(', ');#}
+{#                    newAnswer.textContent = showAnswerSpan.textContent;#}
+{#                });#}
+{#            });#}
+{##}
+{#            // 小题图片上传逻辑#}
+{#            const subImageUpload = document.getElementById('subImageUpload');#}
+{#            const subImagePreview = document.getElementById('subImagePreview');#}
+{#            if (subImageUpload && subImagePreview) {#}
+{#                subImageUpload.addEventListener('change', (event) => {#}
+{#                    const files = event.target.files; // 获取用户选择的所有文件#}
+{#                    if (files && files.length > 0) {#}
+{#                        // 清空之前的预览#}
+{#                        subImagePreview.innerHTML = '';#}
+{#                        // 遍历所有文件#}
+{#                        Array.from(files).forEach(file => {#}
+{#                            const reader = new FileReader(); // 创建 FileReader 对象#}
+{#                            // 文件读取完成时的回调函数#}
+{#                            reader.onload = (e) => {#}
+{#                                const img = document.createElement('img');#}
+{#                                img.src = e.target.result; // 设置图片的 src#}
+{#                                img.classList.add('subPreviewImage'); // 添加样式类#}
+{#                                subImagePreview.appendChild(img); // 将图片添加到预览容器#}
+{#                            };#}
+{#                            reader.readAsDataURL(file); // 读取文件内容#}
+{#                        });#}
+{#                    }#}
+{#                });#}
+{#            }#}
+{##}
+{#            // 选项图片上传逻辑#}
+{#            function handleImageUpload(uploadElement, previewElement) {#}
+{#                console.log(uploadElement)#}
+{#                if (uploadElement && previewElement) {#}
+{#                    // 确保事件只绑定一次#}
+{#                    uploadElement.removeEventListener('change', handleFileUpload); // 移除旧的事件监听器#}
+{#                    uploadElement.addEventListener('change', handleFileUpload); // 绑定新的事件监听器#}
+{#                }#}
+{##}
+{#                function handleFileUpload(event) {#}
+{#                    const files = event.target.files;#}
+{#                    if (files && files.length > 0) {#}
+{#                        // 清空之前的预览#}
+{#                        previewElement.innerHTML = '';#}
+{#                        // 遍历所有文件#}
+{#                        Array.from(files).forEach(file => {#}
+{#                            const reader = new FileReader();#}
+{#                            reader.onload = (e) => {#}
+{#                                const img = document.createElement('img');#}
+{#                                img.src = e.target.result;#}
+{#                                img.classList.add('choicePreviewImage');#}
+{#                                previewElement.appendChild(img);#}
+{#                            };#}
+{#                            reader.readAsDataURL(file);#}
+{#                        });#}
+{#                    }#}
+{#                }#}
+{#            }#}
+{##}
+{#            // 为每个选项的图片上传绑定事件#}
+{#            {% for option in sub_question.options.all %}#}
+{#                handleImageUpload(#}
+{#                    document.getElementById('optionImageUpload_{{ option.label }}'),#}
+{#                    document.getElementById('optionImagePreview_{{ option.label }}')#}
+{#                );#}
+{#            {% endfor %}#}
+{#        });#}
+{#    {% endif %}#}
+{#</script>#}
+
+
+
+
+{#    <script>#}
+{#        {% if edit_type == 'sub' %}#}
+{#            document.addEventListener('DOMContentLoaded', () => {#}
+{#                // 获取所有 checkbox 元素#}
+{#                const checkboxes = document.querySelectorAll('input[type="checkbox"]');#}
+{#                const showAnswerSpan = document.getElementById('show_answer');#}
+{#                const newAnswer = document.getElementById('new_answer');#}
+{#                // 遍历每个 checkbox，添加事件监听器#}
+{#                checkboxes.forEach(checkbox => {#}
+{#                    checkbox.addEventListener('change', () => {#}
+{#                        // 获取所有被选中的 checkbox 的 value#}
+{#                        const selectedValues = Array.from(checkboxes)#}
+{#                            .filter(cb => cb.checked) // 过滤出被选中的 checkbox#}
+{#                            .map(cb => cb.getAttribute('data-value')); // 获取它们的 data-value#}
+{#                        // 更新 show_answer 的内容#}
+{#                        showAnswerSpan.textContent = selectedValues.join(', ');#}
+{#                        newAnswer.textContent = showAnswerSpan.textContent;#}
+{#                    });#}
+{#                });#}
+{##}
+{#            });#}
+{##}
+{#            document.addEventListener('DOMContentLoaded', () => {#}
+{#                const subImageUpload = document.getElementById('subImageUpload');#}
+{#                const subImagePreview = document.getElementById('subImagePreview');#}
+{#                // 监听小题文件上传输入框的变化#}
+{#                subImageUpload.addEventListener('change', (event) => {#}
+{#                    const files = event.target.files; // 获取用户选择的所有文件#}
+{#                    if (files && files.length > 0) {#}
+{#                        // 清空之前的预览#}
+{#                        subImagePreview.innerHTML = '';#}
+{#                        // 遍历所有文件#}
+{#                        Array.from(files).forEach(file => {#}
+{#                            const reader = new FileReader(); // 创建 FileReader 对象#}
+{#                            // 文件读取完成时的回调函数#}
+{#                            reader.onload = (e) => {#}
+{#                                const img = document.createElement('img');#}
+{#                                img.src = e.target.result; // 设置图片的 src#}
+{#                                img.classList.add('subPreviewImage'); // 添加样式类#}
+{#                                subImagePreview.appendChild(img); // 将图片添加到预览容器#}
+{#                            };#}
+{#                            reader.readAsDataURL(file); // 读取文件内容#}
+{#                        });#}
+{#                    }#}
+{#                });#}
+{##}
+{#                function handleImageUpload(uploadElement, previewElement) {#}
+{#                    uploadElement.addEventListener('change', (event) => {#}
+{#                        const files = event.target.files;#}
+{#                        if (files && files.length > 0) {#}
+{#                            previewElement.innerHTML = '';#}
+{#                            Array.from(files).forEach(file => {#}
+{#                                const reader = new FileReader();#}
+{#                                reader.onload = (e) => {#}
+{#                                    const img = document.createElement('img');#}
+{#                                    img.src = e.target.result;#}
+{#                                    img.classList.add('choicePreviewImage');#}
+{#                                    previewElement.appendChild(img);#}
+{#                                };#}
+{#                                reader.readAsDataURL(file);#}
+{#                            });#}
+{#                        }#}
+{#                    });#}
+{#                }#}
+{##}
+{#                {% for option in sub_question.options.all %}#}
+{#                    handleImageUpload(#}
+{#                        document.getElementById('optionImageUpload_{{ option.label }}'),#}
+{#                        document.getElementById('optionImagePreview_{{ option.label }}')#}
+{#                    );#}
+{#                {% endfor %}#}
+{#            });#}
+{#        {% endif %}#}
+{##}
+{#    </script>#}
 {% endblock %}
 
 
