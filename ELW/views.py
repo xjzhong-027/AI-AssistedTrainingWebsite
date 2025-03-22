@@ -654,6 +654,7 @@ def teacher_page_create(request, material_id):
     material = get_object_or_404(MediaMaterial, id=material_id)
     main_questions = material.main_questions.prefetch_related('sub_questions')
     pre_selected_questions = []
+    pre_page_infos = []
     # pre_selected_questions = [['sub_0', 'sub_0', 'sub_0']]
 
     if request.method == 'POST':
@@ -661,19 +662,26 @@ def teacher_page_create(request, material_id):
         # 本次提交的页面信息
         this_selected_questions = request.POST.getlist('questions')
         print('this_selected_questions: ', this_selected_questions)
-        can_modify = request.POST.get('can_modify', False)
-        limited_time = request.POST.get('limited_time', False)
+        can_modify = request.POST.get('can_modify', 'false')
+        if request.POST.get('limited_time'):
+            limited_time = request.POST.get('limited_time')
+        else:
+            limited_time = '0'
         page_info = {'can_modify': can_modify, 'limited_time': limited_time}
         print(f'page_info: {page_info}')
+        this_page_info = page_info
 
         # test_selected_questions = ['sub_1', 'sub_2', 'sub_3']
         # 前面已提交的页面信息
         if request.POST['pre_selected_questions']:
             pre_selected_questions_json = request.POST.get('pre_selected_questions')
+            pre_page_infos_json = request.POST.get('pre_page_infos')
             try:
                 # 将 JSON 字符串还原为 Python 对象
                 pre_selected_questions = json.loads(pre_selected_questions_json)
                 print('成功还原pre_selected_questions: ', pre_selected_questions)
+                pre_page_infos = json.loads(pre_page_infos_json)
+                print('成功还原pre_page_infos: ', pre_page_infos)
             except json.JSONDecodeError:
                 print("JSON 解析出错")
         '''
@@ -700,12 +708,15 @@ def teacher_page_create(request, material_id):
                 print('列表不为空，增加this_selected_questions至pre_selected_questions.')
                 pre_selected_questions.append(this_selected_questions)
                 print('增加后pre_selected_questions: ', pre_selected_questions)
+                pre_page_infos.append(this_page_info)
+                print('增加后pre_page_infos: ', pre_page_infos)
             else:
                 print('列表为空')
 
             preview_pages = []
-            for pre_selected_question in pre_selected_questions:
-                preview_page = pre_page.preview_page(pre_selected_question, page_info)
+            # for i, pre_selected_question in pre_selected_questions:
+            for i, pre_selected_question in enumerate(pre_selected_questions):
+                preview_page = pre_page.preview_page(pre_selected_question, pre_page_infos[i])
                 preview_pages.append(preview_page)
             print('preview_pages: ', preview_pages)
             # print('receive: ', request.POST['pre_selected_questions'])
@@ -715,6 +726,7 @@ def teacher_page_create(request, material_id):
                 'main_questions': main_questions,
                 'preview_pages': preview_pages,
                 'pre_selected_questions': pre_selected_questions,
+                'pre_page_infos': pre_page_infos,
 
             })
 
@@ -774,11 +786,11 @@ def teacher_page_create(request, material_id):
         'material': material,
         'main_questions': main_questions,
         'pre_selected_questions': pre_selected_questions,
+        'pre_page_infos': pre_page_infos,
     })
 
 def teacher_page_save(request, material_id):
     if request.method == 'POST':
-
         username = request.session.get('username')
         teacher_instance = Teachers.objects.get(username=username)
         classes = Class.objects.filter(teacher_id=teacher_instance.id)
@@ -786,6 +798,10 @@ def teacher_page_save(request, material_id):
             preview_datas_json = request.POST.get('preview_datas')
             preview_datas = json.loads(preview_datas_json)
             print('data: ', request.POST)
+
+            preview_page_infos_json = request.POST.get('preview_page_infos')
+            preview_page_infos = json.loads(preview_page_infos_json)
+            print('preview_page_infos: ', preview_page_infos)
 
             class_id = int(request.POST.get('selected_class'))
             order = request.POST.get('week')
@@ -827,13 +843,16 @@ def teacher_page_save(request, material_id):
                 time_management_instance.save()
             # 遍历所有待创建页面
             for order, preview_data in enumerate(preview_datas):
+                can_modify = True if preview_page_infos[order].get('can_modify') == 'true' else False
+                limited_time = int(preview_page_infos[order].get('limited_time'))
                 # 创建页面
                 print(f'preview_data:   {preview_data}')
                 page_instance = PaperPage.objects.create(
                     unit=unit_instance,
                     order=order,
                     text=f'第{order+1}个页面',
-
+                    can_modify=can_modify,
+                    limited_time=int(limited_time),
                 )
                 page_instance.save()
                 main_id_list = []
@@ -888,8 +907,10 @@ def teacher_page_save(request, material_id):
             return redirect('teacher_question_bank')
         else:
             preview_datas_json = request.POST.get('preview_datas')
+            preview_page_infos_json = request.POST.get('preview_page_infos')
             return render(request, 'teacher_side/unit_create.html', {
                 'preview_datas_json': preview_datas_json,
+                'preview_page_infos_json': preview_page_infos_json,
                 'classes': classes,
             })
 

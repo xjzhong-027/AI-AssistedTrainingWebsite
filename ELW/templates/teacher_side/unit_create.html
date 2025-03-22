@@ -11,6 +11,7 @@
 <form method="post">
     {% csrf_token %}
     <input type="text" id="preview_datas" name="preview_datas" value="{{ preview_datas_json }}" hidden>
+    <input type="text" id="preview_page_infos" name="preview_page_infos" value="{{ preview_page_infos_json }}" hidden>
 
     <h1>{{ teacher.name }}</h1>
     <label for="selected_class">班级：</label>
@@ -61,7 +62,9 @@
 <script>
     {% if preview_datas_json %}
         const preview_datas = {{ preview_datas_json|safe }}
+        const preview_page_infos = {{ preview_page_infos_json|safe }}
         console.log('preview_datas', preview_datas)
+        console.log('preview_page_infos', preview_page_infos)
     {% endif %}
     function toggleExamTimeInput() {
         const selectedType = document.getElementById('selected_type');

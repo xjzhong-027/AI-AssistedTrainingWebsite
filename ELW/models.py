@@ -206,7 +206,7 @@ class PaperPage(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='paper_pages')
     order = models.IntegerField(verbose_name='页面顺序', blank=False, null=False)
     text = models.TextField(verbose_name='页面文本', blank=True, null=True)
-    limited_time = models.TimeField(blank=True, null=True, default=None)
+    limited_time = models.IntegerField(verbose_name="时长限制，单位分钟", blank=True, null=True, default=0)
     can_modify = models.BooleanField(verbose_name="允许修改答案", blank=True, null=True, default=True)
     created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
 
@@ -224,7 +224,7 @@ class TimeManagement(models.Model):
     exam_date = models.DateField(verbose_name='考试日期', blank=True, null=True)
     start_time = models.TimeField(blank=True, null=True)
     end_time = models.TimeField(blank=True, null=True)
-    duration = models.IntegerField(verbose_name='时长限制', blank=True, null=True)
+    duration = models.IntegerField(verbose_name='时长限制，单位分钟', blank=True, null=True)
 
 
 

@@ -24,6 +24,7 @@
 
                 {% csrf_token %}
                 <input type="text" id="pre_selected_questions" name="pre_selected_questions" hidden>
+                <input type="text" id="pre_page_infos" name="pre_page_infos" hidden>
 
                 <h2>选择题目</h2>
                 {% for main_question in main_questions %}
@@ -137,8 +138,8 @@
                     </p>
                     <p class="form-item">
                         <label for="limited_time">页面时长限制：</label>
-                        <input type="time" name="limited_time" id="limited_time">
-                        <span>（小时：分钟）</span>
+                        <input type="number" name="limited_time" id="limited_time">
+                        <span>分钟</span>
                     </p>
                 </div>
             </div>
@@ -160,15 +161,15 @@
 
                         <h3>页面{{ forloop.counter }}</h3>
                         <div class="page_info">
-                            {% if preview_page.0.page_info.can_modify %}
+                            {% if preview_page.0.page_info.can_modify == 'true' %}
                                 <span>允许返回页面修改答案 /</span>
                             {% else %}
                                 <span>不允许返回页面修改答案/</span>
                             {% endif %}
-                            {% if preview_page.0.page_info.limited_time %}
-                                <span>时长限制：{{ preview_page.0.page_info.limited_time }}:00</span>
-                            {% else %}
+                            {% if preview_page.0.page_info.limited_time == '0' %}
                                 <span>时长限制：无</span>
+                            {% else %}
+                                <span>时长限制：{{ preview_page.0.page_info.limited_time }}分钟</span>
                             {% endif %}
                         </div>
                         <button onclick="removeDiv({{ forloop.counter0 }})">删除页面</button>
@@ -243,20 +244,26 @@
 <form method="post" id="submit_form" action="{% url 'teacher_page_save' material.id %}">
     {% csrf_token %}
     <input type="text" id="preview_datas" name="preview_datas" value="test" hidden>
+    <input type="text" id="preview_page_infos" name="preview_page_infos" value="test" hidden>
     <button type="submit">确认组卷</button>
 </form>
 
 <script>
     {% if pre_selected_questions %}
         const pre_selected_questions = {{ pre_selected_questions|safe }}
+        const pre_page_infos = {{ pre_page_infos|safe }}
         console.log('pre_selected_questions: ', pre_selected_questions)
+        console.log('pre_page_infos: ', pre_page_infos)
 
         document.getElementById('question_form').addEventListener('submit', function (event) {
             console.log('click "submit". ')
             try{
-                console.log('json: ', JSON.stringify(pre_selected_questions))
+                console.log('json-pre_selected_questions: ', JSON.stringify(pre_selected_questions))
+                console.log('json-pre_page_infos: ', JSON.stringify(pre_page_infos))
                 document.getElementById('pre_selected_questions').value=JSON.stringify(pre_selected_questions);
+                document.getElementById('pre_page_infos').value=JSON.stringify(pre_page_infos);
                 console.log(document.getElementById('pre_selected_questions').value)
+                console.log(document.getElementById('pre_page_infos').value)
             }catch (error){
                 console.log(error)
                 {#event.preventDefault();#}
@@ -266,6 +273,7 @@
             console.log('click save.')
             try{
                 document.getElementById('preview_datas').value=JSON.stringify(pre_selected_questions);
+                document.getElementById('preview_page_infos').value=JSON.stringify(pre_page_infos);
             }catch(error){
                 console.log(error)
                 event.preventDefault(); //阻止表单提交
