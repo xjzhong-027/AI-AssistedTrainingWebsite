@@ -95,7 +95,12 @@
                                 </video>
                             </div>
                         {% endif %}
-                        <h4>题目： {{ main_question.main_question.question_text }}</h4>
+                        {% if main_question.main_question.question_type == 'text' %}
+                            <h4><strong>阅读文本：</strong></h4>
+                            <p>{{ main_question.main_question.question_text }}</p>
+                        {% else %}
+                            <h4><strong>题目： {{ main_question.main_question.question_text }}</strong></h4>
+                        {% endif %}
                         <p>
                             {% if main_question.main_images %}
                                 {% for img in main_question.main_images %}
@@ -109,7 +114,7 @@
                                 <div class="sub-question" style="display: flex; align-items: flex-start;">
                                     <!-- 题目展示（左边） -->
                                     <div style="flex: 1; margin-right: 20px;">
-                                        <p>{{ forloop.counter }}. {{ sub_question.sub_question.question_text }}
+                                        <p><strong>{{ forloop.counter }}. {{ sub_question.sub_question.question_text }}</strong>
                                             {% if sub_question.sub_images %}
                                                 {% for img in sub_question.sub_images %}
                                                     <img src="{{ img }}" alt="Question Image" width="10%" height="auto">
@@ -249,7 +254,7 @@
                                 <div class="sub-question" style="display: flex; align-items: flex-start;">
                                         <!-- 题目展示（左边） -->
                                         <div style="flex: 1; margin-right: 20px;">
-                                            <p>{{ forloop.parentloop.counter }}. {{ sub_question.sub_question.question_text }}
+                                            <p><strong>{{ forloop.counter }}. {{ sub_question.sub_question.question_text }}</strong>
                                                 {% for img in sub_question.sub_images %}
                                                     <img src="{{ img }}" alt="Question Image" width="10%" height="auto">
                                                 {% endfor %}

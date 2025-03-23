@@ -76,7 +76,13 @@
             <div class="page-content" data-page-index="{{ forloop.counter0  }}" style="display: none;">
                 {% for main_question in page_data.main_questions %}
                     <div class="main-question">
-                        <h4>题目： {{ main_question.main_question.question_text }}</h4>
+                        {% if main_question.main_question.question_type == 'text' %}
+                            <h4><strong>阅读文本：</strong></h4>
+                            <p>{{ main_question.main_question.question_text }}</p>
+                        {% else %}
+                            <h4>题目： {{ main_question.main_question.question_text }}</h4>
+                        {% endif %}
+
                         <!-- 选择题 -->
                         {% if main_question.main_question.question_type == 'choice' or main_question.main_question.question_type == 'comprehension' or main_question.main_question.question_type == 'matching' %}
                             <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id %}">

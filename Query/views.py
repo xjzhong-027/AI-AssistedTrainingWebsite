@@ -599,13 +599,13 @@ def unit_detail(request, unit_id, student_id):
 
             subquestions = []
 
-            for page_sub_question in page_sub_questions:
+            for idx, page_sub_question in enumerate(page_sub_questions):
                 sub_question = page_sub_question.sub_question
 
                 corrections = Correction.objects.filter(sub_question=sub_question)
                 corrected_text = apply_corrections(sub_question, corrections)
                 blank = Blank.objects.filter(sub_question=sub_question)
-                blank_text = apply_blanks(sub_question, blank)
+                blank_text = apply_blanks(sub_question, blank, idx)
                 student_answers = StudentAnswer.objects.filter(sub_question=sub_question, student_page_record__in=page_record)
 
                 subquestions.append({
@@ -1060,7 +1060,7 @@ def apply_corrections(sub_question, corrections):
     return mark_safe(' '.join(words))
 
 
-def apply_blanks(sub_question, blanks):
+def apply_blanks(sub_question, blanks, idx):
     """
     根据 blank 的位置，在题目文段中添加下划线
     """
@@ -1071,12 +1071,12 @@ def apply_blanks(sub_question, blanks):
         index = blank.index
         if 0 <= index < len(words):
             word = words[index]
-            words[index] = f'{word}______'
+            words[index] = f'{word}______<span style="font-size: smaller; margin-left: 2px; color: #ea5e5a">[{idx+1}]</span>'
 
     return mark_safe(' '.join(words))
 
 
-def statistic_apply_blanks(sub_question, blanks, correct_rate_percentage):
+def statistic_apply_blanks(sub_question, blanks, correct_rate_percentage, idx):
     """
     根据 blank 的位置，在题目文段中添加答对率和答案
     """
@@ -1088,7 +1088,7 @@ def statistic_apply_blanks(sub_question, blanks, correct_rate_percentage):
         index = blank.index
         if 0 <= index < len(words):
             word = words[index]
-            words[index] = f'{word}<span id="blank_correct_rate{sub_question.id}" class="blank_correct_rate" style="color: #007bff; margin-left: 7px;"><u>{correct_rate_percentage}%</u></span><span style="color: green; margin-right: 9px;"><u>{answer}</u></span>'
+            words[index] = f'{word}<span id="blank_correct_rate{sub_question.id}" class="blank_correct_rate" style="color: #007bff; margin-left: 7px;"><u>{correct_rate_percentage}%</u></span><span style="color: green; margin-right: 9px;"><u>{answer}</u></span><span style="font-size: smaller; margin-left: 2px; color: #ea5e5a">[{idx+1}]</span>'
 
     return mark_safe(' '.join(words))
 
@@ -1123,7 +1123,7 @@ def unit_statistic(request, unit_id, class_id):
 
             subquestions = []
 
-            for page_sub_question in page_sub_questions:
+            for idx, page_sub_question in enumerate(page_sub_questions):
                 sub_question = page_sub_question.sub_question
                 if sub_question.image_url:
                     sub_images = sub_question.image_url.split(',')
@@ -1189,7 +1189,7 @@ def unit_statistic(request, unit_id, class_id):
                     })
 
                 blank = Blank.objects.filter(sub_question=sub_question)
-                blank_text = statistic_apply_blanks(sub_question, blank, correct_rate_percentage)
+                blank_text = statistic_apply_blanks(sub_question, blank, correct_rate_percentage, idx)
 
                 subquestions.append({
                     'sub_question': sub_question,
