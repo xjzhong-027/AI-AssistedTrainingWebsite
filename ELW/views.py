@@ -339,12 +339,16 @@ def teacher_week_file_import(request):
             # print(f'word_page_process: {doc_page_func.main_process(text_content)}')
             question_data = doc_page_func.main_process(text_content)
 
-            # 将每道改错题的sub_list、type_list、answer_list、index_list合并为一个列表，列表中每个集合包含这四个值
+
             for page_question in question_data:
+                # 将页面限制时间转为分钟
+                hours, minutes, seconds = map(int, page_question['limited_time'].split(':'))
+                page_question['limited_time'] = int(hours * 60 + minutes + seconds / 60)
                 for main_question in page_question['page_content']:
                     main_question['media_instance'] = media_material_instance
                     main_question['img_directory'] = img_directory
                     if main_question['question_type'] == 'correction':
+                        # 将每道改错题的sub_list、type_list、answer_list、index_list合并为一个列表，列表中每个集合包含这四个值
                         for sub_question in main_question['sub_questions']:
                             sub_question['questions'] = []
                             for i in range(len(sub_question['sub_list'])):
@@ -354,9 +358,17 @@ def teacher_week_file_import(request):
                                     'answer': sub_question['answer_list'][i],
                                     'index': sub_question['index_list'][i]
                                 })
+                    elif main_question['question_type'] == 'blank':
+                        for sub_question in main_question['sub_questions']:
+                            for blank in sub_question:
+                                blank['answer_list'] = [item.replace("'", "").replace("[", "").replace("]", "") for item in blank['answer_list']]
+                                blank['answer_list'] = '/'.join(blank['answer_list'])
+                                print("result:", blank['answer_list'])
+
+
 
             print('question_data: ', question_data)
-            # return render(request, 'teacher_side/week_task_preview.html', {'question_data': question_data, 'classes':classes})
+            return render(request, 'teacher_side/week_task_preview.html', {'question_data': question_data, 'classes':classes})
         else:
             return JsonResponse({'status': 'error', 'message': '文件上传失败'})
 
@@ -432,8 +444,8 @@ def teacher_week_file_import(request):
                     unit=unit_instance,
                     order=page_idx,
                     text=f'第{page_idx+1}个页面',
-                    limited_time=datetime.time.fromisoformat(page_item.get('limited_time')) if page_item.get(
-                        'limited_time') else None
+                    limited_time=page_item.get('limited_time'),
+                    can_modify=str(page_item.get('can_modify', 'false')).lower() == 'true'
                 )
                 paper_page_instance.save()
                 # 遍历所有大题
@@ -452,7 +464,8 @@ def teacher_week_file_import(request):
                         end_time=datetime.time.fromisoformat(main_item.get('end')) if main_item.get('end') else None,
                         allow_pause=str(main_item.get('allow_pause', 'false')).lower() == 'true',
                         limited_time=datetime.time.fromisoformat(main_item.get('limited_time')) if main_item.get(
-                            'limited_time') else None
+                            'limited_time') else None,
+                        no_media=str(main_item.get('no_media', 'false')).lower() == 'true'
                     )
                     main_instance.save()
 
@@ -1643,7 +1656,6 @@ def question_integration(request):
             #     question_data.append(main_question)
             #     print('main_question: ', main_question)
             question_data = doc_func.main_process(text_content)
-            print(f'question_data: {question_data}')
 
             # 将每道改错题的sub_list、type_list、answer_list、index_list合并为一个列表，列表中每个集合包含这四个值
             for main_question in question_data:
@@ -1659,6 +1671,12 @@ def question_integration(request):
                                 'answer': sub_question['answer_list'][i],
                                 'index': sub_question['index_list'][i]
                             })
+                elif main_question['question_type'] == 'blank':
+                    for sub_question in main_question['sub_questions']:
+                        for blank in sub_question:
+                            blank['answer_list'] = [item.replace("'", "").replace("[", "").replace("]", "") for item in
+                                                    blank['answer_list']]
+                            blank['answer_list'] = '/'.join(blank['answer_list'])
 
             print('question_data: ', question_data)
             return render(request, 'teacher_side/question_preview.html', {'question_data': question_data})
@@ -1723,9 +1741,6 @@ def question_integration(request):
                 for question in questions:
                     question_data[0]["sub_questions"].append(func.extract_subtext_and_answers(question))
 
-            if question_type == 'text':
-                print(f'text_result: {main_info}')
-
             return render(request, 'teacher_side/question_preview.html', {"question_data": question_data})
 
         # 处理保存逻辑
@@ -1766,7 +1781,8 @@ def question_integration(request):
                     start_time=datetime.time.fromisoformat(main_item.get('start')) if main_item.get('start') else None,
                     end_time=datetime.time.fromisoformat(main_item.get('end')) if main_item.get('end') else None,
                     allow_pause = str(main_item.get('allow_pause', 'false')).lower() == 'true',
-                    limited_time=datetime.time.fromisoformat(main_item.get('limited_time')) if main_item.get('limited_time') else None
+                    limited_time=datetime.time.fromisoformat(main_item.get('limited_time')) if main_item.get('limited_time') else None,
+                    no_media=str(main_item.get('no_media', 'false')).lower() == 'true'
                 )
                 main_instance.save()
                 # 保存大题图片

@@ -6,16 +6,30 @@
     <meta charset="UTF-8">
     <title>题目预览</title>
     <link rel="stylesheet" href="{% static 'css/teacher_side/week_task_preview.css' %}">
+    <style>
+        #confirm-question {
+            background-color: #007BFF;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <form method="post">
         {% csrf_token %}
         <div id="page-container">
+            <button type="button" name="confirm" id="confirm-question">确认题目</button>
             {% for page in question_data %}
                 <div class="page {% if forloop.first %}active{% endif %}" data-page="{{ forloop.counter0 }}">
-                    <button type="button" name="confirm" id="confirm-question">确认题目</button><br>
-                    <label>页面限制时间：</label>
-                    <input type="text" name="page[{{ forloop.counter0 }}].limited_time" value="{{ page.limited_time }}">
+
+                    <label style="font-size: 25px; justify-self: end;">页面限制时间（单位：分钟）：</label>
+                    <input type="text" style="width: 30%;" name="page[{{ forloop.counter0 }}].limited_time" value="{{ page.limited_time }}" min="0">
+                    <input type="checkbox" style="width: 20px; height: 18px; justify-self: end;" name="page[{{ forloop.counter0 }}].can_modify" value="true"><span style="font-size: 18px;">允许学生提交当前页面后返回修改</span>
 
                     {% for main_question in page.page_content %}
                         <!-- 左侧媒体信息 -->
@@ -28,6 +42,7 @@
                                 </video>
                             </div>
 
+                            <input type="checkbox" style="width:20px;" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].no_media" value="true"><strong>不需要媒体文件</strong>
                             <input type="checkbox" style="width:20px;" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].allow_pause" value="true">允许手动暂停媒体播放<br>
 
                             <label>最小播放次数：</label>
@@ -48,11 +63,16 @@
                             <label>大题类型：</label>
                             <input type="text" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].question_type" value="{{ main_question.question_type }}" readonly><br>
                             <label>大题题干：</label>
-                            <input type="text" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].main_question_text" value="{{ main_question.question_text }}" required><br>
+                            {% if main_question.question_type == 'text' %}
+                                <textarea name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].main_question_text" required>{{ main_question.question_text }}</textarea><br>
+                            {% else %}
+                                <input type="text" name="page[{{ forloop.parentloop.counter0 }}].main[{{ forloop.counter0 }}].main_question_text" value="{{ main_question.question_text }}" required><br>
+                            {% endif %}
                             {% for img in main_question.image %}
                                 <img src="{{ main_question.img_directory}}{{ img }}" alt="Question Image" width="30%" height="auto">
                                 <input type="hidden" name="page[{{ forloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.counter0 }}].main_question_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
                             {% endfor %}
+
 
                             {% for sub in main_question.sub_questions %}
                                 {% if main_question.question_type == 'choice' %}
@@ -250,6 +270,8 @@
                                                     <label for="answer">答案：</label>
                                                     <input type="text" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].answer" id="blank_answer" value="{{ question.answer_list }}" required>
 
+
+
                                                     <label for="tips">原文位置索引：</label>
                                                     <input type="text" name="page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].index" value="{{ question.index }}" required>
 {#                                                    <p>page[{{ forloop.parentloop.parentloop.parentloop.counter0 }}].main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}]</p>#}
@@ -264,7 +286,6 @@
                     {% endfor %}
                 </div>
             {% endfor %}
-
         </div>
 
         <!-- 分页控制 -->
@@ -323,6 +344,7 @@
     </form>
 
     <script>
+        // 分页
         document.addEventListener('DOMContentLoaded', () => {
             let currentPage = 0;
             const pages = document.querySelectorAll('.page');
@@ -348,44 +370,46 @@
                     updatePage();
                 }
             });
-
-            // 显示弹窗
-            document.getElementById('confirm-question').addEventListener('click', function() {
-                document.getElementById('modal').style.display = 'block';
-                document.getElementById('overlay').style.display = 'block';
-            });
-
-            // 关闭弹窗
-            document.getElementById('close-modal').addEventListener('click', function() {
-                document.getElementById('modal').style.display = 'none';
-                document.getElementById('overlay').style.display = 'none';
-            });
-
-
         });
+
+
+
+
+        // 显示弹窗
+        document.getElementById('confirm-question').addEventListener('click', function() {
+            document.getElementById('modal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        });
+
+        // 关闭弹窗
+        document.getElementById('close-modal').addEventListener('click', function() {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        });
+
         function toggleExamTimeInput() {
-        const selectedType = document.getElementById('selected_type');
-        const examDiv = document.getElementById('time_management');
-        const examTime = document.getElementById('exam_time_management');
-        {#const openWeek = document.getElementById('open_week');#}
-        if (selectedType.value === 'exam') {
-            console.log('exam')
-            examDiv.style.display = 'block';
-            examTime.style.display = 'block';
-            {#openWeek.style.display = 'none';#}
-        }else if (selectedType.value === 'quiz'){
-            console.log('quiz')
-            examDiv.style.display = 'block';
-            examTime.style.display = 'none';
-            {#openWeek.style.display = 'block';#}
+            const selectedType = document.getElementById('selected_type');
+            const examDiv = document.getElementById('time_management');
+            const examTime = document.getElementById('exam_time_management');
+            {#const openWeek = document.getElementById('open_week');#}
+            if (selectedType.value === 'exam') {
+                console.log('exam')
+                examDiv.style.display = 'block';
+                examTime.style.display = 'block';
+                {#openWeek.style.display = 'none';#}
+            }else if (selectedType.value === 'quiz'){
+                console.log('quiz')
+                examDiv.style.display = 'block';
+                examTime.style.display = 'none';
+                {#openWeek.style.display = 'block';#}
+            }
+            else {
+                console.log('else')
+                examDiv.style.display = 'none';
+                examTime.style.display = 'none';
+                {#openWeek.style.display = 'block';#}
+            }
         }
-        else {
-            console.log('else')
-            examDiv.style.display = 'none';
-            examTime.style.display = 'none';
-            {#openWeek.style.display = 'block';#}
-        }
-    }
     </script>
 </body>
 </html>

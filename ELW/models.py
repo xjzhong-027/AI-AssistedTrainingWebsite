@@ -117,6 +117,7 @@ class MainQuestion(models.Model):
     end_time = models.TimeField(blank=True, null=True)
     allow_pause = models.BooleanField(blank=True, null=True, default=False)
     limited_time = models.TimeField(blank=True, null=True)
+    no_media = models.BooleanField(verbose_name="不需要视频文件", blank=True, null=True, default=False)
     created_at = models.DateTimeField(blank=True, auto_now_add=True, verbose_name="创建时间")
 
     def __str__(self):

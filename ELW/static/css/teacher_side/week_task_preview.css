@@ -10,14 +10,16 @@
     border-radius: 5px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
+
 .page {
     display: none;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    gap: 15px;
 }
 .page.active {
     display: grid;
 }
+
 /* 左侧区域 */
 .left-column {
     padding: 10px;
@@ -29,8 +31,9 @@
 /* 右侧区域 */
 .right-column {
     padding: 10px;
-    background-color: #f9f9f9;
+    background-color: #f4f4f4;
 }
+
 input, textarea {
     width: 90%;
     padding: 8px;
@@ -39,9 +42,28 @@ input, textarea {
     border: 1px solid #ccc;
     border-radius: 5px;
 }
+/*.page-info-time-input {*/
+/*    width: 30%;*/
+/*}*/
+/*.page-info-time-label {*/
+/*    justify-self: end;*/
+/*    font-size: 25px;*/
+/*}*/
+/*.page-info-modify {*/
+/*    justify-self: end;*/
+/*}*/
 .left-column input{
     width: 50%;
 }
+/*#page-container #confirm-question {*/
+/*    background-color: #007BFF;*/
+/*    color: white;*/
+/*    font-size: 16px;*/
+/*    padding: 12px 24px;*/
+/*    border: none;*/
+/*    border-radius: 8px;*/
+/*    cursor: pointer;*/
+/*}*/
 fieldset {
     margin: 20px;
     padding: 20px;

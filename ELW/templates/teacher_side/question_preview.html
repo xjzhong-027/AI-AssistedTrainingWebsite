@@ -86,7 +86,9 @@
                     <div class="left-column">
                         <button type="submit" name="save">确认保存</button><br>
                         <label>大题类型：</label>
-                        <input type="text" name="main[{{ forloop.counter0 }}].question_type"  value="{{ main_question.question_type }}" readonly><br>
+                        <input type="text" name="main[{{ forloop.counter0 }}].question_type"  value="{{ main_question.question_type }}" readonly>
+                        <input type="checkbox" style="width:20px;" name="main[{{ forloop.counter0 }}].no_media" value="true"><strong>不需要媒体文件</strong>
+                        <br>
 
                         <div class="video-box">
                             <video width="95%" height="auto" controls>
@@ -116,7 +118,11 @@
                     <!-- 右侧小题信息 -->
                     <div class="right-column">
                         <label>大题题干：</label>
-                        <input type="text" name="main[{{ forloop.counter0 }}].main_question_text" value="{{ main_question.question_text }}" required><br>
+                        {% if main_question.question_type == 'text' %}
+                            <textarea name="main[{{ forloop.counter0 }}].main_question_text" required>{{ main_question.question_text }}</textarea><br>
+                        {% else %}
+                            <input type="text" name="main[{{ forloop.counter0 }}].main_question_text" value="{{ main_question.question_text }}" required><br>
+                        {% endif %}
                         {% for img in main_question.image %}
                             <img src="{{ main_question.img_directory}}{{ img }}" alt="Question Image" width="30%" height="auto">
                             <input type="hidden" name="main[{{ forloop.parentloop.counter0 }}].main_question_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
@@ -132,7 +138,7 @@
                                         {% for img in sub.image %}
                                             <img src="{{ main_question.img_directory}}{{ img }}" alt="Question Image" width="20%" height="auto">
                                             <input type="hidden" name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].question_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
-{#                                            <p>main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].question_images[{{ forloop.counter0 }}]</p>#}
+
                                         {% endfor %}
                                     </legend>
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -142,7 +148,6 @@
                                             {% for img in sub.A_image %}
                                                 <img src="{{ main_question.img_directory}}{{ img }}" alt="Answer Image" width="20%" height="auto">
                                                 <input type="hidden" name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].A_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
-{#                                                <p>main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].A_images[{{ forloop.counter0 }}]</p>#}
                                             {% endfor %}
                                             <br>
 
@@ -151,7 +156,6 @@
                                             {% for img in sub.B_image %}
                                                 <img src="{{ main_question.img_directory}}{{ img }}" alt="Answer Image" width="20%" height="auto">
                                                 <input type="hidden" name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].B_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
-{#                                                <p>main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].B_images[{{ forloop.counter0 }}]</p>#}
                                             {% endfor %}
                                             <br>
 
@@ -199,7 +203,6 @@
                                             <div>
                                                 <label for="question_text">文本：</label>
                                                 <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].question_text" required>{{ question.sub }}</textarea><br>
-                                                <p>main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}]</p>
 
                                                 <label for="tips">提示：</label>
                                                 <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].corrections[{{ forloop.counter0 }}].tips">{{ question.tips }}</textarea><br>
@@ -238,7 +241,6 @@
                                         {% for img in sub.image %}
                                             <img src="{{ main_question.img_directory}}{{ img }}" alt="Question Image" width="20%" height="auto">
                                             <input type="hidden" name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].question_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
-{#                                            <p>main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].question_images[{{ forloop.counter0 }}]</p>#}
                                         {% endfor %}
                                     </legend>
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -249,7 +251,6 @@
                                             {% for img in sub.option_image %}
                                                 <img src="{{ main_question.img_directory}}{{ img }}" alt="Answer Image" width="20%" height="auto">
                                                 <input type="hidden" name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].option_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
-{#                                                <p>main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].option_images[{{ forloop.counter0 }}]</p>#}
                                             {% endfor %}
                                             <br>
 
@@ -279,7 +280,6 @@
                                         {% for img in sub.image %}
                                             <img src="{{ main_question.img_directory}}{{ img }}" alt="Question Image" width="20%" height="auto">
                                             <input type="hidden" name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].question_images[{{ forloop.counter0 }}]" value="{{ main_question.img_directory}}{{ img }}">
-{#                                            <p>main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].question_images[{{ forloop.counter0 }}]</p>#}
                                         {% endfor %}
                                         <br>
 
@@ -306,7 +306,6 @@
                                             <div>
                                                 <label for="question_text">文本{{ forloop.counter }}：</label>
                                                 <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].question_text" required>{{ question.question_text }}</textarea><br>
-                                                <p>main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}]</p>
 
                                                 <label for="tips">提示：</label>
                                                 <textarea name="main[{{ forloop.parentloop.parentloop.counter0 }}].sub[{{ forloop.parentloop.counter0 }}].blanks[{{ forloop.counter0 }}].tips">{{ question.tips }}</textarea><br>
