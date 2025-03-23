@@ -1,9 +1,12 @@
 from django.db.models.signals import post_save, post_delete
+
+from English_Listening_Website.middleware import SessionTimeoutMiddleware
 # from Account.models import Students, Teachers
 from .models import LogEntry
 from ELW.models import Unit, MediaMaterial
 from announce.models import Announcement
 from .middleware import get_current_user
+
 
 
 def log_create_or_update(sender, instance, created, **kwargs):
@@ -14,6 +17,9 @@ def log_create_or_update(sender, instance, created, **kwargs):
         log_type = 'CREATE' if created else 'UPDATE'
         action = 'Created' if created else 'Updated'
         user = get_current_user()  # 获取当前登录用户
+        if not user:
+            raise SessionTimeoutMiddleware
+
         message = f"{action} {str(instance)}"
 
         # 使用模型的 verbose_name_plural 作为模块名
@@ -34,6 +40,8 @@ def log_delete(sender, instance, **kwargs):
     """
     if isinstance(instance, sender):
         user = get_current_user()  # 获取当前登录用户
+        if not user:
+            raise SessionTimeoutMiddleware
         message = f"Deleted {str(instance)}"
 
 
