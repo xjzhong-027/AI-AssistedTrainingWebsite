@@ -36,7 +36,9 @@ urlpatterns = [
 
     path('exam_detail/<int:unit_id>/', views.teacher_exam_detail, name='teacher_exam_detail'),
 
-    path('exam_edit/<int:unit_id>/', views.teacher_exam_edit, name='teacher_exam_edit'),
+    path('exam_edit/<int:unit_id>/<int:validation>/', views.teacher_exam_edit, name='teacher_exam_edit'),
+
+    path('exam_resave/<int:unit_id>/', views.teacher_exam_resave, name='teacher_exam_resave'),
 
     path('exam_delete/<int:unit_id>/', views.teacher_exam_delete, name='teacher_exam_delete'),
 

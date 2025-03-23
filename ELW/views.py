@@ -14,6 +14,7 @@ from django.contrib.auth import login
 
 
 from English_Listening_Website import settings
+from English_Listening_Website.settings import USE_I18N
 from .forms import UploadMediaForm, WordUploadForm
 from ELW import models
 from django.contrib import messages
@@ -742,6 +743,12 @@ def teacher_page_create(request, material_id):
                 preview_pages.append(preview_page)
             print('preview_pages: ', preview_pages)
             # print('receive: ', request.POST['pre_selected_questions'])
+
+            print('-'*20)
+            print(f'preview_pages: {preview_pages}')
+            print(f'pre_selected_questions: {pre_selected_questions}')
+            print(f'pre_page_infos: {pre_page_infos}')
+            print('-'*20)
 
             return render(request, 'teacher_side/page_create.html', {
                 'material': material,
@@ -2475,13 +2482,21 @@ def teacher_exam_bank(request):
 
 def teacher_exam_detail(request, unit_id):
     # 根据 unit_id 获取对应的 Unit 实例，并预取关联的 PaperPage、PageMainQuestion 和 PageSubQuestion 信息
+
     unit = Unit.objects.prefetch_related(
         'paper_pages__page_main_questions__page_sub_questions'
     ).get(id=unit_id)
     print(f'unit_id: {unit_id}')
-    material = MediaMaterial.objects.get(pk=PageMainQuestion.objects.filter(page=PaperPage.objects.filter(unit=unit)[0])[0].main_question.pk)
-    print(f'material: {material}')
-    print(f'material_id: {material.id}')
+    page_instance = PaperPage.objects.filter(unit_id=unit_id)[0]
+    print(f'page_id: {page_instance.id}')
+    page_main_instacne = PageMainQuestion.objects.filter(page=page_instance)[0]
+    main_instance = page_main_instacne.main_question
+    print(f'main_id: {main_instance.id}')
+    media_material = main_instance.media_material
+    print(f'media_id: {media_material.id}')
+    # material = MediaMaterial.objects.get(pk=PageMainQuestion.objects.filter(page=PaperPage.objects.filter(unit=unit)[0])[0].main_question.pk)
+    # print(f'material: {material}')
+    # print(f'material_id: {material.id}')
 
     try:
         # 获取该 Unit 实例关联的所有 TimeManagement 实例
@@ -2493,7 +2508,8 @@ def teacher_exam_detail(request, unit_id):
         'time_management': time_management,
     })
 
-def teacher_exam_edit(request, unit_id):
+def teacher_exam_edit(request, unit_id, validation):
+    print(f'validation: {validation}')
     Unit_instance = Unit.objects.get(id=unit_id)
     print(f'unit_id: {unit_id}')
     '''
@@ -2504,23 +2520,287 @@ def teacher_exam_edit(request, unit_id):
     print(f'page_main_instance: {page_main_instance}')
     print(f'main_instance: {main_instance}')
     '''
-    material = MediaMaterial.objects.get(pk=PageMainQuestion.objects.filter(page=PaperPage.objects.filter(unit=Unit_instance)[0])[0].main_question.pk)
-    print(f'material: {material}')
-    print(f'material_id: {material.id}')
+    page_instance = PaperPage.objects.filter(unit_id=unit_id)[0]
+    page_main_instacne = PageMainQuestion.objects.filter(page=page_instance)[0]
+    main_instance = page_main_instacne.main_question
+    material = main_instance.media_material
+    print(f'page_id: {page_instance.id}')
+    print(f'main_id: {main_instance.id}')
+    print(f'media_id: {material.id}')
+
     main_questions = material.main_questions.prefetch_related('sub_questions')
     print(f'main_questions: {main_questions}')
     pre_selected_questions = []
     pre_page_infos = []
-    return render(request, 'teacher_side/teacher_exam_edit.html', {
-        # 'unit': Unit_instance,
+
+    if request.method == 'GET':
+        preview_pages = []
+        pages = PaperPage.objects.filter(unit_id=unit_id)
+        for page in pages:
+            can_modify = 'true' if page.can_modify else 'false'
+            limited_time = page.limited_time if page.limited_time else '0'
+            pre_page_infos.append({'can_modify': can_modify, 'limited_time': limited_time})
+
+            selected_question = []
+            page_main_questions = page.page_main_questions.all().order_by('id')
+            print(f'page_main_questions for page {page.id}: {list(page_main_questions.values_list("id", flat=True))}')
+
+            for page_main_question in page_main_questions:
+                main_question = page_main_question.main_question  # 修正查询逻辑
+                print(f'main_question.id: {main_question.id}')
+
+                if main_question.question_type in ['correction', 'blank', 'text']:
+                    selected_question.append(f'main_{main_question.id}')
+                elif main_question.question_type in ['choice', 'matching', 'comprehension']:
+                    page_sub_questions = page_main_question.page_sub_questions.all().order_by('id')
+                    print(
+                        f'page_sub_questions for page_main_question {page_main_question.id}: {list(page_sub_questions.values_list("id", flat=True))}')
+
+                    for page_sub_question in page_sub_questions:
+                        sub_question = page_sub_question.sub_question  # 修正查询逻辑
+                        print(f'sub_question.id: {sub_question.id}')
+                        selected_question.append(f'sub_{sub_question.id}')
+
+            pre_selected_questions.append(selected_question)
+            print(f'pre_selected_questions for page {page.id}: {selected_question}')
+
+        for i, pre_selected_question in enumerate(pre_selected_questions):
+            preview_page = pre_page.preview_page(pre_selected_question, pre_page_infos[i])
+            preview_pages.append(preview_page)
+
+        print('preview_pages: ', preview_pages)
+
+
+    '''
+    # if request.method == 'GET':
+    #     preview_pages = []
+    #     pages = PaperPage.objects.filter(unit_id=unit_id)
+    #     for page in pages:
+    #         can_modify = 'true' if page.can_modify else 'false'
+    #         limited_time = page.limited_time if page.limited_time else '0'
+    #         pre_page_infos.append({'can_modify': can_modify, 'limited_time': limited_time})
+    #         selected_question = []
+    #         page_main_questions = page.page_main_questions.all().order_by('id')
+    #         print(f'page_main_questions: {page_main_questions}')
+    #         for page_main_question in page_main_questions:
+    #             main_question = MainQuestion.objects.get(id=page_main_question.id)
+    #             if main_question.question_type == 'correction' or main_question.question_type == 'blank' or main_question.question_type == 'text':
+    #                 selected_question.append(f'main_{main_question.id}')
+    #             elif main_question.question_type == 'choice' or main_question.question_type == 'matching' or main_question.question_type == 'comprehension':
+    #                 page_sub_questions = page_main_question.page_sub_questions.all().order_by('id')
+    #                 for page_sub_question in page_sub_questions:
+    #                     sub_question = SubQuestion.objects.get(id=page_sub_question.id)
+    #                     selected_question.append(f'sub_{sub_question.id}')
+    #         pre_selected_questions.append(selected_question)
+    #         print(f'pre_selected_questions: {pre_selected_questions}')
+
+
+            # page_main_questions = page.page_main_questions.prefetch_related('page_sub_questions')
+            # for page_main_question in page_main_questions:
+            #     main_question = MainQuestion.objects.get(id=page_main_question.id)
+            #     print(f'page_main_question: {page_main_question}')
+            #     print(f'main_question_id: {main_question.id}')
+            #     print(f'question_type: {main_question.question_type}')
+            #     if main_question.question_type == 'correction' or main_question.question_type == 'blank' or main_question.question_type == 'text':
+            #         pre_selected_question.append(f'main_{main_question.id}')
+            #     else:
+            #         for page_sub_question in page_main_question.page_sub_questions.all():
+            #             print(f'page_sub_question: {page_sub_question}')
+            #             pre_selected_question.append(f'sub_{page_sub_question.id}')
+            # pre_selected_questions.append(pre_selected_question)
+            # print(f'pre_selected_question: {pre_selected_question}')
+        # for i, pre_selected_question in enumerate(pre_selected_questions):
+        #     preview_page = pre_page.preview_page(pre_selected_question, pre_page_infos[i])
+        #     preview_pages.append(preview_page)
+        # print('preview_pages: ', preview_pages)
+    '''
+
+    if request.method == 'POST':
+        print(f'---------DATA: {request.POST}')
+        # 本次提交的页面信息
+        this_selected_questions = request.POST.getlist('questions')
+        print('this_selected_questions: ', this_selected_questions)
+        can_modify = request.POST.get('can_modify', 'false')
+        if request.POST.get('limited_time'):
+            limited_time = request.POST.get('limited_time')
+        else:
+            limited_time = '0'
+        page_info = {'can_modify': can_modify, 'limited_time': limited_time}
+        print(f'page_info: {page_info}')
+        this_page_info = page_info
+
+        # test_selected_questions = ['sub_1', 'sub_2', 'sub_3']
+        # 前面已提交的页面信息
+        if request.POST['pre_selected_questions']:
+            pre_selected_questions_json = request.POST.get('pre_selected_questions')
+            pre_page_infos_json = request.POST.get('pre_page_infos')
+            try:
+                # 将 JSON 字符串还原为 Python 对象
+                pre_selected_questions = json.loads(pre_selected_questions_json)
+                print('成功还原pre_selected_questions: ', pre_selected_questions)
+                pre_page_infos = json.loads(pre_page_infos_json)
+                print('成功还原pre_page_infos: ', pre_page_infos)
+            except json.JSONDecodeError:
+                print("JSON 解析出错")
+        if 'add_page' in request.POST:      #如果点击的是“添加组卷”按钮
+            print('add_page')
+            print('this_selected_questions: ', this_selected_questions)
+            if this_selected_questions:
+                print('列表不为空，增加this_selected_questions至pre_selected_questions.')
+                pre_selected_questions.append(this_selected_questions)
+                print('增加后pre_selected_questions: ', pre_selected_questions)
+                pre_page_infos.append(this_page_info)
+                print('增加后pre_page_infos: ', pre_page_infos)
+            else:
+                print('列表为空')
+
+            preview_pages = []
+            # for i, pre_selected_question in pre_selected_questions:
+            for i, pre_selected_question in enumerate(pre_selected_questions):
+                preview_page = pre_page.preview_page(pre_selected_question, pre_page_infos[i])
+                preview_pages.append(preview_page)
+            print('preview_pages: ', preview_pages)
+            # print('receive: ', request.POST['pre_selected_questions'])
+
+            print('-'*20)
+            print(f'preview_pages: {preview_pages}')
+            print(f'pre_selected_questions: {pre_selected_questions}')
+            print(f'pre_page_infos: {pre_page_infos}')
+            print('-'*20)
+
+            return render(request, 'teacher_side/page_create.html', {
+                'unit_id': unit_id,
+                'material': material,
+                'main_questions': main_questions,
+                'preview_pages': preview_pages,
+                'pre_selected_questions': pre_selected_questions,
+                'pre_page_infos': pre_page_infos,
+
+            })
+
+    return render(request, 'teacher_side/exam_edit.html', {
+        'unit_id': unit_id,
         'material': material,
         'main_questions': main_questions,
+        'preview_pages': preview_pages,
         'pre_selected_questions': pre_selected_questions,
         'pre_page_infos': pre_page_infos,
     })
-    # return render(request, 'teacher_side/teacher_exam_edit.html', {
-    #     'unit': Unit_instance,
-    # })
+
+def teacher_exam_resave(request, unit_id):
+    if request.method == 'POST':
+        preview_datas_json = request.POST.get('preview_datas')
+        preview_datas = json.loads(preview_datas_json)
+        print('data: ', request.POST)
+
+        preview_page_infos_json = request.POST.get('preview_page_infos')
+        preview_page_infos = json.loads(preview_page_infos_json)
+        print('preview_page_infos: ', preview_page_infos)
+
+        # class_id = int(request.POST.get('selected_class'))
+        # order = request.POST.get('week')
+        # title = request.POST.get('title')
+        # type = request.POST.get('selected_type')
+        # if request.POST.get('exam_time'):
+        #     duration = int(request.POST.get('exam_time'))
+        # if request.POST.get('exam_date'):
+        #     exam_date = datetime.date.fromisoformat(request.POST.get('exam_date'))
+        #     start_time = datetime.time.fromisoformat(request.POST.get('start_time'))
+        #     end_time = datetime.time.fromisoformat(request.POST.get('end_time'))
+        #
+        # 创建试卷
+        # class_instance = Class.objects.get(pk=class_id)
+        # unit_instance = Unit.objects.create(
+        #     class_instance=class_instance,
+        #     order=order,
+        #     title=title,
+        #     type=type,
+        # )
+        # unit_instance.save()
+        unit_instance = Unit.objects.get(id=unit_id)
+        print('unit_instance: ', unit_instance)
+        PaperPage.objects.filter(unit=unit_instance).delete()
+        # 如果为考试，则创建时间管理表
+        # if type == 'exam':
+        #     time_management_instance = TimeManagement.objects.create(
+        #         unit=unit_instance,
+        #         duration=duration,
+        #         exam_date=exam_date,
+        #         start_time=start_time,
+        #         end_time=end_time,
+        #     )
+        #     time_management_instance.save()
+        # if type == 'quiz':
+        #     time_management_instance = TimeManagement.objects.create(
+        #         unit=unit_instance,
+        #         week=order,
+        #         duration=duration,
+        #     )
+        #     time_management_instance.save()
+        # 遍历所有待创建页面
+        for order, preview_data in enumerate(preview_datas):
+            can_modify = True if preview_page_infos[order].get('can_modify') == 'true' else False
+            limited_time = int(preview_page_infos[order].get('limited_time'))
+            # 创建页面
+            print(f'preview_data:   {preview_data}')
+            page_instance = PaperPage.objects.create(
+                unit=unit_instance,
+                order=order,
+                text=f'第{order+1}个页面',
+                can_modify=can_modify,
+                limited_time=int(limited_time),
+            )
+            page_instance.save()
+            main_id_list = []
+            page_main_list = []
+            for question_id in preview_data:
+                print('question_id: ', question_id)
+                if question_id.startswith('main_'):  # 大题,则为改错题
+                    # 保存大题信息
+                    main_id = int(question_id.split('_')[1])
+                    main_instance = MainQuestion.objects.get(id=main_id)
+                    page_main_instance = PageMainQuestion.objects.create(
+                        page=page_instance,
+                        main_question=main_instance,
+                    )
+                    page_main_instance.save()
+                    main_id_list.append(main_instance.id)
+                    page_main_list.append({'page_main_id': page_main_instance.id, 'main': main_id})
+                    # 保存改错题小题
+                    for sub_instance in SubQuestion.objects.filter(main_question_id=main_id):
+                        page_sub_instance = PageSubQuestion.objects.create(
+                            page_main_question=page_main_instance,
+                            sub_question=sub_instance,
+                        )
+                        page_sub_instance.save()
+                elif question_id.startswith('sub_'):  # 小题
+                    sub_id = int(question_id.split('_')[1])
+                    sub_instance = SubQuestion.objects.get(id=sub_id)
+                    main_instance = MainQuestion.objects.get(pk=sub_instance.main_question_id)
+                    main_id = main_instance.id
+                    if main_id in main_id_list:  # 已存在大题
+                        for page_main in page_main_list:
+                            if main_id == page_main['main']:
+                                page_main_instance = PageMainQuestion.objects.get(id=page_main['page_main_id'])
+                                page_sub_instance = PageSubQuestion.objects.create(
+                                    page_main_question=page_main_instance,
+                                    sub_question=sub_instance,
+                                )
+                                page_sub_instance.save()
+                    else:
+                        page_main_instance = PageMainQuestion.objects.create(
+                            page=page_instance,
+                            main_question=main_instance,
+                        )
+                        page_main_instance.save()
+                        main_id_list.append(main_instance.id)
+                        page_main_list.append({'page_main_id': page_main_instance.id, 'main': main_id})
+                        page_sub_instance = PageSubQuestion.objects.create(
+                            page_main_question=page_main_instance,
+                            sub_question=sub_instance,
+                        )
+                        page_sub_instance.save()
+    return redirect('teacher_exam_bank')
 
 def teacher_exam_delete(request, unit_id):
     Unit.objects.get(id=unit_id).delete()
@@ -2580,157 +2860,3 @@ def teacher_announce(request):
         request.session['role'] = role
         request.session['is_login'] = True
     return redirect('announce:announcements')
-
-
-
-'''
-# 大题+小题页
-def create_big_question_with_small_questions_old(request):
-    task_package_id = request.GET.get('task_package_id')
-    print('task_package_id', task_package_id)
-    if request.method == 'POST':
-        big_question_form = MainQuestionForm(request.POST)
-        small_question_formset = SubQuestionFormSet(request.POST, request.FILES)
-
-        choice_option_formsets = []
-        matching_option_formsets = []
-
-        if big_question_form.is_valid() and small_question_formset.is_valid():
-            # 保存大题
-            big_question = big_question_form.save(commit=False)
-            big_question.media_material = MediaMaterial.objects.get(id=task_package_id)
-            big_question.save()
-
-
-            for small_question_form in small_question_formset:
-                small_question = small_question_form.save(commit=False)
-                small_question.main_question = big_question
-                small_question.save()
-
-                # if big_question.question_type == 'choice':
-                #     choice_option_formset = ChoiceOptionFormSet(
-                #         request.POST,
-                #         prefix=f"options-{small_question_form.prefix}",
-                #         instance=small_question
-                #     )
-                # 根据大题类型初始化选项表单集合
-                if big_question.question_type == "choice":
-                    choice_option_formset = ChoiceOptionFormSet(instance=small_question)
-                    choice_option_formsets.append(choice_option_formset)
-                elif big_question.question_type == "matching":
-                    matching_option_formset = MatchingOptionFormset(instance=small_question)
-                    matching_option_formsets.append(matching_option_formset)
-                if choice_option_formset.is_valid():
-                        choice_option_formset.save()
-            return HttpResponse('submit all.')
-    else:
-        big_question_form = MainQuestionForm()
-        small_question_formset = SubQuestionFormSet()
-        choice_option_formsets = [ChoiceOptionFormSet()]
-        matching_option_formsets = [MatchingOptionFormset()]
-
-        # 动态初始化选项表单集
-        # for small_question_form in small_question_formset:
-        #     small_question_form.options_formset = ChoiceOptionFormSet(
-        #         prefix=f"options-{small_question_form.prefix}",
-        #         instance=small_question_form.instance
-        #     )
-
-    return render(request, 'create_big_question_with_small_questions.html', {
-        # 'big_question_form': big_question_form,
-        # 'small_question_formset': small_question_formset,
-        "big_question_form": big_question_form,
-        "small_question_formset": small_question_formset,
-        "choice_option_formsets": choice_option_formsets,
-        "matching_option_formsets": matching_option_formsets,
-    })
-'''
-
-'''
-#新的，暂时算能用吧
-def create_big_question_with_small_questions(request):
-    task_package_id = request.GET.get('task_package_id')
-    print('task_package_id', task_package_id)
-    if request.method == 'POST':
-        big_question_form = MainQuestionForm(request.POST)
-        small_question_formset = SubQuestionFormSet(request.POST, request.FILES)
-
-        if big_question_form.is_valid() and small_question_formset.is_valid():
-            # 保存大题
-            big_question = big_question_form.save(commit=False)
-            big_question.media_material = MediaMaterial.objects.get(id=task_package_id)
-            big_question.save()
-
-            for small_question_form in small_question_formset:
-                small_question = small_question_form.save(commit=False)
-                small_question.main_question = big_question
-                small_question.save()
-
-            return HttpResponse('submit all.')
-    else:
-        big_question_form = MainQuestionForm()
-        small_question_formset = SubQuestionFormSet()
-
-    # 传递 empty_form 到模板
-    empty_form = small_question_formset.empty_form
-
-    return render(request, 'create_big_question_with_small_questions.html', {
-        'big_question_form': big_question_form,
-        'small_question_formset': small_question_formset,
-        'empty_small_question_form': empty_form,
-    })
-'''
-
-
-'''
-def create_big_question_with_small_questions(request):
-    task_package_id = request.GET.get('task_package_id')
-    print('task_package_id', task_package_id)
-
-    if request.method == "POST":
-        big_question_form = BigQuestionForm(request.POST)
-        small_question_formset = SmallQuestionFormSet(request.POST)
-
-        # 根据大题类型动态绑定选项表单
-        choice_option_formsets = []
-        matching_option_formsets = []
-        correction_formsets = []
-
-        if big_question_form.is_valid() and small_question_formset.is_valid():
-            # 保存大题
-            big_question = big_question_form.save(commit=False)
-            big_question.media_material = MediaMaterial.objects.get(id=task_package_id)
-            big_question.save()
-
-            for small_form in small_question_formset:
-                small_question = small_form.save(commit=False)
-                small_question.big_question = big_question
-                small_question.save()
-
-                if big_question.question_type == 'choice':
-                    choice_option_formset = ChoiceOptionFormSet(request.POST, instance=small_question)
-                    if choice_option_formset.is_valid():
-                        choice_option_formset.save()
-                elif big_question.question_type == 'matching':
-                    matching_option_formset = MatchingOptionFormset(request.POST, instance=small_question)
-                    if matching_option_formset.is_valid():
-                        matching_option_formset.save()
-                elif big_question.question_type == 'correction':
-                    correction_formset = CorrectionFormset(request.POST, instance=small_question)
-                    if correction_formset.is_valid():
-                        correction_formset.save()
-            return HttpResponse('submit all.')
-        else:
-            big_question_form = BigQuestionForm()
-            small_question_formset = SmallQuestionFormSet()
-    else:
-        # GET 请求初始化表单
-        big_question_form = BigQuestionForm()
-        small_question_formset = SmallQuestionFormSet()
-
-    return render(request, "teacher_side/create_question.html", {
-        "big_question_form": big_question_form,
-        "small_question_formset": small_question_formset,
-    })
-'''
-
