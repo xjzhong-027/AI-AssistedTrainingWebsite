@@ -1,11 +1,11 @@
+{% extends 'base.html' %}
 {% load static %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>exam_bank</title>
+{% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/teacher_side/exam_bank.css' %}">
+{% endblock %}
+
+{% block extract_js1 %}
     <script>
         function filterUnits(){
             const classQuery = document.getElementById('selected_class').value;
@@ -17,12 +17,12 @@
 
                 const rows = document.querySelectorAll('#unit_table tbody tr');
                 rows.forEach(row => {
-                {#    const title = row.querySelector('td:nth-child(3)').textContent.toLowerCase();#}
-                {#    if (title.includes(titleQuery.toLowerCase())) {#}
-                {#        row.style.display = '';#}
-                {#    } else {#}
-                {#        row.style.display = 'none';#}
-                {#    }#}
+                    const title = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+                    if (title.includes(titleQuery.toLowerCase())) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
 
                     const class_id = parseInt(row.querySelector('td:nth-child(1)').textContent)
                     if (class_id==parseInt(classQuery)){
@@ -35,72 +35,61 @@
             }
         }
     </script>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
     <div class="header">
         <button onclick="window.location.href='{% url 'teacher_index' %}'">返回首页</button>
         <select name="selected_class" id="selected_class" onchange='filterUnits()'>
-        <option value="All">全部班级</option>
-        {% for class in classes %}
+            <option value="All">全部班级</option>
+            {% for class in classes %}
 
-            <option value="{{ class.id }}">
-{#                {{ class.course.year }}-{{ class.course.grade }}-{{ class.course.semester }} :#}
-{#                周{{ class.week }} {{ class.start_time }}#}
-                {{ class.class_name }}
-            </option>
-        {% endfor %}
-    </select>
-    </div>
-{#<div>#}
-{#    <select name="selected_class" id="selected_class" onchange='filterUnits()'>#}
-{#        <option value="All">全部班级</option>#}
-{#        {% for class in classes %}#}
-{##}
-{#            <option value="{{ class.id }}">#}
-{#                {{ class.course.year }}-{{ class.course.grade }}-{{ class.course.semester }} :#}
-{#                周{{ class.week }} {{ class.start_time }}#}
-{#            </option>#}
-{#        {% endfor %}#}
-{#    </select>#}
-{#</div>#}
-
-<div>
-    <h1 style="text-align: center;">试卷</h1>
-    <table id="unit_table">
-        <thead>
-            <tr>
-                <th style="display: none">unit_id</th>
-                <th>#</th>
-                <th>试卷类型</th>
-                <th>Title</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for unit in page_obj %}
-            <tr>
-                <td style="display: none">{{ unit.id }}</td>
-                <td><a href="{% url 'teacher_exam_detail' unit.id %}">{{ forloop.counter0|add:page_obj.start_index }}</a></td>
-                <td>
-                    {{ unit.type }}
-                </td>
-                <td>
-                    <a href="{% url 'teacher_exam_detail' unit.id %}">{{ unit.title }}</a>
-                </td>
-                <td>
-                    <a href="{% url 'teacher_exam_detail' unit.id %}">查看</a>
-                    &nbsp;&nbsp;&nbsp;&nbsp;
-                    <a href="{% url 'teacher_exam_delete' unit.id %}">删除</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="2">暂无试题</td>
-            </tr>
+                <option value="{{ class.id }}">
+                    {{ class.class_name }}
+                </option>
             {% endfor %}
-        </tbody>
-    </table>
-</div>
+        </select>
+    </div>
+
+    <div class="main">
+        <h1 style="text-align: center;">试卷</h1>
+        <table id="unit_table">
+            <thead>
+                <tr>
+                    <th style="display: none">unit_id</th>
+                    <th>#</th>
+                    <th>试卷类型</th>
+                    <th>Title</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for unit in page_obj %}
+                <tr>
+                    <td style="display: none">{{ unit.id }}</td>
+                    <td><a href="{% url 'teacher_exam_detail' unit.id %}">{{ forloop.counter0|add:page_obj.start_index }}</a></td>
+                    <td>
+                        {{ unit.type }}
+                    </td>
+                    <td>
+                        <a href="{% url 'teacher_exam_detail' unit.id %}">{{ unit.title }}</a>
+                    </td>
+                    <td>
+                        <a href="{% url 'teacher_exam_detail' unit.id %}">查看</a>
+                        &nbsp;&nbsp;&nbsp;&nbsp;
+                        <a href="{% url 'teacher_exam_edit' unit.id %}">编辑</a>
+                        &nbsp;&nbsp;&nbsp;&nbsp;
+                        <a href="{% url 'teacher_exam_delete' unit.id %}">删除</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2">暂无试题</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     <!-- 分页控件 -->
     <div class="pagination">
@@ -120,6 +109,130 @@
             <a href="?page={{ page_obj.paginator.num_pages }}">尾页</a>
         {% endif %}
     </div>
+{% endblock %}
 
-</body>
-</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{#{% load static %}#}
+{##}
+{#<!DOCTYPE html>#}
+{#<html lang="en">#}
+{#<head>#}
+{#    <meta charset="UTF-8">#}
+{#    <title>exam_bank</title>#}
+{#    <link rel="stylesheet" href="{% static 'css/teacher_side/exam_bank.css' %}">#}
+{#    <script>#}
+{#        function filterUnits(){#}
+{#            const classQuery = document.getElementById('selected_class').value;#}
+{#            if (classQuery !== "" && classQuery !== null){#}
+{#                console.log(classQuery)#}
+{#                const url = new URL(window.location.href);#}
+{#                url.searchParams.set('class_id', classQuery);#}
+{#                window.history.replaceState({}, '', url);#}
+{##}
+{#                const rows = document.querySelectorAll('#unit_table tbody tr');#}
+{#                rows.forEach(row => {#}
+{#                    const title = row.querySelector('td:nth-child(3)').textContent.toLowerCase();#}
+{#                    if (title.includes(titleQuery.toLowerCase())) {#}
+{#                        row.style.display = '';#}
+{#                    } else {#}
+{#                        row.style.display = 'none';#}
+{#                    }#}
+{##}
+{#                    const class_id = parseInt(row.querySelector('td:nth-child(1)').textContent)#}
+{#                    if (class_id==parseInt(classQuery)){#}
+{#                        row.style.display = ''#}
+{#                    }else{#}
+{#                        row.style.display = 'none'#}
+{#                    }#}
+{#                });#}
+{##}
+{#            }#}
+{#        }#}
+{#    </script>#}
+{#</head>#}
+{#<body>#}
+{#    <div class="header">#}
+{#        <button onclick="window.location.href='{% url 'teacher_index' %}'">返回首页</button>#}
+{#        <select name="selected_class" id="selected_class" onchange='filterUnits()'>#}
+{#        <option value="All">全部班级</option>#}
+{#        {% for class in classes %}#}
+{##}
+{#            <option value="{{ class.id }}">#}
+{#                {{ class.class_name }}#}
+{#            </option>#}
+{#        {% endfor %}#}
+{#    </select>#}
+{#    </div>#}
+{##}
+{#<div>#}
+{#    <h1 style="text-align: center;">试卷</h1>#}
+{#    <table id="unit_table">#}
+{#        <thead>#}
+{#            <tr>#}
+{#                <th style="display: none">unit_id</th>#}
+{#                <th>#</th>#}
+{#                <th>试卷类型</th>#}
+{#                <th>Title</th>#}
+{#                <th>操作</th>#}
+{#            </tr>#}
+{#        </thead>#}
+{#        <tbody>#}
+{#            {% for unit in page_obj %}#}
+{#            <tr>#}
+{#                <td style="display: none">{{ unit.id }}</td>#}
+{#                <td><a href="{% url 'teacher_exam_detail' unit.id %}">{{ forloop.counter0|add:page_obj.start_index }}</a></td>#}
+{#                <td>#}
+{#                    {{ unit.type }}#}
+{#                </td>#}
+{#                <td>#}
+{#                    <a href="{% url 'teacher_exam_detail' unit.id %}">{{ unit.title }}</a>#}
+{#                </td>#}
+{#                <td>#}
+{#                    <a href="{% url 'teacher_exam_detail' unit.id %}">查看</a>#}
+{#                    &nbsp;&nbsp;&nbsp;&nbsp;#}
+{#                    <a href="{% url 'teacher_exam_delete' unit.id %}">删除</a>#}
+{#                </td>#}
+{#            </tr>#}
+{#            {% empty %}#}
+{#            <tr>#}
+{#                <td colspan="2">暂无试题</td>#}
+{#            </tr>#}
+{#            {% endfor %}#}
+{#        </tbody>#}
+{#    </table>#}
+{#</div>#}
+{##}
+{#    <!-- 分页控件 -->#}
+{#    <div class="pagination">#}
+{#        {% if page_obj.has_previous %}#}
+{#            <a href="?page=1">首页</a>#}
+{#            <a href="?page={{ page_obj.previous_page_number }}">上一页</a>#}
+{#        {% endif %}#}
+{#        {% for num in page_obj.paginator.page_range %}#}
+{#            {% if page_obj.number == num %}#}
+{#                <span class="active">{{ num }}</span>#}
+{#            {% else %}#}
+{#                <a href="?page={{ num }}">{{ num }}</a>#}
+{#            {% endif %}#}
+{#        {% endfor %}#}
+{#        {% if page_obj.has_next %}#}
+{#            <a href="?page={{ page_obj.next_page_number }}">下一页</a>#}
+{#            <a href="?page={{ page_obj.paginator.num_pages }}">尾页</a>#}
+{#        {% endif %}#}
+{#    </div>#}
+{##}
+{#</body>#}
+{#</html>#}

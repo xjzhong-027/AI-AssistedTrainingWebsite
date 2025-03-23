@@ -229,43 +229,6 @@ class TimeManagement(models.Model):
 
 
 
-# class SmallQuestion(models.Model):
-#     big_question = models.ForeignKey(BigQuestion, on_delete=models.CASCADE, related_name='small_questions', verbose_name="所属大题")
-#     question_text = models.TextField(verbose_name="小题内容")
-#     answer = models.TextField(blank=True, verbose_name="答案")
-#     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
-#
-#     def __str__(self):
-#         return f"{self.big_question.title} - {self.question_text[:20]}"
-
-
-# class TemMediaMaterial(models.Model):
-#     title = models.TextField(default='')
-#     theme = models.CharField(max_length=50,default='')
-#     abstract = models.TextField(default='')
-#     keywords = models.TextField(default='')
-#     transcript = models.TextField(default='')
-#     media_url = models.CharField(max_length=100)
-#     image_url = models.CharField(max_length=100, default='')
-
-# class TemMainQuestion(models.Model):
-#     tem_media_id = models.ForeignKey(TemMediaMaterial, on_delete=models.CASCADE)
-#     question = models.TextField(default='')
-#     maximum_play = models.IntegerField(default=3)
-#     minimum_play = models.IntegerField(default=0)
-#     start_time = models.TextField(default='')
-#     end_time = models.TextField(default='')
-
-# class TemSubQuestion(models.Model):
-#     tem_mainqst_id = models.ForeignKey(TemMainQuestion, on_delete=models.CASCADE,)
-#     question = models.TextField()
-#     image_url = models.CharField(max_length=100, default='')
-#     tips = models.TextField(default='')
-#     answers = models.TextField(default='0')
-#     analysis = models.TextField(default='')
-#     score = models.FloatField(default=1.0)
-
-
 
 
 

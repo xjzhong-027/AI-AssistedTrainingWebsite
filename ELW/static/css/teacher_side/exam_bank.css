@@ -1,12 +1,15 @@
+/* exam_bank.css */
+
 /* 全局样式 */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f4f4f9;
+    font-family: 'Arial', sans-serif;
+    background-color: #f5f5f5;
     color: #333;
     margin: 0;
-    padding: 20px;
-    font-size: large;
+    padding: 0;
 }
+
+/* 头部样式 */
 .header {
     display: flex;
     justify-content: space-between;
@@ -14,11 +17,11 @@ body {
     background-color: #fff;
     padding: 10px 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px; /* Space between header and content */
+    margin-bottom: 20px; /* 头部与内容之间的间距 */
 }
-button {
-    /*background-color: #4CAF50; !* Green *!*/
-    background-color: #3498db;
+
+.header button {
+    background-color: #4CAF50; /* 绿色 */
     border: none;
     color: white;
     padding: 10px 20px;
@@ -29,64 +32,219 @@ button {
     border-radius: 5px;
     transition: background-color 0.3s ease;
 }
-h1 {
-    color: #2c3e50;
-    font-size: 28px;
-    margin-bottom: 20px;
+
+.header button:hover {
+    background-color: #45a049; /* 深绿色 */
 }
+
+.header select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: #fafafa;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.header select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+    outline: none;
+}
+
+/* 主体样式 */
+.main {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    /*box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);*/
+    max-width: 1500px;
+    margin: 0 auto;
+}
+
+.main h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
 /* 表格样式 */
-table {
+#unit_table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    background-color: #fff;
 }
-th, td {
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
+
+#unit_table th,
+#unit_table td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
 }
-th {
-    background-color: #3498db;
-    color: white;
+
+#unit_table th {
+    background-color: #f4f4f4;
     font-weight: 600;
+    color: #555;
 }
-tr:hover {
-    background-color: #f5f5f5;
+
+#unit_table tr:nth-child(even) {
+    background-color: #f9f9f9;
 }
-td a {
-    color: #3498db;
+
+#unit_table tr:hover {
+    background-color: #f1f1f1;
+}
+
+#unit_table a {
+    color: #007BFF;
     text-decoration: none;
     transition: color 0.3s ease;
 }
-td a:hover {
-    color: #2980b9;
-    text-decoration: underline;
+
+#unit_table a:hover {
+    color: #0056b3;
 }
+
 /* 分页控件样式 */
 .pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 20px;
+    text-align: center;
+    margin: 20px 0;
 }
+
 .pagination a,
 .pagination span {
-    display: inline-block;
-    padding: 8px 12px;
     margin: 0 5px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 5px 10px;
     text-decoration: none;
-    color: #3498db;
-    transition: background-color 0.3s ease;
+    border: 1px solid #ddd;
+    color: #333;
+    border-radius: 4px;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
+
 .pagination a:hover {
-    background-color: #f5f5f5;
+    background-color: #f4f4f4;
 }
-.pagination span.active {
-    background-color: #3498db;
-    color: white;
-    border-color: #3498db;
+
+.pagination .active {
+    background-color: #ddd;
+    font-weight: bold;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*!* 全局样式 *!*/
+/*body {*/
+/*    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;*/
+/*    background-color: #f4f4f9;*/
+/*    color: #333;*/
+/*    margin: 0;*/
+/*    padding: 20px;*/
+/*    font-size: large;*/
+/*}*/
+/*.header {*/
+/*    display: flex;*/
+/*    justify-content: space-between;*/
+/*    align-items: center;*/
+/*    background-color: #fff;*/
+/*    padding: 10px 20px;*/
+/*    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);*/
+/*    margin-bottom: 20px; !* Space between header and content *!*/
+/*}*/
+/*button {*/
+/*    !*background-color: #4CAF50; !* Green *!*!*/
+/*    background-color: #3498db;*/
+/*    border: none;*/
+/*    color: white;*/
+/*    padding: 10px 20px;*/
+/*    text-align: center;*/
+/*    text-decoration: none;*/
+/*    font-size: 16px;*/
+/*    cursor: pointer;*/
+/*    border-radius: 5px;*/
+/*    transition: background-color 0.3s ease;*/
+/*}*/
+/*h1 {*/
+/*    color: #2c3e50;*/
+/*    font-size: 28px;*/
+/*    margin-bottom: 20px;*/
+/*}*/
+/*!* 表格样式 *!*/
+/*table {*/
+/*    width: 100%;*/
+/*    border-collapse: collapse;*/
+/*    margin-bottom: 20px;*/
+/*    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);*/
+/*    background-color: #fff;*/
+/*}*/
+/*th, td {*/
+/*    padding: 12px 15px;*/
+/*    text-align: left;*/
+/*    border-bottom: 1px solid #ddd;*/
+/*}*/
+/*th {*/
+/*    background-color: #3498db;*/
+/*    color: white;*/
+/*    font-weight: 600;*/
+/*}*/
+/*tr:hover {*/
+/*    background-color: #f5f5f5;*/
+/*}*/
+/*td a {*/
+/*    color: #3498db;*/
+/*    text-decoration: none;*/
+/*    transition: color 0.3s ease;*/
+/*}*/
+/*td a:hover {*/
+/*    color: #2980b9;*/
+/*    text-decoration: underline;*/
+/*}*/
+/*!* 分页控件样式 *!*/
+/*.pagination {*/
+/*    display: flex;*/
+/*    justify-content: center;*/
+/*    align-items: center;*/
+/*    margin-top: 20px;*/
+/*}*/
+/*.pagination a,*/
+/*.pagination span {*/
+/*    display: inline-block;*/
+/*    padding: 8px 12px;*/
+/*    margin: 0 5px;*/
+/*    border: 1px solid #ddd;*/
+/*    border-radius: 4px;*/
+/*    text-decoration: none;*/
+/*    color: #3498db;*/
+/*    transition: background-color 0.3s ease;*/
+/*}*/
+/*.pagination a:hover {*/
+/*    background-color: #f5f5f5;*/
+/*}*/
+/*.pagination span.active {*/
+/*    background-color: #3498db;*/
+/*    color: white;*/
+/*    border-color: #3498db;*/
+/*}*/

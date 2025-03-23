@@ -10,11 +10,15 @@ urlpatterns = [
 
     path('class/', views.teacher_class, name='teacher_class'),
 
+
+
     path('week_task/', views.teacher_week_task, name='teacher_week_task'),
 
     path('week_task_package_add/', views.teacher_week_task_package_add, name='teacher_week_task_package_add'),
 
     path('week_file_import/', views.teacher_week_file_import, name='teacher_week_file_import'),
+
+
 
     path('question_bank/', views.teacher_question_bank, name='teacher_question_bank'),
 
@@ -26,13 +30,19 @@ urlpatterns = [
 
     path('page_save/<int:material_id>', views.teacher_page_save, name='teacher_page_save'),
 
+
+
     path('exam_bank/', views.teacher_exam_bank, name='teacher_exam_bank'),
 
     path('exam_detail/<int:unit_id>/', views.teacher_exam_detail, name='teacher_exam_detail'),
 
+    path('exam_edit/<int:unit_id>/', views.teacher_exam_edit, name='teacher_exam_edit'),
+
     path('exam_delete/<int:unit_id>/', views.teacher_exam_delete, name='teacher_exam_delete'),
 
     path('exam_management/', views.teacher_exam_management, name='teacher_exam_management'),
+
+
 
     path('forum/', views.teacher_forum, name='teacher_forum'),
 

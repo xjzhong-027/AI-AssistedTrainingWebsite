@@ -26,92 +26,92 @@
                 <input type="text" id="pre_selected_questions" name="pre_selected_questions" hidden>
                 <input type="text" id="pre_page_infos" name="pre_page_infos" hidden>
 
-                <h2>选择题目</h2>
-                {% for main_question in main_questions %}
-                    <div>
-                {#        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">#}
-                {#        <label for="main_{{ main_question.id }}">{{ main_question.question_text }}</label>#}
+            <h2>选择题目</h2>
+            {% for main_question in main_questions %}
+                <div>
+            {#        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">#}
+            {#        <label for="main_{{ main_question.id }}">{{ main_question.question_text }}</label>#}
 {#如果是改错题，只允许选择一整道大题#}
-                        {% if main_question.question_type == 'correction' %}
-                            <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
-                            <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
-                            <label for="main_{{ main_question.id }}">
-                                {% for sub_question in main_question.sub_questions.all %}
-                                    {% for correction in sub_question.corrections.all %}
-                                        {% if correction %}
-                                            <span>{{ sub_question.question_text }} </span>
-                                        {% endif %}
-                                    {% endfor %}
-                                {% endfor %}
-                            </label>
-{#如果是填空题，只允许选择一整道大题#}
-                        {% elif main_question.question_type == 'blank' %}
-                            <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
-                            <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
-                            <label for="main_{{ main_question.id }}">
-                                {% for sub_question in main_question.sub_questions.all %}
-                                    {% for blank in sub_question.blanks.all %}
-                                        {% if blank %}
-                                            {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
-                                                {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
-                                                    {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
-                                                        {% with before=words|custom_before:index after=words|custom_after:index %}
-                                                            {{ before|join:" " }} ___ {{ after|join:" " }}
-                                                        {% endwith %}
-                                                    {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
-                                                        {{ words|join:" " }} ___
-                                                    {% endif %}
-                                                {% endwith %}
-                                            {% endwith %}
-                                        {% endif %}
-                                    {% endfor %}
-                                {% endfor %}
-                            </label>
-{#选择题/连线题/主观题#}
-                        {% else %}
-
-                            <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
+                    {% if main_question.question_type == 'correction' %}
+                        <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
+                        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
+                        <label for="main_{{ main_question.id }}">
                             {% for sub_question in main_question.sub_questions.all %}
-                                {% if sub_question %}
-                                    <div class="subQuestion">
-                                        <input type="checkbox" id="sub_{{ sub_question.id }}" name="questions" value='sub_{{ sub_question.id }}'>
-                                        <label for="sub_{{ sub_question.id }}">
-                                            ({{ forloop.counter }}) {{ sub_question.question_text }} ({{ sub_question.score }})
-
-                                            {#选择题#}
-                                            {% if main_question.question_type == 'choice' %}
-                                                <div class="choice">
-                                                    {% for choice in sub_question.options.all %}
-                                                       {% if choice %}
-                                                           <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                </div>
-                                            {% endif %}
-
-                                        {#连线题#}
-                                            {% if main_question.question_type == 'matching' %}
-                                                <div class="matching">
-                                                    {% for matchingOption in sub_question.matchingOptions.all %}
-                                                        {% if matchingOption %}
-                                                            <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
-
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                </div>
-
-                                            {% endif %}
-
-                                        </label>
-
-                                    </div>
-                                {% else %}
-                                    <p>No sub_questions.</p>
-                                {% endif %}
+                                {% for correction in sub_question.corrections.all %}
+                                    {% if correction %}
+                                        <span>{{ sub_question.question_text }} </span>
+                                    {% endif %}
+                                {% endfor %}
                             {% endfor %}
-                        {% endif %}
-                    </div>
-                {% endfor %}
+                        </label>
+{#如果是填空题，只允许选择一整道大题#}
+                    {% elif main_question.question_type == 'blank' %}
+                        <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
+                        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
+                        <label for="main_{{ main_question.id }}">
+                            {% for sub_question in main_question.sub_questions.all %}
+                                {% for blank in sub_question.blanks.all %}
+                                    {% if blank %}
+                                        {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
+                                            {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
+                                                {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
+                                                    {% with before=words|custom_before:index after=words|custom_after:index %}
+                                                        {{ before|join:" " }} ___ {{ after|join:" " }}
+                                                    {% endwith %}
+                                                {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
+                                                    {{ words|join:" " }} ___
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </label>
+{#选择题/连线题/主观题#}
+                    {% else %}
+
+                        <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
+                        {% for sub_question in main_question.sub_questions.all %}
+                            {% if sub_question %}
+                                <div class="subQuestion">
+                                    <input type="checkbox" id="sub_{{ sub_question.id }}" name="questions" value='sub_{{ sub_question.id }}'>
+                                    <label for="sub_{{ sub_question.id }}">
+                                        ({{ forloop.counter }}) {{ sub_question.question_text }} ({{ sub_question.score }})
+
+                                        {#选择题#}
+                                        {% if main_question.question_type == 'choice' %}
+                                            <div class="choice">
+                                                {% for choice in sub_question.options.all %}
+                                                   {% if choice %}
+                                                       <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+
+                                    {#连线题#}
+                                        {% if main_question.question_type == 'matching' %}
+                                            <div class="matching">
+                                                {% for matchingOption in sub_question.matchingOptions.all %}
+                                                    {% if matchingOption %}
+                                                        <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
+
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+
+                                        {% endif %}
+
+                                    </label>
+
+                                </div>
+                            {% else %}
+                                <p>No sub_questions.</p>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            {% endfor %}
 
 
 {#            <div class="paper_page_info">#}

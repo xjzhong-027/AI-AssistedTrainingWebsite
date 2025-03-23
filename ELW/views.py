@@ -54,6 +54,9 @@ from Account.models import Students, Teachers, Class, Attendance, Course
 def test_page(request):
     return render(request, 'test_page.html')
 
+
+
+# 登录板块
 # 更新用户活跃时间
 @csrf_exempt
 def update_last_activity(request):
@@ -252,6 +255,9 @@ def teacher_index(request):
     return redirect('login')
 
 
+
+
+# 周任务
 def teacher_week_task(request):
     return render(request, 'teacher_side/week_task.html')
 
@@ -585,6 +591,8 @@ def teacher_week_file_import(request):
     form = WordUploadForm()
     return render(request, 'teacher_side/week_file_import.html', {'form': form})
 
+
+
 # 题库管理
 def teacher_question_bank(request):
     if request.session.get('is_login', None):
@@ -652,6 +660,7 @@ def teacher_edit_question(request, sub_id, material_id, question_type):
 
 def teacher_page_create(request, material_id):
     material = get_object_or_404(MediaMaterial, id=material_id)
+    print(f'material_id: {material.id}')
     main_questions = material.main_questions.prefetch_related('sub_questions')
     pre_selected_questions = []
     pre_page_infos = []
@@ -996,11 +1005,7 @@ def teacher_page_save(request, material_id):
                     page_sub_instance.save()
         '''
         # return redirect('teacher_question_bank')
-
-
         # 保存题目到试卷
-
-
         # return redirect('exam_paper_list')  # 重定向到试卷列表页
 
 # 查看素材包
@@ -2416,6 +2421,9 @@ def teacher_course(request):
 def teacher_class(request):
     return render(request, 'teacher_side/class.html')
 
+
+
+# 试卷管理
 def teacher_exam_bank(request):
     if request.session.get('is_login', None):
         year = datetime.datetime.now().year
@@ -2454,6 +2462,11 @@ def teacher_exam_detail(request, unit_id):
     unit = Unit.objects.prefetch_related(
         'paper_pages__page_main_questions__page_sub_questions'
     ).get(id=unit_id)
+    print(f'unit_id: {unit_id}')
+    material = MediaMaterial.objects.get(pk=PageMainQuestion.objects.filter(page=PaperPage.objects.filter(unit=unit)[0])[0].main_question.pk)
+    print(f'material: {material}')
+    print(f'material_id: {material.id}')
+
     try:
         # 获取该 Unit 实例关联的所有 TimeManagement 实例
         time_management = unit.time_management.get(unit=unit)
@@ -2463,6 +2476,35 @@ def teacher_exam_detail(request, unit_id):
         'unit': unit,
         'time_management': time_management,
     })
+
+def teacher_exam_edit(request, unit_id):
+    Unit_instance = Unit.objects.get(id=unit_id)
+    print(f'unit_id: {unit_id}')
+    '''
+    page_instance = PaperPage.objects.filter(unit=Unit_instance)[0]
+    page_main_instance = PageMainQuestion.objects.filter(page=page_instance)[0]
+    main_instance = page_main_instance.main_question
+    print(f'page_instance: {page_instance}')
+    print(f'page_main_instance: {page_main_instance}')
+    print(f'main_instance: {main_instance}')
+    '''
+    material = MediaMaterial.objects.get(pk=PageMainQuestion.objects.filter(page=PaperPage.objects.filter(unit=Unit_instance)[0])[0].main_question.pk)
+    print(f'material: {material}')
+    print(f'material_id: {material.id}')
+    main_questions = material.main_questions.prefetch_related('sub_questions')
+    print(f'main_questions: {main_questions}')
+    pre_selected_questions = []
+    pre_page_infos = []
+    return render(request, 'teacher_side/teacher_exam_edit.html', {
+        # 'unit': Unit_instance,
+        'material': material,
+        'main_questions': main_questions,
+        'pre_selected_questions': pre_selected_questions,
+        'pre_page_infos': pre_page_infos,
+    })
+    # return render(request, 'teacher_side/teacher_exam_edit.html', {
+    #     'unit': Unit_instance,
+    # })
 
 def teacher_exam_delete(request, unit_id):
     Unit.objects.get(id=unit_id).delete()
@@ -2499,6 +2541,10 @@ def teacher_exam_management(request):
             doc_page_func.main_process(text_content)
 
     return render(request, 'teacher_side/exam_management.html', {'form': form})
+
+
+
+
 
 def teacher_forum(request):
     if request.method == 'POST':
