@@ -2,8 +2,9 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 from django import forms
-from Account.models import Teachers,Students
-from accessment.models import MainQuestion,SubQuestion
+from ELW.models import MainQuestion,SubQuestion
+from Account.models import Students, Teachers
+
 
 class Post(models.Model):
     title = models.CharField(max_length=200)
@@ -21,9 +22,9 @@ class Post(models.Model):
     name = models.CharField(max_length=100, null=True, blank=True)  # 帖子显示的名字
     is_announcement = models.BooleanField(default=False)  # 是否与公告
     main_question = models.ForeignKey(MainQuestion, on_delete=models.CASCADE, null=True, blank=True,
-                                     related_name='posts')
+                                      related_name='posts')
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, null=True, blank=True,
-                                       related_name='posts')
+                                      related_name='posts')
 
     def __str__(self):
         return self.title

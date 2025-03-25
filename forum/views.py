@@ -1,11 +1,13 @@
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from .models import Post, Comment,Anonymous
 from .forms import PostForm,CommentForm
-from Account.models import Teachers,Students
+from Account.models import Students, Teachers
+from ELW.models import SubQuestion, MainQuestion, Unit, PaperPage, PageMainQuestion
 import random
 import string
 from .filters import PostFilter
@@ -17,6 +19,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_GET
 from django.http import JsonResponse
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 # Create your views here.
 
 def forum(request):
@@ -117,6 +120,7 @@ def post_new(request):
             if sub_question_id:
                 post.is_question= True
                 post.sub_question_id = sub_question_id
+                post.main_question_id = main_question_id
             post.save()
 
             if form.cleaned_data['is_anonymous']:
@@ -186,15 +190,77 @@ def search_posts(request):
 def question_post(request):
     role = request.session.get('role', 'none')
     username = request.session.get('username')
+    selected_unit_id = request.GET.get('unit', None)
+    selected_page_id = request.GET.get('page', None)
+
+    posts = Post.objects.filter(is_question=True)
+
+    if selected_unit_id:
+        unit = Unit.objects.get(id=selected_unit_id)
+        pages = PaperPage.objects.filter(unit=unit)
+        page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
+        main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+        sub_questions = SubQuestion.objects.filter(
+            selected_sub_questions__page_main_question__in=page_main_questions
+        )
+        posts = posts.filter(
+            Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+        )
+
+    if selected_page_id:
+        page = PaperPage.objects.get(id=selected_page_id)
+        page_main_questions = PageMainQuestion.objects.filter(page=page)
+        main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+        sub_questions = SubQuestion.objects.filter(
+            selected_sub_questions__page_main_question__in=page_main_questions
+        )
+        posts = posts.filter(
+            Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+        )
+
+
     if role == 'student':
-        # 学生只能看到自己隐藏的帖子
-        posts = Post.objects.filter(is_question=True)
-    elif role == 'teacher':
-        posts = Post.objects.filter(is_question=True)
-    else:
-        # 如果用户不是学生或教师，返回空列表或重定向
+        student = Students.objects.get(username=username)
+        class_instance = student.class_instance
+        units = Unit.objects.filter(class_instance=class_instance)
+        pages = PaperPage.objects.filter(unit__in=units)
+        # 获取这些页面下的所有主题和小题
+        page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
+        main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+        sub_questions = SubQuestion.objects.filter(
+            selected_sub_questions__page_main_question__in=page_main_questions
+        )
+        # 筛选与这些主题和小题相关的帖子
+        posts = posts.filter(
+            Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+        )
+
+    elif role != 'teacher':
         posts = Post.objects.none()
-    return render(request, 'forum/question_post.html', {'posts': posts})
+
+
+
+    # 分页功能
+    paginator = Paginator(posts, 10)  # 每页显示 10 条帖子
+    page_number = request.GET.get('page', 1)
+    try:
+        posts = paginator.page(page_number)
+    except PageNotAnInteger:
+        posts = paginator.page(1)
+    except EmptyPage:
+        posts = paginator.page(paginator.num_pages)
+
+    # 获取所有单元和页面，用于前端选择
+    units = Unit.objects.all()
+    pages = PaperPage.objects.all()
+
+    return render(request, 'forum/question_post.html', {
+        'posts': posts,
+        'units': units,
+        'pages': pages,
+        'selected_unit_id': selected_unit_id,
+        'selected_page_id': selected_page_id
+    })
 
 
 def my_post(request):
