@@ -3,12 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ post.title }}</title>
+    <style>
+        body {
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+h1 {
+    color: #2c3e50;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+p {
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+a {
+    color: #4CAF50;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+h2 {
+    color: #2c3e50;
+    margin-top: 30px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.comment {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.comment p {
+    margin-bottom: 10px;
+    font-size: 14px;
+    display: block;
+}
+
+.comment-form {
+    margin-top: 30px;
+}
+
+#show-comment-form {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: block;
+    margin: 20px auto;
+    transition: background-color 0.3s;
+}
+
+#show-comment-form:hover {
+     background-color: #45a049;
+}
+
+#comment-form-container {
+    padding: 20px;
+    margin-top: 20px;
+}
+
+#comment-form button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#comment-form button:hover {
+    background-color: #27ae60;
+}
+
+form {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            accent-color: #4CAF50;
+            display: flex;
+        }
+
+
+.pagination {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.pagination a {
+    margin: 0 5px;
+    padding: 5px 10px;
+    background-color: #f8f9fa;
+    border-radius: 3px;
+}
+
+.pagination a:hover {
+    background-color: #e9ecef;
+}
+
+.back-link {
+    display: block;
+    text-align: center;
+    margin-top: 30px;
+}
+
+.reply-form-container {
+    margin-top: 15px;
+    padding: 10px;
+}
+
+.reply-form button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.reply-form button:hover {
+     background-color: #45a049;
+}
+
+.toggle-replies {
+    background: none;
+    border: none;
+    color: #4CAF50;
+    cursor: pointer;
+    padding: 5px 0;
+}
+
+.toggle-replies:hover {
+    text-decoration: underline;
+}
+    </style>
 </head>
+
 <body>
     <h1>{{ post.title }}</h1>
     <p>{{ post.content }}</p>
-    <p>By: {{ post.name }}</p>
-    <p>发布时间: {{ post.created_at |date:"Y/m/d H:i"}}</p>
+    <p>{{ post.name }} {{ post.created_at |date:"Y/m/d H:i"}}</p>
     {% if request.session.role == 'teacher' or post.author == request.session.username %}
                     <a href="{% url 'forum:post_delete' post.id %}">delete</a>
                     {% endif %}
@@ -37,6 +214,7 @@
             {% csrf_token %}
             {{ form.as_p }}
             <button type="submit">提交评论</button>
+            <button type="button" id="cancel-comment">取消</button>
         </form>
     </div>
     <a href="{% url 'forum:forum' %}">返回论坛</a>
@@ -66,7 +244,9 @@
         document.getElementById('show-comment-form').addEventListener('click', function () {
             document.getElementById('comment-form-container').style.display = 'block';
         });
-
+document.getElementById('cancel-comment').addEventListener('click', function () {
+        document.getElementById('comment-form-container').style.display = 'none';
+    });
         document.getElementById('comment-form').addEventListener('submit', function (event) {
             event.preventDefault();
             var formData = new FormData(this);
@@ -152,6 +332,15 @@
             }
         });
     });
+    document.querySelectorAll('.cancel-reply').forEach(button => {
+    button.addEventListener('click', function() {
+        const formContainer = this.closest('.reply-form-container');
+        if (formContainer) {
+            formContainer.style.display = 'none';
+        }
+    });
+
+});
 </script>
 
 </body>

@@ -14,8 +14,7 @@
 
 <div class="comment">
     <strong>{{ comment.content }}</strong>
-        <p>By: {{ comment.name }}</p>
-    <p>评论时间：{{ comment.created_at |date:"Y/m/d H:i"}}</p>
+        <p>{{ comment.name }} {{ comment.created_at |date:"Y/m/d H:i"}}</p>
 
 
          {% if request.session.role == 'teacher' or comment.author == request.session.username %}
@@ -32,10 +31,9 @@
             {{ form.as_p }}
             <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
             <button type="submit">发送</button>
+            <button type="button" class="cancel-reply">取消</button>
         </form>
     </div>
-</div>
-
 {% if comment.replies.exists %}
      <button class="toggle-replies" data-target="#replies-{{ comment.id }}">加载更多回复</button>
         <ul class="replies" id="replies-{{ comment.id }}" style="display: none;">
@@ -46,6 +44,9 @@
             {% endfor %}
         </ul>
     {% endif %}
+</div>
+
+
 </body>
 </html>
 </html>
