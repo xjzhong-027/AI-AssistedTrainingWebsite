@@ -60,5 +60,5 @@ def split_image_urls(value):
     """
     if value:
         # print(f"url: {[url.strip() for url in value.split(',')]}")
-        return [url.strip() for url in value.split(',')]
+        return [url.strip() for url in value.split(',') if url.strip()]
     return []

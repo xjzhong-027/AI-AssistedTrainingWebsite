@@ -20,6 +20,7 @@ from ELW import models
 from django.contrib import messages
 
 from . import func, pre_page, doc_func, doc_page_func
+from ELW.templatetags.elw_custom_filters import split_image_urls
 
 from .models import (
     MediaMaterial,
@@ -617,15 +618,15 @@ def teacher_question_bank(request):
                 question_type = data.get('question_type')
                 material_id = int(data.get('material_id'))
                 if question_type == 'sub':
-                    sub_id = int(data.get('sub_id'))
+                    id = int(data.get('sub_id'))
                     # 在这里处理接收到的变量
-                    print(f"Received: sub_id: {sub_id}\n material_id: {material_id}")
-                    redirect_url = reverse('teacher_edit_question', args=[sub_id, material_id, question_type])
+                    print(f"Received: sub_id: {id}\n material_id: {material_id}")
+                    redirect_url = reverse('teacher_edit_question', args=[id, material_id, question_type])
 
                 elif question_type == 'main':
-                    main_id = int(data.get('main_id'))
-                    print(f'Received: main_id: {main_id}\n material_id: {material_id}')
-                    redirect_url = reverse('teacher_edit_question', args=[main_id, material_id, question_type])
+                    id = int(data.get('main_id'))
+                    print(f'Received: main_id: {id}\n material_id: {material_id}')
+                    redirect_url = reverse('teacher_edit_question', args=[id, material_id, question_type])
                 # 返回 JSON 响应，包含重定向 URL
                 return JsonResponse({'status': 'success', 'redirect_url': redirect_url})
             except Exception as e:
@@ -652,10 +653,10 @@ def teacher_delete_material(request, material_id):
     media_material.delete()
     return redirect('teacher_question_bank')
 
-def teacher_edit_question(request, sub_id, material_id, question_type):
+def teacher_edit_question(request, id, material_id, question_type):
     if question_type == 'sub':
         media_material = MediaMaterial.objects.get(id=material_id)
-        sub_question = SubQuestion.objects.get(id=sub_id)
+        sub_question = SubQuestion.objects.get(id=id)
         main_question = MainQuestion.objects.get(id=sub_question.main_question_id)
         return render(request, 'teacher_side/edit_question.html', {
             'edit_type': 'sub',
@@ -1031,14 +1032,22 @@ def teacher_page_save(request, material_id):
 # 查看素材包
 def teacher_media_material_detail(request, material_id):
     if request.method == 'POST':
-        images = request.FILES.getlist('sub_images')  # 获取所有上传的文件
+        # images = request.FILES.getlist('sub_images')  # 获取所有上传的文件
         data = request.POST
+        files = request.FILES
         print('data: ', data)
+        print('files: ', files)
+        # print(f'B: {files.getlist("option_image_B")}')
+        # for image in files.getlist("option_image_B"):
+        #     print(f'image: {image}')
         edit_type = request.POST.get('edit_type')
-        if edit_type == 'choice':
+# 小题：选择题/连线题/主观题
+        if data.get('sub_question_id'):
             sub_id = data.get('sub_question_id')
             sub_instance = SubQuestion.objects.get(id=sub_id)
             main_instance = MainQuestion.objects.get(id=sub_instance.main_question_id)
+            material_instance = MediaMaterial.objects.get(id=main_instance.media_material_id)
+            print(f'media_image_url: {material_instance.image_url}')
             sub_question_text = data.get('sub_question_text')
             score = data.get('sub_question_score')
             tips = data.get('sub_question_tips')
@@ -1047,14 +1056,94 @@ def teacher_media_material_detail(request, material_id):
                 answer = data.get('new_sub_question_answer')
             else:
                 answer = data.get('sub_question_answer')
-            option_count = data.get('option_count')
+            image_uuid = material_instance.media_url.split("\\")[-1]
+            print(f'uuid: {image_uuid}')
             sub_instance.question_text = sub_question_text or ''
             sub_instance.tips = tips or ''
             sub_instance.analysis = analysis or ''
             sub_instance.answer = answer
             if score:
                 sub_instance.score = float(score)
+            sub_images = files.getlist('sub_images')
+            if sub_images:
+                sub_urls = ''
+                for sub_image in sub_images:
+                    sub_image_filename = uuid.uuid4().hex
+                    sub_image_file_path = os.path.join(settings.MEDIA_ROOT, 'image', image_uuid, sub_image_filename)
+                    sub_image_url = f'\\media_material\\image\\{image_uuid}\\{sub_image_filename}'
+                    sub_urls = sub_urls + sub_image_url + ','
+                    os.makedirs(os.path.dirname(sub_image_file_path), exist_ok=True)
+                    with open(sub_image_file_path, 'wb+') as destination:
+                        for chunk in sub_image.chunks():
+                            destination.write(chunk)
+                sub_instance.image_url = sub_urls
             sub_instance.save()
+            if edit_type == 'choice':
+                options = sub_instance.options.all()
+                option_count = int(data.get('option_count'))
+                labels = ['A', 'B', 'C', 'D']
+                for i in range(option_count):
+                    option_label = labels[i]
+                    for option_instance in options:
+                        if option_instance.option_label == option_label:
+                            # 更新选项文本
+                            option_instance.option_content = data.get(f'option_{option_label}')
+                            # 更新答案状态
+                            option_instance.is_answer = (option_label in answer)
+                            # 处理图片上传
+                            option_images = files.getlist(f'option_image_{option_label}')
+                            if option_images:  # 只有当有新图片上传时才处理
+                                image_urls = []
+                                choice_urls = ''
+                                for option_image in option_images:
+                                    # 生成存储路径
+                                    # filename = option_image.name
+                                    filename = uuid.uuid4().hex
+                                    image_file_path = os.path.join(settings.MEDIA_ROOT, 'image', image_uuid, filename)
+                                    image_url = f'\\media_material\\image\\{image_uuid}\\{filename}'
+                                    choice_urls = choice_urls + image_url + ','
+                                    os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
+                                    with open(image_file_path, 'wb+') as destination:
+                                        for chunk in option_image.chunks():
+                                            destination.write(chunk)
+                                    image_urls.append(image_url)
+
+                                # 拼接URL字符串，用逗号分隔
+                                # option_instance.image_url = ','.join(image_urls)
+                                option_instance.image_url = choice_urls
+                                print(f'choice_urls: {option_instance.image_url}')
+                            option_instance.save()
+
+
+
+                # options = sub_instance.options.all()
+                # option_count = int(data.get('option_count'))
+                # labels = ['A', 'B', 'C', 'D']
+                # for i in range(option_count):
+                #     option_label = labels[i]
+                #     for option_instance in options:
+                #         if option_instance.option_label == option_label:
+                #             option_instance.option_content = data.get(f'option_{option_label}')
+                #             if option_label in answer:
+                #                 option_instance.is_answer = True
+                #             if f'option_image_{option_label}' not in data:
+                #                 option_images = files.getlist(f'option_image_{option_label}')
+                #                 image_urls = ''
+                #                 for option_image in option_images:
+                #                     image_file_path = os.path.join(
+                #                         f'{settings.MEDIA_ROOT}\\image\\{uuid}\\{option_image}')
+                #                     image_url = os.path.join(
+                #                         f'\\media_material\\image\\{uuid}\\{option_image}')
+                #                     image_urls = image_urls + image_url + ','
+                #                     os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
+                #                     with open(image_file_path, 'wb+') as destination:
+                #                         for chunk in option_image.chunks():
+                #                             destination.write(chunk)
+                #                 option_instance.image_url = image_urls
+                #         option_instance.save()
+
+
+
 
 
 
@@ -2668,7 +2757,7 @@ def teacher_exam_edit(request, unit_id, validation):
             print(f'pre_page_infos: {pre_page_infos}')
             print('-'*20)
 
-            return render(request, 'teacher_side/page_create.html', {
+            return render(request, 'teacher_side/exam_edit.html', {
                 'unit_id': unit_id,
                 'material': material,
                 'main_questions': main_questions,
@@ -2697,47 +2786,10 @@ def teacher_exam_resave(request, unit_id):
         preview_page_infos = json.loads(preview_page_infos_json)
         print('preview_page_infos: ', preview_page_infos)
 
-        # class_id = int(request.POST.get('selected_class'))
-        # order = request.POST.get('week')
-        # title = request.POST.get('title')
-        # type = request.POST.get('selected_type')
-        # if request.POST.get('exam_time'):
-        #     duration = int(request.POST.get('exam_time'))
-        # if request.POST.get('exam_date'):
-        #     exam_date = datetime.date.fromisoformat(request.POST.get('exam_date'))
-        #     start_time = datetime.time.fromisoformat(request.POST.get('start_time'))
-        #     end_time = datetime.time.fromisoformat(request.POST.get('end_time'))
-        #
-        # 创建试卷
-        # class_instance = Class.objects.get(pk=class_id)
-        # unit_instance = Unit.objects.create(
-        #     class_instance=class_instance,
-        #     order=order,
-        #     title=title,
-        #     type=type,
-        # )
-        # unit_instance.save()
         unit_instance = Unit.objects.get(id=unit_id)
         print('unit_instance: ', unit_instance)
         PaperPage.objects.filter(unit=unit_instance).delete()
-        # 如果为考试，则创建时间管理表
-        # if type == 'exam':
-        #     time_management_instance = TimeManagement.objects.create(
-        #         unit=unit_instance,
-        #         duration=duration,
-        #         exam_date=exam_date,
-        #         start_time=start_time,
-        #         end_time=end_time,
-        #     )
-        #     time_management_instance.save()
-        # if type == 'quiz':
-        #     time_management_instance = TimeManagement.objects.create(
-        #         unit=unit_instance,
-        #         week=order,
-        #         duration=duration,
-        #     )
-        #     time_management_instance.save()
-        # 遍历所有待创建页面
+
         for order, preview_data in enumerate(preview_datas):
             can_modify = True if preview_page_infos[order].get('can_modify') == 'true' else False
             limited_time = int(preview_page_infos[order].get('limited_time'))
@@ -2800,7 +2852,7 @@ def teacher_exam_resave(request, unit_id):
                             sub_question=sub_instance,
                         )
                         page_sub_instance.save()
-    return redirect('teacher_exam_bank')
+    return redirect('teacher_exam_detail', unit_id=unit_id)
 
 def teacher_exam_delete(request, unit_id):
     Unit.objects.get(id=unit_id).delete()

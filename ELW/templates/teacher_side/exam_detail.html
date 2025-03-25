@@ -1,81 +1,143 @@
+{% extends 'base.html' %}
 {% load static %}
+{% load elw_custom_filters %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Exam_detail</title>
+{% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/teacher_side/exam_detail.css' %}">
-</head>
-<body>
-<div class="container">
-    {% if unit.paper_pages.all %}
-        <div class="unit_info">
-            <h2>{{ unit.title }}</h2>
-            <p>试卷类型：{{ unit.type }}</p>
-            <p>开放周次： {{ unit.order }}</p>
-            {% if unit.type == 'exam' or unit.type == 'quiz' %}
-                {% if time_management %}
-                    <p>时长限制： {{ time_management.duration }}分钟</p>
-                {% endif %}
-                {% if unit.type == 'exam' %}
-                    <p>开放时间：{{ time_management.exam_date }} -【{{ time_management.start_time }} : {{ time_management.end_time }}】</p>
-                {% endif %}
-            {% endif %}
-        </div>
+{% endblock %}
 
+{% block content %}
+
+{% if unit.paper_pages.all %}
+    <div class="header">
+        <h2>{{ unit.title }}</h2>
+        <p>试卷类型：{{ unit.type }}</p>
+        <p>开放周次： {{ unit.order }}</p>
+        {% if unit.type == 'exam' or unit.type == 'quiz' %}
+            {% if time_management %}
+                <p>时长限制： {{ time_management.duration }}分钟</p>
+            {% endif %}
+            {% if unit.type == 'exam' %}
+                <p>开放时间：{{ time_management.exam_date }} -【{{ time_management.start_time }} : {{ time_management.end_time }}】</p>
+            {% endif %}
+        {% endif %}
+    </div>
+    <div class="main">
         {% for paper_page in unit.paper_pages.all %}
             <div class="paper_page">
                <h2>Page{{ forloop.counter }}</h2>
-                {#展示大题#}
+{#展示大题#}
                 {% if paper_page.page_main_questions.all %}
                     {% for page_main_question in paper_page.page_main_questions.all %}
-                        <div class="page_main_question">
-                            <h3 class="main">{{ forloop.counter }}. {{ page_main_question.main_question.question_text }}</h3>
-                        {#展示小题#}
-                            {% if page_main_question.page_sub_questions.all %}
-                                {% for page_sub_question in page_main_question.page_sub_questions.all %}
-                                    {#改错题#}
-                                    {% if page_main_question.main_question.question_type == 'correction' %}
-                                        <span class='page_sub_question'>{{ page_sub_question.sub_question.question_text }}</span>
-                                    {% else %}
-                                    {#除改错题外的其他类型题目#}
-                                        <div class="page_sub_question">
-                                            <p>({{ forloop.counter }}) {{ page_sub_question.sub_question.question_text }}</p>
-                                            {% if page_sub_question.sub_question.image_url %}
-                                                <img src="{{ page_sub_question.sub_question.image_url.url }}" alt="Image" width="50">
-                                            {% endif %}
 
-                                        {#选择题#}
-                                            {% if page_main_question.main_question.question_type == 'choice' %}
-                                                <div class="choice">
-                                                    {% for choice in page_sub_question.sub_question.options.all %}
-                                                       {% if choice %}
-                                                           <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                </div>
-                                            {% endif %}
-
-                                        {#连线题#}
-                                            {% if page_main_question.main_question.question_type == 'matching' %}
-                                                <div class="matching">
-                                                    {% for matchingOption in page_sub_question.sub_question.matchingOptions.all %}
-                                                        {% if matchingOption %}
-                                                            <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                </div>
-                                            {% endif %}
-
-                                        </div>
-                                    {% endif %}
+                        {% if page_main_question.main_question.question_type == 'text' %}
+                            <h3>
+                            {{ forloop.counter }}. Text.
+                            </h3>
+                            <div>&nbsp;&nbsp;&nbsp;&nbsp;{{ page_main_question.main_question.question_text }}</div>
+                            {% with image_urls=page_main_question.main_question.image_url|split_image_urls %}
+                                {% for url in image_urls %}
+                                    <img class="image" src="{{ url }}" alt="">
                                 {% endfor %}
-                            {% else %}
-                                <p>没有关联的 PageSubQuestion 信息。</p>
-                            {% endif %}
+                            {% endwith %}
+                        {% else %}
 
-                        </div>
+                            <div class="page_main_question">
+                                <h3 class="main">{{ forloop.counter }}. {{ page_main_question.main_question.question_text }}</h3>
+                                <div class="main_images">
+                                    {% with image_urls=page_main_question.main_question.image_url|split_image_urls %}
+                                        {% for url in image_urls %}
+                                            <img class="image" src="{{ url }}" alt="">
+                                        {% endfor %}
+                                    {% endwith %}
+                                </div>
+
+{#展示小题#}
+                                {% if page_main_question.page_sub_questions.all %}
+                                    {% for page_sub_question in page_main_question.page_sub_questions.all %}
+
+
+
+
+{#改错题#}
+                                        {% if page_main_question.main_question.question_type == 'correction' %}
+                                            <span class='page_sub_question'>{{ page_sub_question.sub_question.question_text }}</span>
+{#填空题#}
+                                        {% elif page_main_question.main_question.question_type == 'blank' %}
+
+                                            {% for blank in page_sub_question.sub_question.blanks.all %}
+                                                {% if blank %}
+                                                    {% with words=page_sub_question.sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
+                                                        {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
+                                                            {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
+                                                                {% with before=words|custom_before:index after=words|custom_after:index %}
+                                                                    {{ before|join:" " }} ____ {{ after|join:" " }}
+                                                                {% endwith %}
+                                                            {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
+                                                                <span>{{ words|join:" " }}____</span>
+                                                            {% endif %}
+                                                        {% endwith %}
+                                                    {% endwith %}
+                                                {% endif %}
+                                            {% endfor %}
+
+                                        {% else %}
+    {#选择题/连线题/主观题#}
+                                            <div class="page_sub_question">
+                                                <p>({{ forloop.counter }}) {{ page_sub_question.sub_question.question_text }}</p>
+    {#                                            {% if page_sub_question.sub_question.image_url %}#}
+    {#                                                <img src="{{ page_sub_question.sub_question.image_url.url }}" alt="Image" width="50">#}
+    {#                                            {% endif %}#}
+                                                <div class="sub_images">
+                                                    {% with image_urls=page_sub_question.sub_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
+                                                        {% for url in image_urls %}
+                                                            <img src="{{ url }}" alt="Image {{ forloop.counter }}">
+                                                        {% endfor %}
+                                                    {% endwith %}
+                                                </div>
+
+    {#选择题#}
+                                                {% if page_main_question.main_question.question_type == 'choice' %}
+                                                    <div class="choice">
+                                                        {% for choice in page_sub_question.sub_question.options.all %}
+                                                           {% if choice %}
+                                                               <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
+    {#选择题-选项图片#}
+                                                               {% with image_urls=choice.image_url|split_image_urls %}
+                                                                   {% for url in image_urls %}
+                                                                       <img class="choice_images" src="{{ url }}" alt="">
+                                                                   {% endfor %}
+                                                               {% endwith %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+
+    {#连线题#}
+                                                {% if page_main_question.main_question.question_type == 'matching' %}
+                                                    <div class="matching">
+                                                        {% for matchingOption in page_sub_question.sub_question.matchingOptions.all %}
+                                                            {% if matchingOption %}
+                                                                <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
+                                                               {% with image_urls=matchingOption.image_url|split_image_urls %}
+                                                                   {% for url in image_urls %}
+                                                                       <img class="choice_images" src="{{ url }}" alt="">
+                                                                   {% endfor %}
+                                                               {% endwith %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <p>没有关联的 PageSubQuestion 信息。</p>
+                                {% endif %}
+
+                            </div>
+                        {% endif %}
                     {% endfor %}
                 {% else %}
                     <p>没有关联的 PageMainQuestion 信息。</p>
@@ -83,11 +145,128 @@
             </div>
 
         {% endfor %}
-    {% else %}
-        <p>没有找到与该 Unit 关联的 PaperPage 信息。</p>
-    {% endif %}
+    </div>
+{% else %}
+    <p>没有找到与该 Unit 关联的 PaperPage 信息。</p>
+{% endif %}
 
-</div>
 
-</body>
-</html>
+{% endblock %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{##}
+{#{% load static %}#}
+{##}
+{#<!DOCTYPE html>#}
+{#<html lang="en">#}
+{#<head>#}
+{#    <meta charset="UTF-8">#}
+{#    <title>Exam_detail</title>#}
+{#    <link rel="stylesheet" href="{% static 'css/teacher_side/exam_detail.css' %}">#}
+{#</head>#}
+{#<body>#}
+{#<div class="container">#}
+{#    {% if unit.paper_pages.all %}#}
+{#        <div class="unit_info">#}
+{#            <h2>{{ unit.title }}</h2>#}
+{#            <p>试卷类型：{{ unit.type }}</p>#}
+{#            <p>开放周次： {{ unit.order }}</p>#}
+{#            {% if unit.type == 'exam' or unit.type == 'quiz' %}#}
+{#                {% if time_management %}#}
+{#                    <p>时长限制： {{ time_management.duration }}分钟</p>#}
+{#                {% endif %}#}
+{#                {% if unit.type == 'exam' %}#}
+{#                    <p>开放时间：{{ time_management.exam_date }} -【{{ time_management.start_time }} : {{ time_management.end_time }}】</p>#}
+{#                {% endif %}#}
+{#            {% endif %}#}
+{#        </div>#}
+{##}
+{#        {% for paper_page in unit.paper_pages.all %}#}
+{#            <div class="paper_page">#}
+{#               <h2>Page{{ forloop.counter }}</h2>#}
+{#                展示大题#}
+{#                {% if paper_page.page_main_questions.all %}#}
+{#                    {% for page_main_question in paper_page.page_main_questions.all %}#}
+{#                        <div class="page_main_question">#}
+{#                            <h3 class="main">{{ forloop.counter }}. {{ page_main_question.main_question.question_text }}</h3>#}
+{#                        展示小题#}
+{#                            {% if page_main_question.page_sub_questions.all %}#}
+{#                                {% for page_sub_question in page_main_question.page_sub_questions.all %}#}
+{#                                    改错题#}
+{#                                    {% if page_main_question.main_question.question_type == 'correction' %}#}
+{#                                        <span class='page_sub_question'>{{ page_sub_question.sub_question.question_text }}</span>#}
+{#                                    {% else %}#}
+{#                                    除改错题外的其他类型题目#}
+{#                                        <div class="page_sub_question">#}
+{#                                            <p>({{ forloop.counter }}) {{ page_sub_question.sub_question.question_text }}</p>#}
+{#                                            {% if page_sub_question.sub_question.image_url %}#}
+{#                                                <img src="{{ page_sub_question.sub_question.image_url.url }}" alt="Image" width="50">#}
+{#                                            {% endif %}#}
+{##}
+{#                                        选择题#}
+{#                                            {% if page_main_question.main_question.question_type == 'choice' %}#}
+{#                                                <div class="choice">#}
+{#                                                    {% for choice in page_sub_question.sub_question.options.all %}#}
+{#                                                       {% if choice %}#}
+{#                                                           <p>{{ choice.option_label }}. {{ choice.option_content }}</p>#}
+{#                                                        {% endif %}#}
+{#                                                    {% endfor %}#}
+{#                                                </div>#}
+{#                                            {% endif %}#}
+{##}
+{#                                        连线题#}
+{#                                            {% if page_main_question.main_question.question_type == 'matching' %}#}
+{#                                                <div class="matching">#}
+{#                                                    {% for matchingOption in page_sub_question.sub_question.matchingOptions.all %}#}
+{#                                                        {% if matchingOption %}#}
+{#                                                            <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>#}
+{#                                                        {% endif %}#}
+{#                                                    {% endfor %}#}
+{#                                                </div>#}
+{#                                            {% endif %}#}
+{##}
+{#                                        </div>#}
+{#                                    {% endif %}#}
+{#                                {% endfor %}#}
+{#                            {% else %}#}
+{#                                <p>没有关联的 PageSubQuestion 信息。</p>#}
+{#                            {% endif %}#}
+{##}
+{#                        </div>#}
+{#                    {% endfor %}#}
+{#                {% else %}#}
+{#                    <p>没有关联的 PageMainQuestion 信息。</p>#}
+{#                {% endif %}#}
+{#            </div>#}
+{##}
+{#        {% endfor %}#}
+{#    {% else %}#}
+{#        <p>没有找到与该 Unit 关联的 PaperPage 信息。</p>#}
+{#    {% endif %}#}
+{##}
+{#</div>#}
+{##}
+{#</body>#}
+{#</html>#}

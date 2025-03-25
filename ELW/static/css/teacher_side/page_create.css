@@ -104,7 +104,9 @@ button[type="submit"] {
 button[type="submit"]:hover {
     background-color: #0056b3;
 }
-
+#text {
+    font-weight: normal;
+}
 
 
 
@@ -168,6 +170,8 @@ button[type="submit"]:hover {
     font-size: 14px;
     color: #777;
 }
+
+
 
 
 /*!* 页面信息部分 *!*/

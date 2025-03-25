@@ -21,145 +21,160 @@
             <h2>关联的大题</h2>
             {% for main_question in main_questions %}
                 <div class="main_question">
-                    <h3>
-                        {{ forloop.counter }}.
-                        {{ main_question.question_text }} ({{ main_question.get_question_type_display }})
-                    </h3>
-                   {% with image_urls=main_question.image_url|split_image_urls %}
-                       {% for url in image_urls %}
-                           <img class="image" src="{{ url }}" alt="">
-                       {% endfor %}
-                   {% endwith %}
-                    <span>{{ sub_question.question_text }}</span>
+                    {% if main_question.question_type == 'text' %}
+                        <h3>
+                        {{ forloop.counter }}. Text.
+                        </h3>
+                        <button onclick="edit_main_question({{ main_question.id }}, {{ material.id }})">编辑</button>
+                        <div>&nbsp;&nbsp;&nbsp;&nbsp;{{ main_question.question_text }}</div>
+                        {% with image_urls=main_question.image_url|split_image_urls %}
+                            {% for url in image_urls %}
+                                <img class="image" src="{{ url }}" alt="">
+                            {% endfor %}
+                        {% endwith %}
+                    {% else %}
+
+                        <h3>
+                            {{ forloop.counter }}.
+                            {{ main_question.question_text }} ({{ main_question.get_question_type_display }})
+                        </h3>
+                       {% with image_urls=main_question.image_url|split_image_urls %}
+                           {% for url in image_urls %}
+                               <img class="image" src="{{ url }}" alt="">
+                           {% endfor %}
+                       {% endwith %}
+                        <span>{{ sub_question.question_text }}</span>
 {#改错题#}
-                    {% if main_question.question_type == 'correction' %}
-                        <div class="correction">
-                            <button onclick="edit_main_question({{ main_question.id }}, {{ material.id }})">编辑</button>
-                            {% for sub_question in main_question.sub_questions.all %}
-                                    {% for correction in sub_question.corrections.all %}
-                                        {% if correction %}
-                                            {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
-                                                {% with index=correction.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
-                                                    {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
-                                                        {% with before=words|custom_before:index after=words|custom_after:index %}
-                                                            {{ before|join:" " }} __[{{ correction.type }} : {{ sub_question.answer }}]__ {{ after|join:" " }}
-                                                        {% endwith %}
-                                                    {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
-                                                        {{ words|join:" " }} __[{{ correction.type }} : {{ sub_question.answer }}]__
-                                                    {% endif %}
+                        {% if main_question.question_type == 'correction' %}
+                            <div class="correction">
+                                <button onclick="edit_main_question({{ main_question.id }}, {{ material.id }})">编辑</button>
+                                {% for sub_question in main_question.sub_questions.all %}
+                                        {% for correction in sub_question.corrections.all %}
+                                            {% if correction %}
+                                                {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
+                                                    {% with index=correction.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
+                                                        {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
+                                                            {% with before=words|custom_before:index after=words|custom_after:index %}
+                                                                {{ before|join:" " }} __[{{ correction.type }} : {{ sub_question.answer }}]__ {{ after|join:" " }}
+                                                            {% endwith %}
+                                                        {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
+                                                            {{ words|join:" " }} __[{{ correction.type }} : {{ sub_question.answer }}]__
+                                                        {% endif %}
+                                                    {% endwith %}
                                                 {% endwith %}
-                                            {% endwith %}
-                                        {% endif %}
-                                    {% endfor %}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-{#填空题#}
-                    {% if main_question.question_type == 'blank' %}
-                        <div class="blank">
-                            <button onclick="edit_main_question({{ main_question.id }}, {{ material.id }})">编辑</button>
-                            {% for sub_question in main_question.sub_questions.all %}
-                                    {% for blank in sub_question.blanks.all %}
-                                        {% if blank %}
-                                            {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
-                                                {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
-                                                    {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
-                                                        {% with before=words|custom_before:index after=words|custom_after:index %}
-                                                            {{ before|join:" " }} __{{ sub_question.answer }}__ {{ after|join:" " }}
-                                                        {% endwith %}
-                                                    {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
-                                                        {{ words|join:" " }} __{{ sub_question.answer }}__
-                                                    {% endif %}
-                                                {% endwith %}
-                                            {% endwith %}
-                                        {% endif %}
-                                    {% endfor %}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-
-                    <!-- 小题展示 -->
-                    {% for sub_question in main_question.sub_questions.all %}
-                        {% if sub_question %}
-
-{#改错题/填空题自定义#}
-                                {% if main_question.question_type == 'correction' %}
-                                {% elif main_question.question_type == 'blank' %}
-                                {% else %}
-{#小题题干信息#}
-                                    <div class="sub_info">
-                                        <h4>({{ forloop.counter }}) {{ sub_question.question_text }}
-                                            {% if sub_question.score %}
-                                                ({{ sub_question.score }})
-                                            {% endif %}
-                                        </h4>
-{#小题图片#}
-                                        {% if sub_question.image_url %}
-                                            <div class="image">
-                                                {% with image_urls=sub_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
-                                                    {% for url in image_urls %}
-                                                        <img src="{{ url }}" alt="Image {{ forloop.counter }}">
-                                                    {% endfor %}
-                                                {% endwith %}
-                                            </div>
-                                        {% endif %}
-                                        <button onclick="edit_sub_question({{ sub_question.id }}, {{ material.id }})">编辑</button>
-                                    </div>
-{#选择题#}
-                                    {% if main_question.question_type == 'choice' %}
-                                        {% for choice in sub_question.options.all %}
-                                            <div class="choice">
-                                               {% if choice %}
-                                                   <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
-{#选择题-选项图片#}
-                                                   {% with image_urls=choice.image_url|split_image_urls %}
-                                                       {% for url in image_urls %}
-                                                           <img class="image" src="{{ url }}" alt="">
-                                                       {% endfor %}
-                                                   {% endwith %}
-                                                {% endif %}
-                                            </div>
-                                        {% endfor %}
-                                    {% endif %}
-{#连线题#}
-                                    {% if main_question.question_type == 'matching' %}
-                                        {% for matchingOption in sub_question.matchingOptions.all %}
-                                            {% if matchingOption %}
-                                                <div class="matching">
-                                                    <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
-                                                   {% with image_urls=matchingOption.image_url|split_image_urls %}
-                                                       {% for url in image_urls %}
-                                                           <img class="image" src="{{ url }}" alt="">
-                                                       {% endfor %}
-                                                   {% endwith %}
-                                                </div>
                                             {% endif %}
                                         {% endfor %}
-                                    {% endif %}
-{#答案#}
-                                    <div class="answer">
-                                        <p class="answer">【Answer】: {{ sub_question.answer }}</p>
-                                    </div>
-{#提示#}
-                                    {% if sub_question.tips %}
-                                        <div class="tips">
-                                            <p>【Tips】: {{ sub_question.tips }}</p>
-                                        </div>
-                                    {% endif %}
-{#分析#}
-                                    {% if sub_question.analysis %}
-                                        <div class="analysis">
-                                            <p>【Analysis】: {{ sub_question.analysis }}</p>
-                                        </div>
-                                    {% endif %}
-                                {% endif %}
-
-                        {% else %}
-                            <div class="none">
-                                <p>当前大题暂无小题</p>
+                                {% endfor %}
                             </div>
                         {% endif %}
-                    {% endfor %}
+{#填空题#}
+                        {% if main_question.question_type == 'blank' %}
+                            <div class="blank">
+                                <button onclick="edit_main_question({{ main_question.id }}, {{ material.id }})">编辑</button>
+                                {% for sub_question in main_question.sub_questions.all %}
+                                        {% for blank in sub_question.blanks.all %}
+                                            {% if blank %}
+                                                {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
+                                                    {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
+                                                        {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
+                                                            {% with before=words|custom_before:index after=words|custom_after:index %}
+                                                                {{ before|join:" " }} __{{ sub_question.answer }}__ {{ after|join:" " }}
+                                                            {% endwith %}
+                                                        {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
+                                                            {{ words|join:" " }} __{{ sub_question.answer }}__
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                {% endwith %}
+                                            {% endif %}
+                                        {% endfor %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- 小题展示 -->
+                        {% for sub_question in main_question.sub_questions.all %}
+                            {% if sub_question %}
+
+    {#改错题/填空题自定义#}
+                                    {% if main_question.question_type == 'correction' %}
+                                    {% elif main_question.question_type == 'blank' %}
+                                    {% else %}
+    {#小题题干信息#}
+                                        <div class="sub_info">
+                                            <h4>({{ forloop.counter }}) {{ sub_question.question_text }}
+                                                {% if sub_question.score %}
+                                                    ({{ sub_question.score }})
+                                                {% endif %}
+                                            </h4>
+    {#小题图片#}
+                                            {% if sub_question.image_url %}
+                                                <div class="image">
+                                                    {% with image_urls=sub_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
+                                                        {% for url in image_urls %}
+                                                            <img src="{{ url }}" alt="Image {{ forloop.counter }}">
+                                                        {% endfor %}
+                                                    {% endwith %}
+                                                </div>
+                                            {% endif %}
+                                            <button onclick="edit_sub_question({{ sub_question.id }}, {{ material.id }})">编辑</button>
+                                        </div>
+    {#选择题#}
+                                        {% if main_question.question_type == 'choice' %}
+                                            {% for choice in sub_question.options.all %}
+                                                <div class="choice">
+                                                   {% if choice %}
+                                                       <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
+    {#选择题-选项图片#}
+                                                       {% with image_urls=choice.image_url|split_image_urls %}
+                                                           {% for url in image_urls %}
+                                                               <img class="image" src="{{ url }}" alt="">
+                                                           {% endfor %}
+                                                       {% endwith %}
+                                                    {% endif %}
+                                                </div>
+                                            {% endfor %}
+                                        {% endif %}
+    {#连线题#}
+                                        {% if main_question.question_type == 'matching' %}
+                                            {% for matchingOption in sub_question.matchingOptions.all %}
+                                                {% if matchingOption %}
+                                                    <div class="matching">
+                                                        <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
+                                                       {% with image_urls=matchingOption.image_url|split_image_urls %}
+                                                           {% for url in image_urls %}
+                                                               <img class="image" src="{{ url }}" alt="">
+                                                           {% endfor %}
+                                                       {% endwith %}
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+    {#答案#}
+                                        <div class="answer">
+                                            <p class="answer">【Answer】: {{ sub_question.answer }}</p>
+                                        </div>
+    {#提示#}
+                                        {% if sub_question.tips %}
+                                            <div class="tips">
+                                                <p>【Tips】: {{ sub_question.tips }}</p>
+                                            </div>
+                                        {% endif %}
+    {#分析#}
+                                        {% if sub_question.analysis %}
+                                            <div class="analysis">
+                                                <p>【Analysis】: {{ sub_question.analysis }}</p>
+                                            </div>
+                                        {% endif %}
+                                    {% endif %}
+
+                            {% else %}
+                                <div class="none">
+                                    <p>当前大题暂无小题</p>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+
                 </div>
             {% endfor %}
         </div>

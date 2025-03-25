@@ -67,6 +67,15 @@
                                 {% endfor %}
                             {% endfor %}
                         </label>
+                    {% elif main_question.question_type == 'text' %}
+
+                        <p>{{ forloop.counter }}. </p>
+                        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
+                        <div id="text">
+                            <label for="main_{{ main_question.id }}"><p>{{ main_question.question_text }}</p></label>
+                        </div>
+
+
 {#选择题/连线题/主观题#}
                     {% else %}
 
