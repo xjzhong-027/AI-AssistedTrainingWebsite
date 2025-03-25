@@ -26,6 +26,8 @@ from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.http import HttpResponseBadRequest
+from django.db import models
+from django.db.models import Sum
 
 
 def confirm_info(request):
@@ -118,6 +120,7 @@ def exam_list(request):
     return render(request, 'exam/exam_list.html', {'exams': exams})
 
 def start_exam(request, exam_id):
+
     exam = get_object_or_404(Unit, id=exam_id, type='exam')
     time_management = get_object_or_404(TimeManagement, unit=exam)
 
@@ -232,7 +235,6 @@ def exam_page(request, exam_id, order):
     page_main_questions = PageMainQuestion.objects.filter(page=page)
     main_questions = [pmq.main_question for pmq in page_main_questions]
 
-
     page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
     sub_questions = [psq.sub_question for psq in page_sub_questions]
 
@@ -240,16 +242,7 @@ def exam_page(request, exam_id, order):
 
     random.seed(student_page_record.student_exam_record.user.id)
 
-    # #加载答案（不完善
-    # answers = StudentAnswer.objects.filter(student_page_record=student_page_record)
-    # #answers_dict = {answer.sub_question_id: answer.text for answer in answers}
-    # answers_dict = {str(answer.sub_question_id): answer.text for answer in answers}
-    #
-    # cache_key = f"answers_{student_page_record.id}"
-    # cached_answers = cache.get(cache_key, {})
-    # for sub_question_id, answer_text in cached_answers.items():
-    #     if answer_text:
-    #         answers_dict[sub_question_id] = answer_text
+
     answers_dict = load_answers(student_page_record)
     print(answers_dict)
 
@@ -676,7 +669,10 @@ def save_page(request, exam_id, order):
             print(page_record)
             return next_page(request, exam.id, order)
 
+
+
         return _save_answers_to_cache(request, page_record.id)
+
 
     else:
         return JsonResponse({'message': '请求方法错误'}, status=400)
@@ -701,6 +697,9 @@ def submit_exam(request):
         student_exam_record = get_object_or_404(StudentExamRecord, id=student_exam_record_id)
         unit = student_exam_record.exam
         pages = unit.paper_pages.all()
+        # 获取所有页面记录
+        page_records = StudentPageRecord.objects.filter(student_exam_record=student_exam_record,
+                                                        page__in=pages)
 
         if force_submit:
             for page in pages:
@@ -735,11 +734,33 @@ def submit_exam(request):
             student_exam_record.submitted = True
             student_exam_record.finished_at = timezone.now()
             student_exam_record.save()
+
+            # 批改所有已提交的页面
+            for page_record in page_records:
+                if (student_exam_record.submitted and page_record.submitted
+                        and not page_record.is_graded):
+                    try:
+                        # 调用批改函数
+                        grade_page(page_record)
+                    except Exception as e:
+                        print(f"Error grading page {page_record.page.order}: {e}")
+
+            # 更新考试记录的总分
+            try:
+                total_score = StudentPageRecord.objects.filter(
+                    student_exam_record=student_exam_record,
+                    is_graded=True
+                ).aggregate(Sum('page_score'))['page_score__sum'] or 0
+                student_exam_record.score = total_score
+                student_exam_record.submitted = True
+                student_exam_record.finished_at = timezone.now()
+                student_exam_record.save()
+            except Exception as e:
+                print(f"Error updating exam record score: {e}")
             return exam_result(request)
 
     else:
         return JsonResponse({'message': '请求方法错误', 'status': 'error'}, status=400)
-
 
 
 
@@ -781,8 +802,6 @@ def update_play_count(request):
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
 
-
-
 def exam_result(request):
     # 获取当前登录学生的用户名
     username = request.session.get('username')
@@ -796,3 +815,65 @@ def exam_result(request):
         'exam': exam,
         'student_exam_record': student_exam_record
     })
+
+
+def grade_page(page_record):
+    # 获取学生提交的答案
+    student_answers = StudentAnswer.objects.filter(student_page_record=page_record)
+
+    # 批改答案逻辑
+    total_score = 0
+    feedback = []
+
+    for student_answer in student_answers:
+        sub_question = student_answer.sub_question
+        correct_answer = sub_question.answer  # 假设题目模型中有正确答案字段
+
+        # 根据题型进行不同的批改逻辑
+        if sub_question.main_question.question_type == 'choice':
+            # 选择题批改逻辑
+            if student_answer.text == correct_answer:
+                score = sub_question.score
+            else:
+                score = 0
+            feedback.append(f"第{sub_question.id}题: 你的答案是 {student_answer.text}, 正确答案是 {correct_answer}")
+
+        elif sub_question.main_question.question_type == 'comprehension':
+            # 填空题批改逻辑
+            correct = True
+            for blank in sub_question.blanks.all():
+                student_blank = student_answer.text.split()[blank.index]
+                if student_blank != blank.answer:
+                    correct = False
+                    break
+            if correct:
+                score = sub_question.score
+            else:
+                score = 0
+            feedback.append(f"第{sub_question.id}题: 部分答案可能有误，请检查")
+
+        elif sub_question.main_question.question_type == 'correction':
+            # 改错题批改逻辑
+            correct = True
+            for correction in student_answer.corrections.all():
+                if correction.type != 'none' and (
+                        correction.text != correction.correct_text or correction.index != correction.correct_index):
+                    correct = False
+                    break
+            if correct:
+                score = sub_question.score
+            else:
+                score = 0
+            feedback.append(
+                f"第{sub_question.id}题: 你的改错有 {sub_question.corrections.count() - correct} 处错误")
+
+        # 累加总分
+        total_score += score
+        student_answer.score = score
+        student_answer.save()
+
+    # 保存批改结果
+    page_record.page_score = total_score
+    page_record.feedback = "\n".join(feedback)
+    page_record.is_graded = True
+    page_record.save()
