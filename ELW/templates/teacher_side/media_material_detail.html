@@ -18,31 +18,39 @@
         </div>
 
         <div class="details">
-            <h2>关联的大题</h2>
+            <h2>题包内容</h2>
             {% for main_question in main_questions %}
                 <div class="main_question">
+{#纯文本#}
                     {% if main_question.question_type == 'text' %}
                         <h3>
                         {{ forloop.counter }}. Text.
                         </h3>
-                        <button onclick="edit_main_question({{ main_question.id }}, {{ material.id }})">编辑</button>
-                        <div>&nbsp;&nbsp;&nbsp;&nbsp;{{ main_question.question_text }}</div>
-                        {% with image_urls=main_question.image_url|split_image_urls %}
-                            {% for url in image_urls %}
-                                <img class="image" src="{{ url }}" alt="">
-                            {% endfor %}
-                        {% endwith %}
+                        <div class="image-container">
+                            {% with image_urls=main_question.image_url|split_image_urls %}
+                                {% for url in image_urls %}
+                                    <img class="image" src="{{ url }}" alt="">
+                                {% endfor %}
+                            {% endwith %}
+                        </div>
+                        <div class="text">
+                            <button onclick="edit_main_question({{ main_question.id }}, {{ material.id }})">编辑</button>
+                            <div>&nbsp;&nbsp;&nbsp;&nbsp;{{ main_question.question_text }}</div>
+                        </div>
+
                     {% else %}
 
                         <h3>
                             {{ forloop.counter }}.
                             {{ main_question.question_text }} ({{ main_question.get_question_type_display }})
                         </h3>
-                       {% with image_urls=main_question.image_url|split_image_urls %}
-                           {% for url in image_urls %}
-                               <img class="image" src="{{ url }}" alt="">
-                           {% endfor %}
-                       {% endwith %}
+                        <div class="image-container">
+                           {% with image_urls=main_question.image_url|split_image_urls %}
+                               {% for url in image_urls %}
+                                   <img class="image" src="{{ url }}" alt="">
+                               {% endfor %}
+                           {% endwith %}
+                        </div>
                         <span>{{ sub_question.question_text }}</span>
 {#改错题#}
                         {% if main_question.question_type == 'correction' %}
@@ -108,10 +116,10 @@
                                             </h4>
     {#小题图片#}
                                             {% if sub_question.image_url %}
-                                                <div class="image">
+                                                <div class="image-container">
                                                     {% with image_urls=sub_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
                                                         {% for url in image_urls %}
-                                                            <img src="{{ url }}" alt="Image {{ forloop.counter }}">
+                                                            <img class="image" src="{{ url }}" alt="Image {{ forloop.counter }}">
                                                         {% endfor %}
                                                     {% endwith %}
                                                 </div>
@@ -125,26 +133,30 @@
                                                    {% if choice %}
                                                        <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
     {#选择题-选项图片#}
-                                                       {% with image_urls=choice.image_url|split_image_urls %}
-                                                           {% for url in image_urls %}
-                                                               <img class="image" src="{{ url }}" alt="">
-                                                           {% endfor %}
-                                                       {% endwith %}
+                                                       <div class="image-container">
+                                                           {% with image_urls=choice.image_url|split_image_urls %}
+                                                               {% for url in image_urls %}
+                                                                   <img class="image" src="{{ url }}" alt="">
+                                                               {% endfor %}
+                                                           {% endwith %}
+                                                       </div>
                                                     {% endif %}
                                                 </div>
                                             {% endfor %}
                                         {% endif %}
-    {#连线题#}
+{#连线题#}
                                         {% if main_question.question_type == 'matching' %}
                                             {% for matchingOption in sub_question.matchingOptions.all %}
                                                 {% if matchingOption %}
                                                     <div class="matching">
                                                         <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
-                                                       {% with image_urls=matchingOption.image_url|split_image_urls %}
-                                                           {% for url in image_urls %}
-                                                               <img class="image" src="{{ url }}" alt="">
-                                                           {% endfor %}
-                                                       {% endwith %}
+                                                        <div class="image-container">
+                                                           {% with image_urls=matchingOption.image_url|split_image_urls %}
+                                                               {% for url in image_urls %}
+                                                                   <img class="image" src="{{ url }}" alt="">
+                                                               {% endfor %}
+                                                           {% endwith %}
+                                                        </div>
                                                     </div>
                                                 {% endif %}
                                             {% endfor %}

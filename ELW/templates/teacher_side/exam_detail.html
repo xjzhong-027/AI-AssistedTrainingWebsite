@@ -29,17 +29,17 @@
 {#展示大题#}
                 {% if paper_page.page_main_questions.all %}
                     {% for page_main_question in paper_page.page_main_questions.all %}
-
+{#纯文本#}
                         {% if page_main_question.main_question.question_type == 'text' %}
                             <h3>
                             {{ forloop.counter }}. Text.
                             </h3>
-                            <div>&nbsp;&nbsp;&nbsp;&nbsp;{{ page_main_question.main_question.question_text }}</div>
                             {% with image_urls=page_main_question.main_question.image_url|split_image_urls %}
                                 {% for url in image_urls %}
                                     <img class="image" src="{{ url }}" alt="">
                                 {% endfor %}
                             {% endwith %}
+                            <div>&nbsp;&nbsp;&nbsp;&nbsp;{{ page_main_question.main_question.question_text }}</div>
                         {% else %}
 
                             <div class="page_main_question">
@@ -82,16 +82,13 @@
                                             {% endfor %}
 
                                         {% else %}
-    {#选择题/连线题/主观题#}
+{#选择题/连线题/主观题#}
                                             <div class="page_sub_question">
                                                 <p>({{ forloop.counter }}) {{ page_sub_question.sub_question.question_text }}</p>
-    {#                                            {% if page_sub_question.sub_question.image_url %}#}
-    {#                                                <img src="{{ page_sub_question.sub_question.image_url.url }}" alt="Image" width="50">#}
-    {#                                            {% endif %}#}
                                                 <div class="sub_images">
                                                     {% with image_urls=page_sub_question.sub_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
                                                         {% for url in image_urls %}
-                                                            <img src="{{ url }}" alt="Image {{ forloop.counter }}">
+                                                            <img class="choice_images" src="{{ url }}" alt="Image {{ forloop.counter }}">
                                                         {% endfor %}
                                                     {% endwith %}
                                                 </div>

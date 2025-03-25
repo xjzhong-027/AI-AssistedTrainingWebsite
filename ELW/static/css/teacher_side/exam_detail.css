@@ -1,22 +1,32 @@
 /* exam_detail.css */
 
 /* 全局样式 */
-body {
-    font-family: 'Arial', sans-serif;
-    background-color: #f5f5f5;
-    color: #333;
-    margin: 0;
-    padding: 20px;
-    line-height: 1.6;
-}
+/*body {*/
+/*    font-family: 'Arial', sans-serif;*/
+/*    background-color: #f5f5f5;*/
+/*    color: #333;*/
+/*    margin: 0;*/
+/*    padding: 20px;*/
+/*    line-height: 1.6;*/
+/*}*/
 
-/* 头部样式 */
+/*!* 头部样式 *!*/
+/*.header {*/
+/*    background-color: #ffffff;*/
+/*    padding: 20px;*/
+/*    border-radius: 8px;*/
+/*    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);*/
+/*    margin-bottom: 20px;*/
+/*}*/
+
 .header {
     background-color: #ffffff;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
+    margin: 0 auto 20px; /* 修改为自动居中 */
+    max-width: 1300px; /* 新增最大宽度限制 */
+    width: 100%; /* 确保在小于1300px时占满可用空间 */
 }
 
 .header h2 {
@@ -38,7 +48,7 @@ body {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    max-width: 1000px;
+    max-width: 1300px;
     margin: 0 auto;
 }
 
@@ -81,21 +91,68 @@ body {
     margin-bottom: 15px;
 }
 
-/* 图片通用样式 */
-.image {
-    max-width: 100%;
-    height: auto;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-    margin: 10px 0;
-    display: block;
-}
-
-.main_images, .sub_images {
-    margin: 10px 0;
+/* 图片容器通用样式 */
+.main_images,
+.sub_images,
+.choice_images_container {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 15px;
+    margin: 10px 0;
+    align-items: flex-start;
+}
+
+/* 图片统一样式 */
+.image,
+.choice_images {
+    max-width: 200px;
+    max-height: 200px;
+    width: auto;
+    height: auto;
+    object-fit: contain; /* 保持原始比例 */
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+/* 大题图片容器 */
+.main_images {
+    justify-content: flex-start;
+    padding: 10px 0;
+}
+
+/* 小题图片容器 */
+.sub_images {
+    justify-content: flex-start;
+    padding: 8px 0;
+}
+
+/* 选择题选项图片容器 */
+.choice_images_container {
+    margin-left: 20px;
+    justify-content: flex-start;
+}
+
+/* 图片悬停效果 */
+.image:hover,
+.choice_images:hover {
+    transform: scale(1.02);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .image,
+    .choice_images {
+        max-width: 100%;
+    }
+
+    .main_images,
+    .sub_images,
+    .choice_images_container {
+        gap: 10px;
+    }
 }
 
 /* 小题样式 */
