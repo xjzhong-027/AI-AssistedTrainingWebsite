@@ -1113,41 +1113,6 @@ def teacher_media_material_detail(request, material_id):
                                 option_instance.image_url = choice_urls
                                 print(f'choice_urls: {option_instance.image_url}')
                             option_instance.save()
-
-
-
-                # options = sub_instance.options.all()
-                # option_count = int(data.get('option_count'))
-                # labels = ['A', 'B', 'C', 'D']
-                # for i in range(option_count):
-                #     option_label = labels[i]
-                #     for option_instance in options:
-                #         if option_instance.option_label == option_label:
-                #             option_instance.option_content = data.get(f'option_{option_label}')
-                #             if option_label in answer:
-                #                 option_instance.is_answer = True
-                #             if f'option_image_{option_label}' not in data:
-                #                 option_images = files.getlist(f'option_image_{option_label}')
-                #                 image_urls = ''
-                #                 for option_image in option_images:
-                #                     image_file_path = os.path.join(
-                #                         f'{settings.MEDIA_ROOT}\\image\\{uuid}\\{option_image}')
-                #                     image_url = os.path.join(
-                #                         f'\\media_material\\image\\{uuid}\\{option_image}')
-                #                     image_urls = image_urls + image_url + ','
-                #                     os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
-                #                     with open(image_file_path, 'wb+') as destination:
-                #                         for chunk in option_image.chunks():
-                #                             destination.write(chunk)
-                #                 option_instance.image_url = image_urls
-                #         option_instance.save()
-
-
-
-
-
-
-
     material = get_object_or_404(MediaMaterial, id=material_id)
     main_questions = material.main_questions.all()
     # 获取大题下的小题
