@@ -7,7 +7,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render, HttpResponse, redirect, get_object_or_404
 from django.core.paginator import Paginator, Page
 from django.contrib.auth import logout
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse, HttpResponseNotFound, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from docx import Document
 from django.contrib.auth import login
@@ -56,6 +56,29 @@ from Account.models import Students, Teachers, Class, Attendance, Course
 def test_page(request):
     return render(request, 'test_page.html')
 
+
+def file_iterator(file_path, chunk_size=8192):
+    with open(file_path, 'rb') as f:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
+def download_file(request, filename):
+    file_name = os.path.basename(filename)
+    file_path = os.path.join(settings.MEDIA_ROOT, 'file', file_name)
+    print(f'file_path: {file_path}')
+
+    if not os.path.exists(file_path):
+        return HttpResponse("文件不存在", status=404)
+
+    response = StreamingHttpResponse(file_iterator(file_path))
+    response['Content-Type'] = 'application/octet-stream'
+    response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+    return response
+
+def attachment(request):
+    return render(request, 'index.html')
 
 
 # 登录板块
@@ -120,6 +143,8 @@ def submit_question(request):
         models.TemMediaMaterial.objects.all().delete()
     return redirect('teacher_question_bank')
 '''
+
+
 
 # 登录板块
 def user_login(request):
@@ -654,24 +679,25 @@ def teacher_delete_material(request, material_id):
     return redirect('teacher_question_bank')
 
 def teacher_edit_question(request, id, material_id, question_type):
+    media_material = MediaMaterial.objects.get(id=material_id)
     if question_type == 'sub':
-        media_material = MediaMaterial.objects.get(id=material_id)
+        edit_type = 'sub'
         sub_question = SubQuestion.objects.get(id=id)
         main_question = MainQuestion.objects.get(id=sub_question.main_question_id)
         return render(request, 'teacher_side/edit_question.html', {
-            'edit_type': 'sub',
+            'edit_type': edit_type,
             'media_material': media_material,
             'main_question': main_question,
             'sub_question': sub_question,
         })
     elif question_type == 'main':
-        print(f'edit_main_question')
-        return render(request, 'teacher_side/index.html')
-    # return render(request, 'teacher_side/edit_question.html', {
-    #     'main_question': main_question,
-    #     'sub_question': sub_question,
-    #     'media_material': media_material,
-    # })
+        edit_type = 'main'
+        main_question = MainQuestion.objects.get(id=id)
+        return render(request, 'teacher_side/edit_question.html', {
+            'edit_type': edit_type,
+            'main_question': main_question,
+            'media_material': media_material,
+        })
 
 def teacher_page_create(request, material_id):
     material = get_object_or_404(MediaMaterial, id=material_id)
@@ -1078,6 +1104,7 @@ def teacher_media_material_detail(request, material_id):
                             destination.write(chunk)
                 sub_instance.image_url = sub_urls
             sub_instance.save()
+# 选择题保存逻辑
             if edit_type == 'choice':
                 options = sub_instance.options.all()
                 option_count = int(data.get('option_count'))
@@ -1113,6 +1140,12 @@ def teacher_media_material_detail(request, material_id):
                                 option_instance.image_url = choice_urls
                                 print(f'choice_urls: {option_instance.image_url}')
                             option_instance.save()
+            if edit_type == 'matching':
+                print('matching')
+                matching_option_content = data.get('matching_option_content')
+                matching_option_instance = MatchingOption.objects.get(sub_question=sub_instance)
+                matching_option_instance.option_content = matching_option_content
+                matching_option_instance.save()
     material = get_object_or_404(MediaMaterial, id=material_id)
     main_questions = material.main_questions.all()
     # 获取大题下的小题

@@ -17,7 +17,7 @@
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <fieldset>
-            <legend>大题</legend>
+            <legend>表单输入</legend>
             <div class="type">
                 <label for="question_type">题目类型:</label>
                 <select id="question_type" name="question_type">
@@ -30,11 +30,11 @@
                 </select>
             </div>
             <div class="main">
-                <label for="MainQuestion">大题题干：</label>
+                <label for="MainQuestion">题干：</label>
                 <textarea name="MainQuestion" id="MainQuestion" cols="30" rows="10"></textarea>
             </div>
             <div class="sub">
-                <label for="SubQuestion">小题内容：</label>
+                <label for="SubQuestion">内容：</label>
                 <textarea name="SubQuestion" id="SubQuestion" cols="100" rows="30"></textarea>
             </div>
         </fieldset>

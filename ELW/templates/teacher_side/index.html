@@ -1,44 +1,41 @@
-{#{% load static %}#}
-{##}
-{#<!DOCTYPE html>#}
-{#<html lang="en">#}
-{#<head>#}
-{#    <meta charset="UTF-8">#}
-{#    <meta name="viewport" content="width=device-width, initial-scale=1.0">#}
-{#    <title>英语听力教学网站</title>#}
-{#    <link rel="stylesheet" href="{% static 'css/index2.css' %}">#}
-{##}
-{#</head>#}
-{#<body>#}
-{#<script src="{% static 'js/lastActiveTime.js' %}"></script>#}
-{#    <div class="container">#}
-{#        <aside class="sidebar">#}
-{#            <ul>#}
-{#                <li><a href="{% url 'logout' %}">退出登录</a></li>#}
-{#                <li><a href="{% url 'teacher_course' %}">课程</a></li>#}
-{#                <li><a href="{% url 'teacher_class' %}">班级</a></li>#}
-{#                <li><a href="">周任务</a></li>#}
-{#                <li><a href="{% url 'teacher_question_bank' %}">题库管理</a></li>#}
-{#                <li><a href="{% url 'teacher_exam_bank' %}">任务管理</a></li>#}
-{#                <li><a href="{% url 'teacher_exam_management' %}">考试管理</a></li>#}
-{#                <li><a href="{% url 'teacher_forum' %}">论坛管理</a></li>#}
-{#                <li><a href="{% url 'announce:announcements' %}" class="btn btn-primary mb-4">公告管理</a></li>#}
-{#                <li><a href="{% url 'announce:message_list' %}" class="btn btn-primary mb-4">消息箱</a></li>#}
-{#                <li><a href="updating.html">updating</a></li>#}
-{#            </ul>#}
-{#        </aside>#}
 {% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/index.css' %}">
+{% endblock %}
 {% block content %}
-    <main class="content">
-        <h1>欢迎来到管理界面</h1>
-        <p>点击左侧边栏中的栏目以进行相应操作。</p>
-    </main>
+    <div class="main">
+        <h1>附件下载</h1>
+        <table>
+            <tbody>
+                <tr>
+                    <th>文件</th>
+                    <th>*</th>
+                </tr>
+                <tr>
+                    <td>文件导入模板</td>
+                    <td><button data-filename="模板.docx" onclick="download_file(this)">下载</button></td>
+                </tr>
+                <tr>
+                    <td>周任务文件导入模板（分页）</td>
+                    <td><button data-filename="分页模板.docx" onclick="download_file(this)">下载</button></td>
+                </tr>
+                <tr>
+                    <td>模板说明</td>
+                    <td><button data-filename="说明文件.docx" onclick="download_file(this)">下载</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
 {% endblock %}
 
-
-{#    </div>#}
-{##}
-{##}
-{##}
-{#</body>#}
-{#</html>#}
+{% block extra_script %}
+    <script>
+        function download_file(button) {
+            const filename = button.getAttribute('data-filename');
+            window.location.href = `/teacher/download/${encodeURIComponent(filename)}/`;
+        }
+    </script>
+{% endblock %}

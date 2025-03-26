@@ -6,6 +6,10 @@ urlpatterns = [
 
     path('index/', views.teacher_index, name='teacher_index'),
 
+    path('download/<str:filename>/', views.download_file, name='download_file'),
+
+
+
     path('course/', views.teacher_course, name='teacher_course'),
 
     path('class/', views.teacher_class, name='teacher_class'),

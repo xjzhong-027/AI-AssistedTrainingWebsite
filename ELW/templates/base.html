@@ -25,13 +25,13 @@
 {#                <li><a href="{% url 'teacher_class' %}">班级</a></li>#}
                 <li><a href="{% url 'teacher_week_task'%}">周任务</a></li>
                 <li><a href="{% url 'teacher_question_bank' %}">题库管理</a></li>
-                <li><a href="{% url 'teacher_exam_bank' %}">任务发布</a></li>
+                <li><a href="{% url 'teacher_exam_bank' %}">任务管理</a></li>
                 <li><a href="{% url 'teacher_forum' %}">论坛管理</a></li>
-                <li><a href="{% url 'teacher_exam_management' %}">功能测试</a></li>
+{#                <li><a href="{% url 'teacher_exam_management' %}">功能测试</a></li>#}
                 <li><a href="{% url 'announce:announcements' %}" class="btn btn-primary mb-4">公告管理</a></li>
                 <li><a href="{% url 'announce:message_list' %}" class="btn btn-primary mb-4">消息箱</a></li>
                 <li><a href="{% url 'Query:query' %}" class="btn btn-primary mb-4">检索面板</a></li>
-                <li><a href="updating.html">updating</a></li>
+                <li><a href="{% url 'teacher_index' %}">附件下载</a></li>
             </ul>
         </aside>
 
