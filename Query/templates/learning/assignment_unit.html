@@ -95,7 +95,11 @@
                                 </tbody>
                             </table>
                             <p><strong>单元原始分：</strong>{{ data.exam_initial_score }}</p>
-                            <p><strong>总分：</strong>{{ data.exam_final_score }} ({{ data.exam_initial_score }} * 0.8)</p>
+                            <p><strong>总分：</strong>{{ data.exam_final_score }}
+                                {% if data.is_late %}
+                                    ({{ data.exam_final_score }} = {{ data.exam_initial_score }} * 0.8)
+                                {% endif %}
+                            </p>
                         </td>
                     </tr>
                 {% endfor %}
