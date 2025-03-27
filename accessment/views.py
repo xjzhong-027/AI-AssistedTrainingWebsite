@@ -225,7 +225,7 @@ def exam_page(request, exam_id, order):
         return next_page(request, exam_id, order)
 
     if created:
-        student_page_record.remaining_time = page.limited_time.hour * 3600 + page.limited_time.minute * 60 + page.limited_time.second
+        student_page_record.remaining_time = page.limited_time* 60
         student_page_record.save()
 
     if student_page_record.is_expired:
@@ -247,25 +247,25 @@ def exam_page(request, exam_id, order):
     print(answers_dict)
 
 
-    comprehension_data = {}
+    blank_data = {}
     correction_data = {}
     for main_question in main_questions:
-        if main_question.question_type == 'comprehension': # 处理填空题
-            comprehension_sub_questions = main_question.sub_questions.all().order_by('id')
+        if main_question.question_type == 'blank':  # 处理填空题
+            blank_sub_questions = main_question.sub_questions.all().order_by('id')
             html_parts = []
-            for sub_q in comprehension_sub_questions:
+            for sub_q in blank_sub_questions:
                 blanks = sub_q.blanks.order_by('-index')
                 words = sub_q.question_text.split()
                 for blank in blanks:
                     if 0 <= blank.index < len(words):
                         answer = answers_dict.get(str(sub_q.id), '')
-                        input_html = f'<input type="text" class="blank-input" name="answer_{sub_q.id}" id="answer_{sub_q.id}" value="{answer}"   placeholder="{ sub_q.id }"/>'
+                        input_html = f'<input type="text" class="blank-input" name="answer_{sub_q.id}" id="answer_{sub_q.id}" value="{answer}" placeholder="{sub_q.id}"/>'
                         words.insert(blank.index + 1, input_html)
                 processed_text = ' '.join(words)
                 html_parts.append(processed_text)
             # 合并为连贯段落
             processed_html = ' '.join(html_parts)
-            comprehension_data[main_question.id] = processed_html
+            blank_data[main_question.id] = processed_html
 
         elif main_question.question_type == 'choice': # 选择题乱序
             for sub_question in sub_questions:
@@ -319,7 +319,7 @@ def exam_page(request, exam_id, order):
         'MEDIA_URL': settings.MEDIA_URL,
         'play_records': play_records_dict,
         'remaining_time': student_page_record.remaining_time,
-        'comprehension_data': comprehension_data,
+        'blank_data': blank_data,
         'correction_data':correction_data,
     }
     return render(request, 'exam/exam_page.html', context)
@@ -838,7 +838,7 @@ def grade_page(page_record):
                 score = 0
             feedback.append(f"第{sub_question.id}题: 你的答案是 {student_answer.text}, 正确答案是 {correct_answer}")
 
-        elif sub_question.main_question.question_type == 'comprehension':
+        elif sub_question.main_question.question_type == 'blank':
             # 填空题批改逻辑
             correct = True
             for blank in sub_question.blanks.all():
