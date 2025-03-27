@@ -1,5 +1,5 @@
 {% extends "query_base.html" %}
-
+{% load custom_filters %}
 {% block content %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -17,6 +17,10 @@
         .no-data {
             color: #999;
             font-style: italic;
+        }
+        .highest-score {
+            background-color: #d4edda;
+            font-weight: bold;
         }
     </style>
 
@@ -48,7 +52,8 @@
                     <th>开放周次</th>
                     <th>截止时间</th>
                     <th>完成人数</th>
-                    <th>操作</th>
+                    <th>成绩统计</th>
+                    <th>作答统计</th>
                 </tr>
             </thead>
             <tbody>
@@ -68,6 +73,9 @@
                         </td>
                         <td>{{ data.unit_time_data }}</td>
                         <td><a href="#" class="completed_percentage" data-unit-id="{{ data.unit.id }}">{{ data.completed_count }} / {{ data.total_count }}</a></td>
+                        <td>
+                            <a href="#" class="score_statistic_button btn btn-info btn-sm" data-unit-id="{{ data.unit.id }}">查看详情</a>
+                        </td>
                         <td>
                             <a href="{% url 'Query:unit_statistic' data.unit.id class_instance.id %}" class="btn btn-info btn-sm">查看详情</a>
                         </td>
@@ -92,6 +100,48 @@
                                         <tr>
                                             <td>{{ student.username }}</td>
                                             <td>{{ student.name }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <tr class="score_statistic" data-unit-id="{{ data.unit.id }}" style="display: none;">
+                        <td colspan="8">
+                            <button class="close-detail" type="button" style="float: right; margin-bottom: 10px;">关闭</button>
+                            <p>
+                                <strong>学生成绩统计：</strong>
+                            </p>
+                            <!-- 展示学生成绩 -->
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>学号</th>
+                                        <th>姓名</th>
+                                        {% for page in data.score_statistic.0.page_score %}
+                                            <th>页面{{ forloop.counter }}</th>
+                                        {% endfor %}
+                                        <th>总成绩</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in data.score_statistic %}
+                                        <tr>
+                                            <td><a href="{% url 'Query:assignment_unit' record.user.id %}">{{ record.user.username }}</a></td>
+                                            <td>{{ record.user.name }}</td>
+                                            {% for page in record.page_score %}
+                                                {% if page.page_record.page_score == data.page_highest_scores|get_item:page.page %}
+                                                    <td class="highest-score">{{ page.page_record.page_score }}(*{{ page.page_record.integrity_score }})</td>
+                                                {% else %}
+                                                    <td>{{ page.page_record.page_score }}(*{{ page.page_record.integrity_score }})</td>
+                                                {% endif %}
+                                            {% endfor %}
+                                            {% if record.unit_score == data.highest_unit_score %}
+                                                <td class="highest-score">{{ record.unit_score }}</td>
+                                            {% else %}
+                                                <td>{{ record.unit_score }}</td>
+                                            {% endif %}
                                         </tr>
                                     {% endfor %}
                                 </tbody>
@@ -253,6 +303,32 @@
 
                 // 隐藏当前的tr
                 $(this).closest('.uncompleted_students_info').hide();
+            });
+
+
+            // 显示学生成绩具体情况
+            $('.score_statistic_button').on('click', function(e) {
+                e.preventDefault();
+
+                // 获取当前点击的unit的 ID
+                var unitId = $(this).data('unit-id');
+                console.log("unitId:", unitId)
+
+                // 找到对应的 tr
+                var detailRow = $('.score_statistic[data-unit-id="' + unitId + '"]');
+                console.log("detailRow:", detailRow)
+
+                // 切换显示/隐藏
+                detailRow.toggle();
+
+            });
+
+            // 点击关闭按钮时
+            $('.score_statistic').on('click', '.close-detail', function(e) {
+                e.preventDefault();
+
+                // 隐藏当前的tr
+                $(this).closest('.score_statistic').hide();
             });
 
 

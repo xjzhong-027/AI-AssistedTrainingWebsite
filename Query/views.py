@@ -876,6 +876,34 @@ def class_unit(request, class_id):
 
             # 获取当前单元的成绩记录
             unit_records = StudentExamRecord.objects.filter(user__in=students, exam=unit)
+            # 获取该单元的所有页面
+            pages = PaperPage.objects.filter(unit=unit)
+
+            score_statistic = []
+            if unit_records:
+                # 计算每个页面的最高分
+                page_highest_scores = {}
+                for record in unit_records:
+                    page_score = []
+                    for page in pages:
+                        page_record = StudentPageRecord.objects.filter(student_exam_record=record, page=page).first()
+                        page_score.append({
+                            'page': page, 'page_record': page_record
+                        })
+                        # 更新每个页面的最高分
+                        if page_record and (
+                                page not in page_highest_scores or page_record.page_score > page_highest_scores[
+                            page]):
+                            page_highest_scores[page] = page_record.page_score
+
+                    score_statistic.append({
+                        'user': record.user,
+                        'page_score': page_score,
+                        'unit_score': record.score
+                    })
+                print("page_highest_scores:", page_highest_scores)
+                # 计算总成绩的最高分
+                highest_unit_score = max(record.score for record in unit_records)
 
 
             # 统计当前单元的成绩分布
@@ -914,6 +942,7 @@ def class_unit(request, class_id):
             uncompleted_students_info = Students.objects.filter(id__in=uncompleted_students)
             uncompleted_students_json = serializers.serialize('json', uncompleted_students_info)
 
+
             # 将统计结果添加到单元数据中
             units_data.append({
                 'unit': unit,
@@ -924,6 +953,9 @@ def class_unit(request, class_id):
                     'labels': sorted_labels,
                     'data': sorted_data,
                 },
+                'score_statistic': score_statistic,
+                'page_highest_scores': page_highest_scores,
+                'highest_unit_score': highest_unit_score,
                 'completed_count': len(completed_students),
                 'total_count': len(total_students),
                 'uncompleted_students_info': uncompleted_students_info,
