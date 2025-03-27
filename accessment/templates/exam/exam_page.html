@@ -207,9 +207,9 @@
                 <div class="question" data-main-question-id="{{ main_question.id }}">
                     <h3>{{ main_question.question_text }}</h3>
                 <!-- 填空题 -->
-                {% if main_question.question_type == 'comprehension' %}
-                    <div class="comprehension-paragraph">
-                        {{ comprehension_data|get_item:main_question.id|safe }}
+                {% if main_question.question_type == 'blank' %}
+                    <div class="blank-paragraph">
+                        {{ blank_data|get_item:main_question.id|safe }}
                     </div>
 
                 {% elif main_question.question_type == 'choice' %}
