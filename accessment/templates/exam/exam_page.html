@@ -205,13 +205,13 @@
             <div id="exam-content">
                 {% for main_question in main_questions %}
                 <div class="question" data-main-question-id="{{ main_question.id }}">
-                    <h3>{{ main_question.question_text }}</h3>
+                    <h4>{{ main_question.question_text|safe }}</h4>
+
                 <!-- 填空题 -->
                 {% if main_question.question_type == 'blank' %}
                     <div class="blank-paragraph">
                         {{ blank_data|get_item:main_question.id|safe }}
                     </div>
-
                 {% elif main_question.question_type == 'choice' %}
                     {% for sub_question in sub_questions %}
                     {% if sub_question.main_question == main_question %}
@@ -283,6 +283,24 @@
 
 
     {% endwith %}
+
+                {% elif main_question.question_type == 'comprehension' %}
+                    {% for sub_question in sub_questions %}
+                    {% if sub_question.main_question == main_question %}
+                        <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
+                        <!--主观题 -->
+                       <div class="comprehension">
+                    <!-- 题目列表 -->
+                    <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
+                       <div class="comprehension-answer-input">
+                <!-- 输入框列表 -->
+                    <input type="text" name="answer_{{ sub_question.id }}" id="answer_{{ sub_question.id }}"
+           placeholder="填写答案" value="{{ answers|get_item:sub_question.id|default:"" }}">
+            </div>
+                        </div>
+</div>
+                    {% endif %}
+                 {% endfor %}
 
 
 
@@ -577,6 +595,7 @@ function canModify() {
         // 设置 manual_save 为 false，表示自动保存
         document.querySelector('input[name="manual_save"]').value = "false";
         document.querySelector('input[name="is_manual_submit"]').value = "false";
+
 
         fetch(examForm.action, {
             method: 'POST',
