@@ -722,7 +722,7 @@ def submit_exam(request):
             # 有未提交的页面，返回提示信息
             return JsonResponse({'message': '有未完成的页面，是否仍然交卷？', 'status': 'exam_unfinished', 'unsubmitted_pages': unsubmitted_pages}, status=200)
 
-        elif not unsubmitted_pages and not force_submit:
+        elif not unsubmitted_pages and not force_submit and not finish_submit:
             return JsonResponse({'message': '是否确认交卷？', 'status': 'exam_finished'}, status=200)
 
         if still_submit or finish_submit:
