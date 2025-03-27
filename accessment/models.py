@@ -24,7 +24,7 @@ class StudentPageRecord(models.Model):
     submitted = models.BooleanField(default=False)
     submitted_at = models.DateTimeField(null=True, blank=True)
     is_expired = models.BooleanField(default=False)  # 页面是否已超时
-    remaining_time = models.FloatField(default=0)  # 剩余时间（分钟）
+    remaining_time = models.FloatField(default=0,null=True, blank=True)  # 剩余时间（分钟）
     integrity_score = models.DecimalField(verbose_name='诚信分', max_digits=2, decimal_places=1, default=1, validators=[
         MinValueValidator(0),  # 最小值为0
         MaxValueValidator(1)  # 最大值为1

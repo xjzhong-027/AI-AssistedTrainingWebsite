@@ -181,7 +181,6 @@ def load_answers(student_page_record):
                     answers_dict[int(sub_question_id)] = json.loads(answer_text)
                 else:
                     answers_dict[int(sub_question_id)] = answer_text
-        print(answers_dict)
         return answers_dict
 
     else:
@@ -200,7 +199,6 @@ def load_answers(student_page_record):
                 })
             else:
                 answers_dict[sub_question_id] = answer.text
-            print(answers_dict)
 
         # 更新缓存
         cache.set(cache_key, answers_dict, timeout=600)
@@ -225,8 +223,12 @@ def exam_page(request, exam_id, order):
         return next_page(request, exam_id, order)
 
     if created:
-        student_page_record.remaining_time = page.limited_time* 60
+        if page.limited_time > 0:
+            student_page_record.remaining_time = page.limited_time* 60
+        else:
+            student_page_record.remaining_time = None
         student_page_record.save()
+
 
     if student_page_record.is_expired:
         messages.error(request, "页面已超时，无法继续答题。")
@@ -244,7 +246,6 @@ def exam_page(request, exam_id, order):
 
 
     answers_dict = load_answers(student_page_record)
-    print(answers_dict)
 
 
     blank_data = {}
@@ -334,7 +335,7 @@ def update_remaining_time(request, page_record_id):
 
         student_page_record = get_object_or_404(StudentPageRecord, id=page_record_id)
         student_page_record.remaining_time = remaining_time
-        if student_page_record.remaining_time <= 0:
+        if student_page_record.remaining_time and student_page_record.remaining_time<= 0:
             student_page_record.is_expired = True
         student_page_record.save()
 
@@ -551,8 +552,7 @@ def _update_cache(page_record):
             cached_answers[sub_question_id] = json.dumps(corrections)
         else:
             cached_answers[sub_question_id] = answer.text
-    print(cached_answers)
-    print('save')
+
 
     # 更新缓存
     cache.set(cache_key, cached_answers, timeout=600)
@@ -597,7 +597,6 @@ def _save_answers_to_database(page_record_id):
     # 更新缓存
     page_record = StudentPageRecord.objects.get(id=page_record_id)
     _update_cache(page_record)
-    print(cached_answers)
     return JsonResponse({'message': '已保存'})
 
 
@@ -605,14 +604,14 @@ def _save_answers_to_database(page_record_id):
 def save_page(request, exam_id, order):
     if request.method == 'POST':
         exam = get_object_or_404(Unit, id=exam_id, type='exam')
-
-
         current_page = get_object_or_404(PaperPage, unit=exam, order=order)
         username = request.session.get('username')
         student = get_object_or_404(Students, username=username)
         student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam=exam)
         page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=current_page)
-        page_main_questions = PageMainQuestion.objects.filter(page=current_page)
+
+        page_main_questions = PageMainQuestion.objects.filter(page=current_page).exclude(
+            main_question__question_type='text')
         main_questions = [pmq.main_question for pmq in page_main_questions]
 
         page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
@@ -624,31 +623,56 @@ def save_page(request, exam_id, order):
             text__isnull=True
         ).exclude(
             text=''
-        ).values_list('sub_question_id', flat=True)
+        ).values_list(
+            'sub_question_id', flat=True
+        )
 
-        # 获取未提交的小题
-        unsubmitted_sub_questions = SubQuestion.objects.filter(id__in=[sq.id for sq in sub_questions]).exclude(id__in=submitted_sub_question_ids)
+        #检查是否有题目未完成
+        unsubmitted_main_questions = []
 
-        # 获取 POST 数据中的标志
+        # 特殊处理改错题
+        for main_question in main_questions:
+            if main_question.question_type == 'correction':
+                # 改错题任意小题有答案，就视为完成
+                sub_questions_for_main = [psq.sub_question for psq in page_sub_questions if
+                                          psq.page_main_question.main_question == main_question]
+                if not any(sq.id in submitted_sub_question_ids for sq in sub_questions_for_main):
+                    unsubmitted_main_questions.append(main_question)
+            else:
+                sub_questions_for_main = [psq.sub_question for psq in page_sub_questions if
+                                          psq.page_main_question.main_question == main_question]
+                unsubmitted_sub_questions_for_main = [
+                    sq for sq in sub_questions_for_main if sq.id not in submitted_sub_question_ids
+                ]
+                if unsubmitted_sub_questions_for_main:
+                    unsubmitted_main_questions.append(main_question)
+        print(f"if?{unsubmitted_main_questions}")
         manual_save = request.POST.get('manual_save', 'false').lower() == 'true'
         is_manual_submit = request.POST.get('is_manual_submit', 'false').lower() == 'true'
         force_submit = request.POST.get('force_submit', 'false').lower() == 'true'
         saved = request.POST.get('saved', 'false').lower() == 'true'
 
         # 保存答案到缓存和数据库
-        if manual_save:
+        if not manual_save and not is_manual_submit:  # 自动保存
+            _save_answers_to_cache(request, page_record.id)
+        if manual_save and not is_manual_submit: #手动保存
             _save_answers_to_cache(request, page_record.id)
             _save_answers_to_database(page_record.id)
-        elif is_manual_submit:
+            if current_page.can_modify:
+                if not unsubmitted_main_questions:
+                    page_record.submitted = True
+                    page_record.save()
+
+        if is_manual_submit:
             _save_answers_to_cache(request, page_record.id)
             _save_answers_to_database(page_record.id)
             if not current_page.can_modify:  # 不可修改的页面
-                if unsubmitted_sub_questions.exists():
+                if unsubmitted_main_questions:
                     return JsonResponse({'message': '有未完成的题目，是否仍然提交？', 'status': 'unfinished'}, status=200)
                 else:
                     return JsonResponse({'message': '是否确认提交？', 'status': 'finished'}, status=200)
             elif current_page.can_modify:  # 可修改的页面
-                if unsubmitted_sub_questions.exists():
+                if unsubmitted_main_questions:
                     page_record.submitted = False
                     page_record.save()
                     return JsonResponse({'message': '答案保存成功', 'status': 'saved'}, status=200)
@@ -666,8 +690,11 @@ def save_page(request, exam_id, order):
             page_record.submitted = True
             page_record.submitted_at = timezone.now()
             page_record.save()
-            print(page_record)
             return next_page(request, exam.id, order)
+        print(is_manual_submit)
+        print(manual_save)
+        print(force_submit)
+        print(saved)
 
 
 
