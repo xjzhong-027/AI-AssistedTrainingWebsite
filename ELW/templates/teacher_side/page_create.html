@@ -29,8 +29,6 @@
             <h2>选择题目</h2>
             {% for main_question in main_questions %}
                 <div>
-            {#        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">#}
-            {#        <label for="main_{{ main_question.id }}">{{ main_question.question_text }}</label>#}
 {#如果是改错题，只允许选择一整道大题#}
                     {% if main_question.question_type == 'correction' %}
                         <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>

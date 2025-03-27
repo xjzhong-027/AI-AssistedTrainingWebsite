@@ -29,8 +29,6 @@
             <h2>选择题目</h2>
             {% for main_question in main_questions %}
                 <div>
-            {#        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">#}
-            {#        <label for="main_{{ main_question.id }}">{{ main_question.question_text }}</label>#}
 {#如果是改错题，只允许选择一整道大题#}
                     {% if main_question.question_type == 'correction' %}
                         <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
@@ -67,6 +65,13 @@
                                 {% endfor %}
                             {% endfor %}
                         </label>
+                    {% elif main_question.question_type == 'text' %}
+                        <p>{{ forloop.counter }}. </p>
+                        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
+                        <div id="text">
+                            <label for="main_{{ main_question.id }}"><p>{{ main_question.question_text }}</p></label>
+                        </div>
+
 {#选择题/连线题/主观题#}
                     {% else %}
 
@@ -113,21 +118,6 @@
                 </div>
             {% endfor %}
 
-
-{#            <div class="paper_page_info">#}
-{#                <h3>页面信息</h3>#}
-{#                <p>默认页面无时长限制且允许返回修改答案！</p>#}
-{#                <p>#}
-{#                    <label for="can_modify">是否允许返回页面修改答案</label>#}
-{#                    <input type="checkbox" name="can_modify" id="can_modify" value="true">#}
-{##}
-{#                </p>#}
-{#                <p>#}
-{#                    <label for="limited_time">页面时长限制： </label>#}
-{#                    <input type="time" name="limited_time" id="limited_time"><span>（小时：分钟）</span>#}
-{#                </p>#}
-{##}
-{#            </div>#}
             <div class="paper_page_info">
                 <h3>页面信息</h3><span>(默认页面无时长限制且允许返回修改答案)</span>
             {#    <p>默认页面无时长限制且允许返回修改答案！</p>#}
@@ -146,7 +136,6 @@
             <button type="submit" name="add_page">添加页面</button>
 
         </div>
-
 
 
 

@@ -1268,15 +1268,21 @@ def teacher_task_package_add(request):
                 media_url=media_url,
                 image_url=image_urls,
             )
-            print('new_task_package', new_task_package)
-            id = new_task_package.id
-            params = {'task_package_id': id}
-            query_string = urlencode(params)
-            url = reverse('question_integration')
-            return HttpResponseRedirect(f"{url}?{query_string}")
-
-
-
+        else:
+            new_task_package = models.MediaMaterial.objects.create(
+                title=request.POST.get('title'),
+                theme=request.POST.get('theme'),
+                abstract=request.POST.get('abstract'),
+                keywords=request.POST.get('keywords'),
+                transcript=request.POST.get('transcript'),
+                media_url=media_url,
+            )
+        print('new_task_package', new_task_package)
+        id = new_task_package.id
+        params = {'task_package_id': id}
+        query_string = urlencode(params)
+        url = reverse('question_integration')
+        return HttpResponseRedirect(f"{url}?{query_string}")
     # 表单无数据，为初次跳转网页
     print('first fetch at task_package_add.html')
     # form = UploadMediaForm()
