@@ -70,13 +70,15 @@
             </div>
         </div>
 
-     <!-- 播放器 -->
+    <div class="container">
+         <!-- 播放器 -->
+    <div class="video-container">
 {% for main_question in main_questions %}
-<div class="question" data-main-question-id="{{ main_question.id }}">
+<div class="media" data-main-question-id="{{ main_question.id }}">
     {% if main_question.media_material %}
         <div class="media-player">
             <video id="media-video_{{ main_question.id }}" width="640" height="360">
-                <source src="{{ MEDIA_URL }}{{ main_question.media_material.media_url }}" type="video/mp4">
+                <source src="}{{ main_question.media_material.media_url }}" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
             <button id="play-button_{{ main_question.id }}">Play</button>
@@ -87,116 +89,15 @@
             <p>Current plays: <span id="play_count_{{ main_question.id }}">{{ play_records|get_item:main_question.id|default:"0" }}</span></p>
         </div>
     {% endif %}
-{% if main_question.image_url %}
-        <div class="image">
-        <img src="{{ main_question.image_url }}" alt="Question Image">
-             </div>
-    {% endif %}
+
 </div>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const videoId = "{{ main_question.id }}";
-        const studentExamRecordId = "{{ student_exam_record.id }}";
-        const mainQuestionId = "{{ main_question.id }}";
-        const mediaMaterialId = "{{ main_question.media_material.id }}";
-        const maxPlays = "{{ main_question.maximum_play }}"; // 获取最大播放次数
-        const allowPause = "{{ main_question.allow_pause }}" === "True"; // 检查是否允许暂停
 
-        const video = document.getElementById(`media-video_${videoId}`);
-        const playButton = document.getElementById(`play-button_${videoId}`);
-        const pauseButton = document.getElementById(`pause-button_${videoId}`);
-        const playCountSpan = document.getElementById(`play_count_${videoId}`);
-
-        // 如果不允许暂停，禁用暂停按钮
-        if (!allowPause && pauseButton) {
-            pauseButton.style.display = "none"; // 隐藏暂停按钮
-        }
-
-        // 检查当前播放次数是否达到最大值
-        const currentPlayCount = parseInt(playCountSpan.textContent, 10);
-        if (currentPlayCount >= maxPlays) {
-            pauseButton.disabled = true;
-            playButton.disabled = true;
-            playButton.textContent = "Cannot play anymore";
-        }
-
-        playButton.addEventListener("click", () => {
-            // 再次检查播放次数是否达到最大值
-            const currentPlayCount = parseInt(playCountSpan.textContent, 10);
-            if (currentPlayCount >= maxPlays) {
-                alert("Maximum play count reached. Cannot play anymore.");
-                return; // 阻止播放
-            }
-
-            if (video.paused) {
-                video.play();
-                if (pauseButton) {
-                    pauseButton.disabled = false;
-                }
-                playButton.disabled = true;
-            }
-        });
-
-        if (pauseButton) {
-            pauseButton.addEventListener("click", () => {
-                if (!video.paused) {
-                    video.pause();
-                    playButton.disabled = false;
-                    pauseButton.disabled = true;
-                }
-            });
-        }
-
-        video.addEventListener("ended", () => {
-            const currentPlayCount = parseInt(playCountSpan.textContent, 10);
-            playCountSpan.textContent = currentPlayCount + 1;
-
-            fetch("{% url 'accessment:update_play_count' %}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": "{{ csrf_token }}",
-                },
-                body: JSON.stringify({
-                    student_exam_record_id: studentExamRecordId,
-                    main_question_id: mainQuestionId,
-                    media_material_id: mediaMaterialId,
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log("Play count updated successfully!");
-                } else {
-                    console.error("Failed to update play count:", data.message);
-                }
-
-                // 检查是否达到最大播放次数
-                const updatedPlayCount = parseInt(playCountSpan.textContent, 10);
-                if (updatedPlayCount >= maxPlays) {
-                    playButton.disabled = true; // 禁用播放按钮
-                    playButton.textContent = "Cannot play anymore"; // 提示用户
-                    if (pauseButton) {
-                        pauseButton.disabled = true;
-                    }
-                } else {
-                    // 恢复按钮状态
-                    playButton.disabled = false; // 启用播放按钮
-                    if (pauseButton) {
-                        pauseButton.disabled = true; // 用暂停按钮
-                    }
-                }
-            })
-            .catch(error => {
-                console.error("Error updating play count:", error);
-            });
-        });
-    });
-</script>
 {% endfor %}
+    </div>
 
 
     <!-- 页面 -->
+    <div class="question-container">
         <form id="save-answers-form" method="post" action="{% url 'accessment:save_page' exam.id order %}">
             {% csrf_token %}
             <input type="hidden" name="page_record_id" value="{{ current_page_record_id }}">
@@ -206,7 +107,13 @@
                 {% for main_question in main_questions %}
                 <div class="question" data-main-question-id="{{ main_question.id }}">
                     <h4>{{ main_question.question_text|safe }}</h4>
-
+{% if main_question.image_url %}
+        <div class="image">
+        {% for image_path in main_question.image_url|split:"," %}
+                    <img src="{{ image_path }}" alt="Question Image" width="640" height="360">
+                {% endfor %}
+             </div>
+    {% endif %}
                 <!-- 填空题 -->
                 {% if main_question.question_type == 'blank' %}
                     <div class="blank-paragraph">
@@ -214,9 +121,16 @@
                     </div>
                 {% elif main_question.question_type == 'choice' %}
                     {% for sub_question in sub_questions %}
-                    {% if sub_question.main_question == main_question %}
+                    {% if sub_question.mainquestion == main_question %}
                     <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
                     <!-- 选择题 -->
+                    {% if sub_question.image_url %}
+                    <div class="questionimage">
+                    {% for image_path in sub_question.image_url|split:"," %}
+                            <img src="{{ image_path }}" alt="Sub-question Image">
+                        {% endfor %}
+                    </div>
+                {% endif %}
                     <div class="choices">
                         <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
                         {% for option in sub_question.shuffled_options %}
@@ -224,6 +138,14 @@
                             <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.option_label }}"
                                 {% if answers|get_item:sub_question.id == option.option_label %} checked {% endif %}>
                             {{ option.option_label }}. {{ option.option_content }}
+                        {% if option.image_url %}
+                            <div class="option-image">
+                                {% for image_path in option.image_url|split:"," %}
+                                    <img src="{{ image_path }}" alt="Option Image">
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
                         </label>
                     {% endfor %}
                     </div>
@@ -234,6 +156,13 @@
                 {% for sub_question in sub_questions %}
                     {% if sub_question.main_question == main_question %}
                         <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
+                        {% if sub_question.image_url %}
+                    <div class="questionimage">
+                        {% for image_path in sub_question.image_url|split:"," %}
+                            <img src="{{ image_path }}" alt="Sub-question Image" width="320" height="180">
+                        {% endfor %}
+                    </div>
+                {% endif %}
                         <!--连线题 -->
                        <div class="matching">
                        <div class="left-item">
@@ -244,6 +173,13 @@
                     {% for option in sub_question.matchingOptions.all %}
                         <div class="option" id="option-{{ option.id }}">
                             {{ option.option_label }}. {{ option.option_content }}
+                        {% if option.image_url %}
+                            <div class="option-image">
+                                {% for image_path in option.image_url|split:"," %}
+                                    <img src="{{ image_path }}" alt="Option Image" width="320" height="180">
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                         </div>
                     {% endfor %}
                 </div>
@@ -289,6 +225,11 @@
                     {% if sub_question.main_question == main_question %}
                         <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
                         <!--主观题 -->
+                            {% if sub_question.image_url %}
+                    <div class="questionimage">
+                        <img src="{{ sub_question.image_url }}" alt="Sub-question Image" width="320" height="180">
+                    </div>
+                {% endif %}
                        <div class="comprehension">
                     <!-- 题目列表 -->
                     <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
@@ -313,6 +254,11 @@
 
     <!-- 页面底部 -->
 <div id="page-footer">
+       <div clas="lastpage">
+        {% if is_last_page %}
+        <p>The last page</p>
+        {% endif %}
+    </div>
     <!-- 页面倒计时 -->
     <div id="page-timer">
         <span id="page-time-remaining">{{ remaining_time }}</span>
@@ -324,11 +270,9 @@
     </div>
 </div>
         </form>
+    </div>
 
-    <!-- 下一页显示 -->
-        {% if is_last_page %}
-        <p>已经是最后一页了。</p>
-        {% endif %}
+    </div>
 
     <!-- 有未完成的题目，是否仍然提交？-->
         <div id="unfinishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
@@ -382,6 +326,8 @@
                 </div>
             </div>
         </div>
+
+
     <!-- 页面倒计时-->
     <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -635,7 +581,107 @@ function canModify() {
         };
     });
 </script>
+<!-- 视频播放 -->
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const videoId = "{{ main_question.id }}";
+        const studentExamRecordId = "{{ student_exam_record.id }}";
+        const mainQuestionId = "{{ main_question.id }}";
+        const mediaMaterialId = "{{ main_question.media_material.id }}";
+        const maxPlays = "{{ main_question.maximum_play }}"; // 获取最大播放次数
+        const allowPause = "{{ main_question.allow_pause }}" === "True"; // 检查是否允许暂停
 
+        const video = document.getElementById(`media-video_${videoId}`);
+        const playButton = document.getElementById(`play-button_${videoId}`);
+        const pauseButton = document.getElementById(`pause-button_${videoId}`);
+        const playCountSpan = document.getElementById(`play_count_${videoId}`);
+
+        // 如果不允许暂停，禁用暂停按钮
+        if (!allowPause && pauseButton) {
+            pauseButton.style.display = "none"; // 隐藏暂停按钮
+        }
+
+        // 检查当前播放次数是否达到最大值
+        const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+        if (currentPlayCount >= maxPlays) {
+            pauseButton.disabled = true;
+            playButton.disabled = true;
+            playButton.textContent = "Cannot play anymore";
+        }
+
+        playButton.addEventListener("click", () => {
+            // 再次检查播放次数是否达到最大值
+            const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+            if (currentPlayCount >= maxPlays) {
+                alert("Maximum play count reached. Cannot play anymore.");
+                return; // 阻止播放
+            }
+
+            if (video.paused) {
+                video.play();
+                if (pauseButton) {
+                    pauseButton.disabled = false;
+                }
+                playButton.disabled = true;
+            }
+        });
+
+        if (pauseButton) {
+            pauseButton.addEventListener("click", () => {
+                if (!video.paused) {
+                    video.pause();
+                    playButton.disabled = false;
+                    pauseButton.disabled = true;
+                }
+            });
+        }
+
+        video.addEventListener("ended", () => {
+            const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+            playCountSpan.textContent = currentPlayCount + 1;
+
+            fetch("{% url 'accessment:update_play_count' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}",
+                },
+                body: JSON.stringify({
+                    student_exam_record_id: studentExamRecordId,
+                    main_question_id: mainQuestionId,
+                    media_material_id: mediaMaterialId,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("Play count updated successfully!");
+                } else {
+                    console.error("Failed to update play count:", data.message);
+                }
+
+                // 检查是否达到最大播放次数
+                const updatedPlayCount = parseInt(playCountSpan.textContent, 10);
+                if (updatedPlayCount >= maxPlays) {
+                    playButton.disabled = true; // 禁用播放按钮
+                    playButton.textContent = "Cannot play anymore"; // 提示用户
+                    if (pauseButton) {
+                        pauseButton.disabled = true;
+                    }
+                } else {
+                    // 恢复按钮状态
+                    playButton.disabled = false; // 启用播放按钮
+                    if (pauseButton) {
+                        pauseButton.disabled = true; // 用暂停按钮
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("Error updating play count:", error);
+            });
+        });
+    });
+</script>
         <!-- 页面导航 -->
         <script>
             document.addEventListener('DOMContentLoaded', function () {
