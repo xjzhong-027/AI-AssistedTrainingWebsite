@@ -6,30 +6,63 @@ body {
     color: #333;
 }
 
-
-#exam-content {
-    max-width: 1000px;
-    margin: 20px auto 60px;
+/* 主容器样式 */
+.container {
+    display: flex;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
     padding: 20px;
-    background-color: #fff;
-    border-radius: 8px;
+}
+
+/* 视频区域样式 */
+.video-container {
+    width: 30%;
+    padding-right: 20px;
+}
+
+.media {
+    margin-bottom: 100px;
+
+}
+
+.media-player {
+    width: 100%;
+    text-align: center;
+}
+
+.media-player video {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-/* 标题样式 */
-h3 {
-    margin-top: 0;
-    font-size: 1.5em;
-    color: #2c3e50;
+.media-player p {
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: #9b59b6;
 }
 
-/* 问题样式 */
+/* 题目区域样式 */
+.question-container {
+    width: 70%;
+}
+
+#exam-content {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 150px;
+}
+
 .question {
-    margin-bottom: 20px;
+    margin-top: 20px;
 }
 
 .sub-question {
-    margin-bottom: 10px;
+    margin-bottom: 20px;
 }
 
 .sub-question p {
@@ -46,25 +79,6 @@ textarea {
     border: 1px solid #ccc;
     border-radius: 4px;
     resize: vertical;
-}
-
-/* 视频播放器样式 */
-.media-player {
-    margin: 10px 0;
-    text-align: center;
-}
-
-.media-player video {
-    max-width: 100%;
-    height: auto;
-    border-radius: 4px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.media-player p {
-    margin-top: 5px;
-    font-size: 0.9em;
-    color: #9b59b6;
 }
 
 /* 按钮样式 */
@@ -95,162 +109,6 @@ p {
     margin: 5px 0;
 }
 
-.nav-circle {
-            width: 20px;
-            height: 20px;
-            background-color: #ccc;
-            border-radius: 50%;
-            display: inline-block;
-            margin: 5px;
-            cursor: pointer;
-        }
-.nav-circle.disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-}
-
-.nav-circle.active {
-            background-color: #ff9292;
-            /* 当前页面红色 */
-        }
-
-
-.question {
-            margin-top: 20px;
-        }
-
-.sub-question {
-            margin-left: 20px;
-        }
-
-        /* 视频播放器样式 */
-.media-player {
-    margin: 10px 0;
-    text-align: center;
-}
-
-.media-player video {
-    max-width: 50%;
-    height: auto;
-    border-radius: 4px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.media-player p {
-    margin-top: 5px;
-    font-size: 0.9em;
-    color: #000000;
-}
-.modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-
-.modal-dialog {
-            position: relative;
-            max-width: 500px;
-            margin: 10% auto;
-        }
-
-.modal-content {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 5px;
-        }
-
-.modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-.modal-footer {
-            display: flex;
-            justify-content: flex-end;
-        }
-
-.close {
-            cursor: pointer;
-        }
-.play-button {
-    padding: 5px 10px;
-    margin-top: 10px;
-    background-color: #2ecc71;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.play-button:disabled {
-    background-color: #bdc3c7;
-    cursor: not-allowed;
-}
-.sub-question {
-    margin-bottom: 20px;
-}
-
-.matching {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-}
-
-.left-item, .right-item {
-    width: 45%;
-}
-
-.left-item .question {
-    margin-bottom: 5px;
-}
-
-.right-item .option {
-    margin-bottom: 5px;
-}
-
-.answer-input {
-    margin-top: 10px;
-}
-
-.answer-input input {
-    width: 50px;
-    padding: 8px;
-    margin: 0;
-    border: none;
-    border-bottom: 2px solid #ccc;
-    font-size: 16px;
-    outline: none;
-    background: transparent;
-    margin-bottom: 5px;
-}
-
-/* 聚焦时的样式 */
-.answer-input input:focus {
-    border-bottom: 2px solid #000;
-}
-
-#page-timer {
-    color: #333;
-}
-
-/* 倒计时快结束时的样式 */
-#page-timer.warning {
-    color: #ff8585;
-    animation: blink 0.5s infinite;
-}
-
-/* 闪烁动画 */
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-}
-
 /* 导航条样式 */
 #exam-navigation {
     display: flex;
@@ -265,17 +123,6 @@ p {
     margin-right: auto;
     width: 800px;
     height: 40px;
-}
-
-
-/* 题目内容 */
-#exam-content {
-    max-width: 800px;
-    margin: 20px auto 100px;
-    padding: 20px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
 /* 小圆点样式 */
@@ -331,20 +178,22 @@ p {
 /* 页面底部样式 */
 #page-footer {
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
     background-color: #fff;
     padding: 10px 20px;
     box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
     position: fixed;
     bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 800px;
-    height: 40px;
+    left: 0;
+    right: 0;
     z-index: 1000;
 }
 
+#footer-buttons {
+    display: flex;
+    gap: 10px;
+}
 
 /* 倒计时样式 */
 #page-timer {
@@ -353,40 +202,98 @@ p {
     color: #333;
 }
 
-/* 按钮样式 */
-#footer-buttons {
+/* 倒计时快结束时的样式 */
+#page-timer.warning {
+    color: #ff8585;
+    animation: blink 0.5s infinite;
+}
+
+/* 闪烁动画 */
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* 模态框样式 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-dialog {
+    position: relative;
+    max-width: 500px;
+    margin: 10% auto;
+}
+
+.modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 5px;
+}
+
+.modal-header {
     display: flex;
-    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
 }
 
-
-.correction-container {
+.modal-footer {
     display: flex;
-    gap: 20px;
+    justify-content: flex-end;
 }
 
-.sentence {
-    flex: 1;
-    border-right: 2px solid #ccc;
-    padding-right: 10px;
+.close {
+    cursor: pointer;
 }
 
-.correction-content {
-    flex: 1;
-    padding-left: 10px;
+/* 其他样式 */
+h3 {
+    margin-top: 0;
+    font-size: 1.5em;
+    color: #2c3e50;
 }
 
+/* 短文样式 */
 .word-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
     margin-bottom: 20px;
+    white-space: normal;
+}
+
+/* 输入框样式 */
+.correction-answers {
+    margin-top: 20px;
+}
+
+.correction-answer {
+    margin-bottom: 10px;
+}
+
+.correction-answer label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.correction-answer input[type="text"] {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
 }
 
 .clickable-word {
     cursor: pointer;
     border-bottom: 1px dotted #000;
     position: relative;
+    display: inline;
+    white-space: normal;
 }
 
 .clickable-word:hover {
@@ -412,21 +319,6 @@ p {
     text-decoration: underline;
 }
 
-.error-type-select {
-    display: none; /* 默认隐藏 */
-}
-
-.correction-line {
-    margin-bottom: 10px;
-}
-
-.correction-line input {
-    margin: 0 5px;
-    padding: 2px 5px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
 .comprehension-question p {
     margin: 10px 0;
     line-height: 1.6;
@@ -447,4 +339,69 @@ p {
 .blank-input:focus {
     border-color: #000;
     box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.questionimage {
+    width: 100px;
+    height: auto;
+}
+
+.option-image {
+    width: 50px;
+    height: auto;
+}
+
+.matching {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+.left-item, .right-item {
+    width: 45%;
+}
+
+.left-item .question {
+    margin-bottom: 5px;
+}
+
+.right-item .option {
+    margin-bottom: 5px;
+}
+
+.answer-input {
+    margin-top: 10px;
+}
+
+.answer-input input {
+    width: 100px;
+    padding: 8px;
+    margin: 0;
+    border: none;
+    border-bottom: 2px solid #ccc;
+    font-size: 16px;
+    outline: none;
+    background: transparent;
+    margin-bottom: 5px;
+}
+
+.comprehension-answer-input input {
+    width: 90%;
+    padding: 8px;
+    margin: 0;
+    border: none;
+    border-bottom: 2px solid #ccc;
+    font-size: 16px;
+    outline: none;
+    background: transparent;
+    margin-bottom: 5px;
+}
+
+.comprehension-answer-input input:focus {
+    border-bottom: 2px solid #000;
+}
+
+/* 聚焦时的样式 */
+.answer-input input:focus {
+    border-bottom: 2px solid #000;
 }
