@@ -78,7 +78,7 @@
     {% if main_question.media_material %}
         <div class="media-player">
             <video id="media-video_{{ main_question.id }}" width="640" height="360">
-                <source src="}{{ main_question.media_material.media_url }}" type="video/mp4">
+                <source src="{{ main_question.media_material.media_url }}" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
             <button id="play-button_{{ main_question.id }}">Play</button>
