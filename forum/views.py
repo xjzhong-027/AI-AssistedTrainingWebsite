@@ -20,6 +20,8 @@ from django.core.paginator import Paginator
 from django.views.decorators.http import require_GET
 from django.http import JsonResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from faker import Faker
+fake = Faker()
 # Create your views here.
 
 def forum(request):
@@ -580,8 +582,12 @@ def comment_delete(request, comment_id):
 
 #生成随机匿名用户
 def random_generate(length=10):
-    username = string.ascii_uppercase + string.ascii_lowercase + string.digits
-    return ''.join(random.choice(username) for i in range(length))
+    random_length = random.randint(4, 5)
+    random_chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
+    random_string = ''.join(random.choice(random_chars) for _ in range(random_length))
+    #username = string.ascii_uppercase + string.ascii_lowercase + string.digits
+    username=fake.first_name() + fake.last_name() + "_" +random_string
+    return username
 
 # def generate_anonymous_names(request):
 #     if request.method == 'POST':
