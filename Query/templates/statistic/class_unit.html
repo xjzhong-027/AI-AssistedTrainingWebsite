@@ -5,6 +5,34 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
+        /* 模态背景遮罩层 */
+        #late-score-modal {
+            position: fixed; /* 固定定位 */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* 半透明黑色背景 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            overflow: auto;
+        }
+        /* 模态框内容 */
+        #late-score-modal form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+            max-width: 90%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-left: 40%;
+            margin-top: 15%
+        }
         .chart-container {
             margin-bottom: 30px;
             height: 400px;
@@ -112,6 +140,7 @@
                             <button class="close-detail" type="button" style="float: right; margin-bottom: 10px;">关闭</button>
                             <p>
                                 <strong>学生成绩统计：</strong>
+                                <a href="#" class="btn btn-warning btn-sm batch-update-latescore">统一修改逾期分</a>
                             </p>
                             <!-- 展示学生成绩 -->
                             <table class="table">
@@ -132,9 +161,9 @@
                                             <td>{{ record.user.name }}</td>
                                             {% for page in record.page_score %}
                                                 {% if page.page_record.page_score == data.page_highest_scores|get_item:page.page %}
-                                                    <td class="highest-score">{{ page.page_record.page_score }}(*{{ page.page_record.integrity_score }})</td>
+                                                    <td class="highest-score">{{ page.page_record.page_score }}(*{{ page.page_record.late_score }})</td>
                                                 {% else %}
-                                                    <td>{{ page.page_record.page_score }}(*{{ page.page_record.integrity_score }})</td>
+                                                    <td>{{ page.page_record.page_score }}(*{{ page.page_record.late_score }})</td>
                                                 {% endif %}
                                             {% endfor %}
                                             {% if record.unit_score == data.highest_unit_score %}
@@ -151,6 +180,18 @@
                 {% endfor %}
             </tbody>
         </table>
+
+
+        <!-- 统一修改逾期分的模态窗口 -->
+        <div id="late-score-modal" style="display:none;">
+            <form id="late-score-form">
+                <h4>统一修改逾期分</h4>
+                <label for="late-score">新逾期分:</label>
+                <input type="number" id="late-score" name="late_score" step="0.1" min="0" max="1" value="1" required>
+                <button type="submit" class="btn btn-success">提交</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+            </form>
+        </div>
 
 
         <!-- 分页控件 -->
@@ -332,6 +373,7 @@
             });
 
 
+
             // 把图表导出为PDF
              document.getElementById('export-pdf').addEventListener('click', function () {
                  // 确保字体加载完成
@@ -380,6 +422,64 @@
             });
         });
 
+        // 统一修改逾期分功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为每个"统一修改逾期分"按钮绑定点击事件
+            document.querySelectorAll('.batch-update-latescore').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    // 获取当前行的单元ID和班级ID
+                    const row = this.closest('tr');
+                    const unitId = row.getAttribute('data-unit-id');
+                    const classId = {{ class_instance.id }};
+                    console.log("unitId:", unitId)
+
+
+                    // 显示模态窗口
+                    document.getElementById('late-score-modal').style.display = 'block'
+
+                    document.getElementById('late-score-form').addEventListener('submit', function(e) {
+                        e.preventDefault();
+
+                        const lateScore = document.getElementById('late-score').value;
+
+
+                        // 向后端发送修改逾期分的请求
+                        fetch('{% url "Query:batch_update_late_scores" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({
+                                unit_id: unitId,
+                                late_score: lateScore,
+                                class_id: classId
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('逾期分更新成功');
+                                document.getElementById('late-score-modal').style.display = 'none';  // 关闭弹窗
+                            } else {
+                                alert('更新失败，请稍后再试' + (data.error || '未知错误'));
+                            }
+                        })
+                        .catch(error => {
+                            alert('请求失败');
+                            console.error('Error:', error);
+                        });
+                    });
+                });
+            });
+        });
+
+        function closeModal() {
+            // 关闭弹窗
+            document.getElementById('late-score-modal').style.display = 'none';
+        }
 
     </script>
 {% endblock %}

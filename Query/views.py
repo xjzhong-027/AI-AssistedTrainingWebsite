@@ -21,6 +21,7 @@ from ELW.models import Unit, TimeManagement, PaperPage, PageMainQuestion, PageSu
 from accessment.models import StudentExamRecord, StudentPageRecord, StudentAnswer, StudentMediaPlayRecord
 from .forms import AttendanceQueryForm, ClassScheduleAdjustmentForm, ClassScheduleAdditionForm,  \
     ClassroomLayoutForm
+
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 
@@ -534,15 +535,18 @@ def assignment_unit(request, student_id):
                 exam_initial_score = 0
 
                 for record in page_record:
-                    # 更新页面总分
+                    # 更新页面原始总分
                     update_page_score(record)
-                    page_final_score = record.page_score * record.integrity_score
+
+                    page_final_score = record.page_score * record.late_score
+                    page_final_score = page_final_score.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
                     exam_initial_score += page_final_score
+                    exam_initial_score = exam_initial_score.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
                     page_records.append({"page_record":record, "page_final_score":page_final_score})
 
                 # 更新试卷总分
-                update_exam_score(exam_record, is_late=is_late)
-                exam_final_score = exam_record.score
+                update_exam_score(exam_record)
+                # exam_final_score = exam_record.score
                 assignments_data.append({
                     'unit': unit,
                     'unit_time_data': unit_time_data, # 截止时间
@@ -551,7 +555,7 @@ def assignment_unit(request, student_id):
                     'exam_record': exam_record,
                     'page_records': page_records,
                     'exam_initial_score': exam_initial_score,
-                    'exam_final_score': exam_final_score
+                    # 'exam_final_score': exam_final_score
                 })
 
     # 分页，设置每页显示10条记录
@@ -567,13 +571,16 @@ def assignment_unit(request, student_id):
         })
 
 
-def unit_detail(request, unit_id, student_id):
+def unit_detail(request, unit_id, student_id, unit_time_data):
     """ 学生各单元答题情况 """
     # 获取学生
     student = get_object_or_404(Students, id=student_id)
 
     # 获取指定的单元信息
     unit = get_object_or_404(Unit, id=unit_id)
+    unit_time_data = unit_time_data
+    unit_time_data_obj = datetime.strptime(unit_time_data, '%Y-%m-%d %H:%M:%S')
+
 
     # 获取学生行为数据
     exam_record = StudentExamRecord.objects.filter(exam=unit, user=student).first()
@@ -581,7 +588,11 @@ def unit_detail(request, unit_id, student_id):
     media_record = StudentMediaPlayRecord.objects.filter(student_exam_record=exam_record)
     page_records = []
     for record in page_record:
-        page_records.append({"page": record.page.order+1, "record": record})
+        submitted_at = record.submitted_at
+        is_late = False
+        if submitted_at and submitted_at > unit_time_data_obj:
+            is_late = True
+        page_records.append({"page": record.page.order+1, "record": record, "is_late": is_late})
 
     # 获取该单元的所有页面、题目、答案等
     question_data = []
@@ -631,6 +642,7 @@ def unit_detail(request, unit_id, student_id):
     context = {
         'student': student,
         'unit': unit,
+        'unit_time_data': unit_time_data,
         'pages': pages,
         'question_data': question_data,
         'exam_record': exam_record,
@@ -650,25 +662,23 @@ def update_page_score(student_page_record):
     student_page_record.save()
 
 
-def update_exam_score(student_exam_record, is_late=False):
-    """ 更新试卷总分（各页面分数 * 诚信分），并根据是否逾期调整总分 """
+def update_exam_score(student_exam_record):
+    """ 更新试卷总分（各页面分数 * 逾期分），并根据诚信分调整总分 """
     try:
         total_score = 0
 
         student_page_records = StudentPageRecord.objects.filter(student_exam_record=student_exam_record)
         for record in student_page_records:
-            total_score += record.page_score * record.integrity_score  # 页面分数 * 诚信分
+            total_score += record.page_score * record.late_score  # 页面分数 * 逾期分
             print("page_score", record.page_score)
-            print("integrity:", record.integrity_score)
+            print("late:", record.late_score)
             print("total score:", total_score)
-        print("is_late:", is_late)
-        if is_late:
-            total_score *= Decimal(0.8)
-            # 保留小数点后两位，四舍五入
-            total_score = total_score.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
 
-        print("final_score:", total_score)
-        student_exam_record.score = total_score
+        final_score = total_score * Decimal(student_exam_record.integrity_score)
+        # 保留小数点后两位，四舍五入
+        final_score = final_score.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
+        print("final_score:", final_score)
+        student_exam_record.score = final_score
         student_exam_record.save()
     except Exception as e:
         print("Exception occurred in update_exam_score:", e)
@@ -676,31 +686,6 @@ def update_exam_score(student_exam_record, is_late=False):
 
 
 
-# @csrf_exempt
-# def update_unit_score(request):
-#     """ 根据是否逾期完成对单元总分进行修改 """
-#     if request.method == 'POST':
-#         try:
-#             data = json.loads(request.body)
-#             record_id = data.get('record_id')
-#             is_late = data.get('is_late')
-#
-#             student_exam_record = StudentExamRecord.objects.get(id=record_id)
-#             # 更新总分
-#             update_exam_score(student_exam_record, is_late)
-#
-#             return JsonResponse({
-#                 'status': 'success',
-#                 'message': '分数已更新',
-#                 'new_score': student_exam_record.score,  # 返回更新后的分数
-#             })
-#         except StudentExamRecord.DoesNotExist:
-#             return JsonResponse({'status': 'error', 'message': '未找到对应的作业记录'}, status=404)
-#         except Exception as e:
-#             print("Exception occurred in update_unit_score:", e)
-#             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-#     else:
-#         return JsonResponse({'status': 'error', 'message': '无效的请求方法'}, status=405)
 
 
 @csrf_exempt
@@ -728,8 +713,71 @@ def update_question_score(request):
 
 
 @csrf_exempt
+def update_late_score(request):
+    """ 单一修改页面逾期分 """
+    if request.method == "POST":
+        # 解析请求中的数据
+        data = json.loads(request.body)
+        record_id = data.get('record_id')
+        late_score = data.get('late_score')
+
+        try:
+            late_score = float(late_score)
+            if late_score < 0 or late_score > 1:
+                return JsonResponse({"success": False, "message": "逾期分必须介于0和1之间"})
+
+        except (ValueError, TypeError):
+            return JsonResponse({"success": False, "message": "无效的逾期分值"})
+
+        # 查找相应的学习记录并更新
+        try:
+            record = StudentPageRecord.objects.get(id=record_id)
+            record.late_score = late_score
+            record.save()
+            # 更新页面分数
+            update_page_score(record)
+            # 更新试卷总分
+            update_exam_score(record.student_exam_record)
+            return JsonResponse({"success": True})
+        except StudentPageRecord.DoesNotExist:
+            return JsonResponse({"success": False, "message": "页面学习记录未找到"})
+    return JsonResponse({"success": False, "message": "无效请求"})
+
+
+@csrf_exempt
+def batch_update_late_scores(request):
+    """ 统一修改页面逾期分 """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            unit_id = data.get('unit_id')
+            late_score = data.get('late_score')
+            class_id = data.get('class_id')
+
+            unit = Unit.objects.get(id=unit_id)
+            class_instance = Class.objects.get(id=class_id)
+            students = Students.objects.filter(class_instance=class_instance)
+            exam_records = StudentExamRecord.objects.filter(exam=unit, user__in=students)
+
+            page_records = StudentPageRecord.objects.filter(
+                student_exam_record__in=exam_records
+            )
+
+            # 更新每个学生的逾期分
+            for record in page_records:
+                record.late_score = late_score
+                record.save()
+
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'Invalid method'})
+
+
+@csrf_exempt
 def update_integrity_score(request):
-    """ 修改页面诚信分 """
+    """ 修改单元诚信分 """
     if request.method == "POST":
         # 解析请求中的数据
         data = json.loads(request.body)
@@ -746,21 +794,20 @@ def update_integrity_score(request):
 
         # 查找相应的学习记录并更新
         try:
-            record = StudentPageRecord.objects.get(id=record_id)
+            record = StudentExamRecord.objects.get(id=record_id)
             record.integrity_score = integrity_score
             record.save()
-            # 更新页面分数
-            update_page_score(record)
+
             # 更新试卷总分
-            update_exam_score(record.student_exam_record)
+            update_exam_score(record)
             return JsonResponse({"success": True})
         except StudentPageRecord.DoesNotExist:
-            return JsonResponse({"success": False, "message": "页面学习记录未找到"})
+            return JsonResponse({"success": False, "message": "单元学习记录未找到"})
     return JsonResponse({"success": False, "message": "无效请求"})
 
 
 
-def delete_answer_records(request, unit_id, student_id):
+def delete_answer_records(request, unit_id, student_id, unit_time_data):
     """ 删除学生小题作答记录 """
     if request.method == 'POST':
         selected_records = request.POST.getlist('selected_answer_records')  # 获取选中的记录ID
@@ -777,10 +824,10 @@ def delete_answer_records(request, unit_id, student_id):
 
         return redirect(request.path)
 
-    return unit_detail(request, unit_id, student_id)
+    return unit_detail(request, unit_id, student_id, unit_time_data)
 
 
-def delete_media_records(request, unit_id, student_id):
+def delete_media_records(request, unit_id, student_id, unit_time_data):
     """ 删除学生媒体播放记录 """
     if request.method == 'POST':
         selected_records = request.POST.getlist('selected_media_records')  # 获取选中的记录ID
@@ -797,7 +844,7 @@ def delete_media_records(request, unit_id, student_id):
 
         return redirect(request.path)
 
-    return unit_detail(request, unit_id, student_id)
+    return unit_detail(request, unit_id, student_id, unit_time_data)
 
 
 
@@ -884,6 +931,7 @@ def class_unit(request, class_id):
                 # 计算每个页面的最高分
                 page_highest_scores = {}
                 for record in unit_records:
+                    update_exam_score(record)
                     page_score = []
                     for page in pages:
                         page_record = StudentPageRecord.objects.filter(student_exam_record=record, page=page).first()

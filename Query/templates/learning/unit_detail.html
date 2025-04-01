@@ -85,7 +85,7 @@
 
                         <!-- 选择题 -->
                         {% if main_question.main_question.question_type == 'choice' or main_question.main_question.question_type == 'comprehension' or main_question.main_question.question_type == 'matching' %}
-                            <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id %}">
+                            <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id unit_time_data %}">
                                 {% csrf_token %}
                                 <table class="table table-bordered table-striped table-hover">
                                     <thead>
@@ -139,7 +139,7 @@
                                     </ul>
                                 {% endfor %}
                             </div>
-                            <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id %}">
+                            <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id unit_time_data %}">
                                 {% csrf_token %}
                                 <table class="table table-bordered table-striped table-hover">
                                     <thead>
@@ -185,7 +185,7 @@
                                 <span>{{ sub_question.blank_text }}</span>
                             {% endfor %}
 
-                            <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id %}">
+                            <form method="post" action="{% url 'Query:delete_answer_records' unit.id student.id unit_time_data %}">
                                 {% csrf_token %}
                                 <table class="table table-bordered table-striped table-hover">
                                 <thead>
@@ -230,120 +230,17 @@
 
     </div>
 
-{#                        {% for question in question_data %}#}
-{#        <div style="margin-bottom: 50px;">#}
-{#            <h4>{{ forloop.counter }}: {{ question.main_question.question_text }}</h4>#}
-{#            {% if question.main_question.question_type == 'choice' or question.main_question.question_type == 'comprehension' or question.main_question.question_type == 'matching'  %}#}
-{##}
-{#                #}
-{##}
-{##}
-{#            #}
-{#                {% for sub in question.sub_questions %}#}
-{#                    <span>{{ sub.sub_question.question_text }}</span>#}
-{#                    <span>{{ sub.corrected_text }}</span>#}
-{#                {% endfor %}#}
-{#                <div>#}
-{#                    <h5>参考答案：</h5>#}
-{#                    {% for sub in question.sub_questions %}#}
-{#                        <ul>#}
-{#                            {% for correction in sub.corrections %}#}
-{#                                <p>{{ correction.index }} - {{ correction.type }} - {{ sub.sub_question.answer }}</p>#}
-{#                            {% endfor %}#}
-{#                        </ul>#}
-{#                    {% endfor %}#}
-{#                </div>#}
-{#                <table class="table table-bordered table-striped table-hover">#}
-{#                    <thead>#}
-{#                        <tr>#}
-{#                            <th>题目</th>#}
-{#                            <th>作答内容</th>#}
-{#                            <th>得分</th>#}
-{#                            <th>操作</th>#}
-{#                            <th style="background-color: #a9e6a9">参考答案</th>#}
-{#                            <th style="background-color: #a9e6a9">小题分值</th>#}
-{#                        </tr>#}
-{#                    </thead>#}
-{#                    <tbody>#}
-{#                        {% for sub in question.sub_questions %}#}
-{#                            {% for student_answer in sub.student_answers %}#}
-{#                                <tr>#}
-{#                                    <td>{{ sub.sub_question.question_text }}</td>#}
-{#                                    <td>#}
-{#                                        {{ student_answer.index }} - {{ student_answer.type }} - {{ student_answer.text }}#}
-{#                                    </td>#}
-{#                                    <td>#}
-{#                                        <span class="question_score" id="question-score-{{ student_answer.id }}">{{ student_answer.score }}</span>#}
-{#                                        <input type="number" id="score-input-{{ student_answer.id }}" value="{{ student_answer.score }}" step="0.1" style="display: none;" />#}
-{#                                    </td>#}
-{#                                    <td>#}
-{#                                        <button class="btn btn-warning btn-sm" id="edit-score-btn-{{ student_answer.id }}" onclick="editScore({{ student_answer.id }})">编辑</button>#}
-{#                                        <button class="btn btn-success btn-sm" id="save-score-btn-{{ student_answer.id }}" onclick="saveScore({{ student_answer.id }})" style="display: none;">保存</button>#}
-{#                                        <button class="btn btn-danger btn-sm" id="cancel-score-btn-{{ student_answer.id }}" onclick="cancelScoreEdit({{ student_answer.id }})" style="display: none;">取消</button>#}
-{#                                    </td>#}
-{#                                    <td>#}
-{#                                        {% for correction in sub.corrections %}#}
-{#                                            {{ correction.index }} - {{ correction.type }} - {{ sub.sub_question.answer }}#}
-{#                                        {% endfor %}#}
-{#                                    </td>#}
-{#                                    <td>{{ sub.sub_question.score }}</td>#}
-{#                                </tr>#}
-{#                            {% endfor %}#}
-{#                        {% endfor %}#}
-{#                    </tbody>#}
-{#                </table>#}
-{##}
-{#            {% elif question.main_question.question_type == 'blank' %}#}
-{#                {% for sub in question.sub_questions %}#}
-{#                    <span>{{ sub.sub_question.question_text }} ___{{ forloop.counter }}___</span>#}
-{#                {% endfor %}#}
-{##}
-{#                <table class="table table-bordered table-striped table-hover">#}
-{#                    <thead>#}
-{#                        <tr>#}
-{#                            <th>序号</th>#}
-{#                            <th>作答内容</th>#}
-{#                            <th>得分</th>#}
-{#                            <th>操作</th>#}
-{#                            <th style="background-color: #a9e6a9">参考答案</th>#}
-{#                            <th style="background-color: #a9e6a9">小题分值</th>#}
-{#                        </tr>#}
-{#                    </thead>#}
-{#                    <tbody>#}
-{#                        {% for sub in question.sub_questions %}#}
-{#                            <tr>#}
-{#                                <td>{{ forloop.counter }}</td>#}
-{#                                <td>{{ sub.student_answers.0.text }}</td>#}
-{#                                <td>#}
-{#                                    <span class="question_score" id="question-score-{{ sub.student_answers.0.id }}">{{ sub.student_answers.0.score }}</span>#}
-{#                                    <input type="number" id="score-input-{{ sub.student_answers.0.id }}" value="{{ sub.student_answers.0.score }}" step="0.1"  style="display: none;" />#}
-{#                                </td>#}
-{#                                <td>#}
-{#                                    <button class="btn btn-warning btn-sm" id="edit-score-btn-{{ sub.student_answers.0.id }}" onclick="editScore({{ sub.student_answers.0.id }})">编辑</button>#}
-{#                                    <button class="btn btn-success btn-sm" id="save-score-btn-{{ sub.student_answers.0.id }}" onclick="saveScore({{ sub.student_answers.0.id }})" style="display: none;">保存</button>#}
-{#                                    <button class="btn btn-danger btn-sm" id="cancel-score-btn-{{ sub.student_answers.0.id }}" onclick="cancelScoreEdit({{ sub.student_answers.0.id }})" style="display: none;">取消</button>#}
-{#                                </td>#}
-{#                                <td>{{ sub.sub_question.answer }}</td>#}
-{#                                <td>{{ sub.sub_question.score }}</td>#}
-{#                            </tr>#}
-{#                        {% endfor %}#}
-{#                    </tbody>#}
-{#                </table>#}
-{#            {% endif %}#}
-{#        </div>#}
-{#    {% endfor %}#}
-
 
 
     <hr>
 
     <!-- 学习记录 -->
     <h3>学习记录</h3>
-    {% if not media_record.exists and not page_record.exists %}
-        <p>暂无学习记录</p>
+    <h4>媒体播放记录：</h4>
+    {% if not media_record %}
+        <p>暂无媒体播放记录</p>
     {% else %}
-        <h4>媒体播放记录：</h4>
-        <form method="post" action="{% url 'Query:delete_media_records' unit.id student.id %}">
+        <form method="post" action="{% url 'Query:delete_media_records' unit.id student.id unit_time_data %}">
             {% csrf_token %}
             <table class="table table-bordered table-striped">
             <thead>
@@ -369,55 +266,56 @@
         </table>
             <button type="submit" class="btn btn-danger">删除记录</button>
         </form>
+    {% endif %}
 
-
-        <h4 style="margin-top: 25px;">页面作答记录：</h4>
+    <h4 style="margin-top: 25px;">页面作答记录：</h4>
+    {% if not page_record %}
+        <p>暂无页面作答记录</p>
+    {% else %}
         <table class="table table-bordered table-striped">
-                <thead>
+            <thead>
+                <tr>
+                    <th>页面</th>
+                    <th>提交状态</th>
+                    <th>截止时间</th>
+                    <th>提交时间</th>
+                    <th>逾期分(介于0-1）</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in page_record %}
                     <tr>
-                        <th>页面</th>
-                        <th>提交状态</th>
-                        <th>提交时间</th>
-                        <th>是否超时</th>
-                        <th>剩余时间</th>
-                        <th>诚信分(介于0-1）</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for record in page_record %}
-                        <tr>
-                            <td>页面{{ record.page}}</td>
-                            <td
-                                {% if not record.record.submitted %}
-                                    style="color: #ea5e5a;"
-                                {% endif %}
-                            >
-                                {{ record.record.submitted|yesno:"已提交,未提交" }}
-                            </td>
-                            <td>{{ record.record.submitted_at }}</td>
-                            <td
-                                {% if record.record.is_expired %}
-                                    style="color: #ea5e5a;"
-                                {% endif %}
-                            >
-                                {{ record.record.is_expired|yesno:"超时,未超时" }}
-                            </td>
-                            <td>{{ record.record.remaining_time }}</td>
-                            <td>
-                                <span class="integrity" id="integrity-score-{{ record.record.id }}">{{ record.record.integrity_score }}</span>
-                                <input type="number" id="integrity-input-{{ record.record.id }}" value="{{ record.record.integrity_score }}" step="0.1"  style="display: none;" />
-                            </td>
-                            <td>
-                                <button type= "button" class="btn btn-warning btn-sm" id="edit-integrity-btn-{{ record.record.id }}" onclick="editIntegrity({{ record.record.id }},event)">编辑</button>
-                                <button type= "button" class="btn btn-success btn-sm" id="save-integrity-btn-{{ record.record.id }}" onclick="saveIntegrity({{ record.record.id }},event)" style="display: none;">保存</button>
-                                <button type= "button" class="btn btn-danger btn-sm" id="cancel-integrity-btn-{{ record.record.id }}" onclick="cancelIntegrityEdit({{ record.record.id }},event)" style="display: none;">取消</button>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        <td>页面{{ record.page}}</td>
+                        <td
+                            {% if not record.record.submitted %}
+                                style="color: #ea5e5a;"
+                            {% endif %}
+                        >
+                            {{ record.record.submitted|yesno:"已提交,未提交" }}
+                        </td>
+                        <td>{{ unit_time_data }}</td>
+                        <td
+                            {% if record.is_late %}
+                                style="color: #ea5e5a;"
+                            {% endif %}
+                        >
+                            {{ record.record.submitted_at }}
+                        </td>
 
+                        <td>
+                            <span class="late" id="late-score-{{ record.record.id }}">{{ record.record.late_score }}</span>
+                            <input type="number" id="late-input-{{ record.record.id }}" value="{{ record.record.late_score }}" step="0.1"  style="display: none;" />
+                        </td>
+                        <td>
+                            <button type= "button" class="btn btn-warning btn-sm" id="edit-late-btn-{{ record.record.id }}" onclick="editLate({{ record.record.id }},event)">编辑</button>
+                            <button type= "button" class="btn btn-success btn-sm" id="save-late-btn-{{ record.record.id }}" onclick="saveLate({{ record.record.id }},event)" style="display: none;">保存</button>
+                            <button type= "button" class="btn btn-danger btn-sm" id="cancel-late-btn-{{ record.record.id }}" onclick="cancelLateEdit({{ record.record.id }},event)" style="display: none;">取消</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     {% endif %}
 
 
@@ -523,47 +421,47 @@
             document.getElementById("score-input-" + id).value = originalScore;
         }
 
-        // 编辑诚信分
-        function editIntegrity(id,event) {
+        // 编辑逾期分
+        function editLate(id,event) {
             event.preventDefault();
-            // 隐藏诚信分文本
-            document.getElementById("integrity-score-" + id).style.display = "none";
-            // 显示诚信分输入框
-            document.getElementById("integrity-input-" + id).style.display = "inline-block";
+            // 隐藏逾期分文本
+            document.getElementById("late-score-" + id).style.display = "none";
+            // 显示逾期分输入框
+            document.getElementById("late-input-" + id).style.display = "inline-block";
             // 显示保存按钮
-            document.getElementById("save-integrity-btn-" + id).style.display = "inline-block";
-            document.getElementById("cancel-integrity-btn-" + id).style.display = "inline-block";
+            document.getElementById("save-late-btn-" + id).style.display = "inline-block";
+            document.getElementById("cancel-late-btn-" + id).style.display = "inline-block";
             // 隐藏编辑按钮
-            document.getElementById("edit-integrity-btn-" + id).style.display = "none";
+            document.getElementById("edit-late-btn-" + id).style.display = "none";
         }
 
-        function saveIntegrity(id,event) {
+        function saveLate(id,event) {
             event.preventDefault();
-            var integrityScore = document.getElementById("integrity-input-" + id).value;
+            var lateScore = document.getElementById("late-input-" + id).value;
 
             // 发起 AJAX 请求保存修改的状态
             var xhr = new XMLHttpRequest();
-            var url = "{% url 'Query:update_integrity_score' %}";
+            var url = "{% url 'Query:update_late_score' %}";
             xhr.open("POST", url, true);
             xhr.setRequestHeader("Content-Type", "application/json");
 
             // 请求中发送数据
             xhr.send(JSON.stringify({
                 "record_id": id,
-                "integrity_score": integrityScore
+                "late_score": lateScore
             }));
 
             xhr.onload = function() {
                 if (xhr.status === 200) {
                     // 更新页面显示
-                    document.getElementById("integrity-score-" + id).textContent = integrityScore;
+                    document.getElementById("late-score-" + id).textContent = lateScore;
                     // 恢复显示
-                    document.getElementById("integrity-score-" + id).style.display = "inline-block";
-                    document.getElementById("integrity-input-" + id).style.display = "none";
+                    document.getElementById("late-score-" + id).style.display = "inline-block";
+                    document.getElementById("late-input-" + id).style.display = "none";
 
-                    document.getElementById("cancel-integrity-btn-" + id).style.display = "none";
-                    document.getElementById("save-integrity-btn-" + id).style.display = "none";
-                    document.getElementById("edit-integrity-btn-" + id).style.display = "inline-block";
+                    document.getElementById("cancel-late-btn-" + id).style.display = "none";
+                    document.getElementById("save-late-btn-" + id).style.display = "none";
+                    document.getElementById("edit-late-btn-" + id).style.display = "inline-block";
 
                     // 页面刷新
                     location.reload();
@@ -573,20 +471,20 @@
             };
         }
 
-        function cancelIntegrityEdit(id,event) {
+        function cancelLateEdit(id,event) {
             event.preventDefault();
             // 恢复原始显示
-            var originalScore = document.getElementById("integrity-score-" + id).textContent;
+            var originalScore = document.getElementById("late-score-" + id).textContent;
 
-            document.getElementById("integrity-score-" + id).style.display = "inline-block";
-            document.getElementById("integrity-input-" + id).style.display = "none";
+            document.getElementById("late-score-" + id).style.display = "inline-block";
+            document.getElementById("late-input-" + id).style.display = "none";
 
-            document.getElementById("save-integrity-btn-" + id).style.display = "none";
-            document.getElementById("cancel-integrity-btn-" + id).style.display = "none";
-            document.getElementById("edit-integrity-btn-" + id).style.display = "inline-block";
+            document.getElementById("save-late-btn-" + id).style.display = "none";
+            document.getElementById("cancel-late-btn-" + id).style.display = "none";
+            document.getElementById("edit-late-btn-" + id).style.display = "inline-block";
 
             // 恢复输入框的值为原始状态
-            document.getElementById("integrity-input-" + id).value = originalScore;
+            document.getElementById("late-input-" + id).value = originalScore;
         }
 
     </script>

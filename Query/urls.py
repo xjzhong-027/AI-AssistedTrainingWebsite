@@ -31,13 +31,14 @@ urlpatterns = [
     # --------------- 学习记录管理 ----------------
     path('learning/search/', views.student_learning_search, name='student_learning_search'),
     path('assignments/<int:student_id>/', views.assignment_unit, name='assignment_unit'),
-    path('unit/<int:unit_id>/detail/<int:student_id>/', views.unit_detail, name='unit_detail'),
+    path('unit/<int:unit_id>/detail/<int:student_id>/<str:unit_time_data>/', views.unit_detail, name='unit_detail'),
+    path('update-late-score/', views.update_late_score, name='update_late_score'),
+    path('batch-update-late-scores/', views.batch_update_late_scores, name='batch_update_late_scores'),
     path('update-integrity-score/', views.update_integrity_score, name='update_integrity_score'),
     path('update-question-score/', views.update_question_score, name='update_question_score'),
-    # path('update-unit-score/', views.update_unit_score, name='update_unit_score'),
-    path('unit/<int:unit_id>/student/<int:student_id>/delete_answer_records/', views.delete_answer_records,
+    path('unit/<int:unit_id>/student/<int:student_id>/delete_answer_records/<str:unit_time_data>', views.delete_answer_records,
          name='delete_answer_records'),
-    path('unit/<int:unit_id>/student/<int:student_id>/delete_media_records/', views.delete_media_records,
+    path('unit/<int:unit_id>/student/<int:student_id>/delete_media_records/<str:unit_time_data>', views.delete_media_records,
          name='delete_media_records'),
 
 

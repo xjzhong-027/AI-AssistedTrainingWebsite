@@ -30,10 +30,11 @@
                     <th>截止时间</th>
                     <th>提交状态</th>
                     <th>提交时间</th>
+                    <th>诚信分(0-1)</th>
                     <th>
                         分数
                         <span data-toggle="tooltip" data-placement="top"
-                              title="总分=所有页面的分数与页面诚信分的乘积的总和。若逾期完成，则在总分的基础上 x 0.8">?</span>
+                              title="原始总分=所有页面的分数与页面逾期分的乘积的总和。最终总分=原始总分*诚信分">?</span>
                     </th>
                     <th>操作</th>
                 </tr>
@@ -65,13 +66,20 @@
                                 style="color:#ea5e5a;"
                             {% endif %}
                         >{{ data.exam_record.finished_at }}</td>
+                        <td>
+                            <span class="integrity" id="integrity-score-{{ data.exam_record.id }}">{{ data.exam_record.integrity_score }}</span>
+                            <input type="number" id="integrity-input-{{ data.exam_record.id }}" value="{{ data.exam_record.integrity_score }}" step="0.1"  style="display: none;" />
+                        </td>
                         <td><a href="#" class="exam_final_score" data-unit-id="{{ data.exam_record.id }}">{{ data.exam_record.score }}</a></td>
                         <td>
-                            <a href="{% url 'Query:unit_detail' data.unit.id student.id %}" class="btn btn-info btn-sm">查看详情</a>
+                            <a href="{% url 'Query:unit_detail' data.unit.id student.id data.unit_time_data %}" class="btn btn-info btn-sm">查看详情</a>
+                            <button type= "button" class="btn btn-warning btn-sm" id="edit-integrity-btn-{{ data.exam_record.id }}" onclick="editIntegrity({{ data.exam_record.id }},event)">编辑</button>
+                            <button type= "button" class="btn btn-success btn-sm" id="save-integrity-btn-{{ data.exam_record.id }}" onclick="saveIntegrity({{ data.exam_record.id }},event)" style="display: none;">保存</button>
+                            <button type= "button" class="btn btn-danger btn-sm" id="cancel-integrity-btn-{{ data.exam_record.id }}" onclick="cancelIntegrityEdit({{ data.exam_record.id }},event)" style="display: none;">取消</button>
                         </td>
                     </tr>
                     <tr class="detail_score" data-unit-id="{{ data.exam_record.id }}" style="display: none;">
-                        <td colspan="9">
+                        <td colspan="10">
                             <button class="close-detail" type="button" style="float: right; margin-bottom: 10px;">关闭</button>
                             <!-- 展示单元具体得分数据 -->
                             <table class="table">
@@ -79,7 +87,7 @@
                                     <tr>
                                         <th>页面</th>
                                         <th>页面原始分</th>
-                                        <th>诚信分</th>
+                                        <th>逾期分</th>
                                         <th>页面最终得分</th>
                                     </tr>
                                 </thead>
@@ -88,18 +96,16 @@
                                     <tr>
                                         <td>{{ forloop.counter }}</td>
                                         <td>{{ record.page_record.page_score }}</td>
-                                        <td>{{ record.page_record.integrity_score }}</td>
+                                        <td>{{ record.page_record.late_score }}</td>
                                         <td>{{ record.page_final_score }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                             <p><strong>单元原始分：</strong>{{ data.exam_initial_score }}</p>
-                            <p><strong>总分：</strong>{{ data.exam_final_score }}
-                                {% if data.is_late %}
-                                    ({{ data.exam_final_score }} = {{ data.exam_initial_score }} * 0.8)
-                                {% endif %}
-                            </p>
+                            <p><strong>单元诚信分：</strong>{{ data.exam_record.integrity_score }}</p>
+{#                            <p><strong>总分：</strong>{{ data.exam_final_score }}</p>#}
+                            <p><strong>总分：</strong>{{ data.exam_record.score }}</p>
                         </td>
                     </tr>
                 {% endfor %}
@@ -159,7 +165,6 @@
             });
 
 
-
             // 显示总分具体情况
             $('.exam_final_score').on('click', function(e) {
                 e.preventDefault();
@@ -191,5 +196,71 @@
                 $(this).closest('.detail_score').hide();
             });
         });
+
+        // 编辑诚信分
+        function editIntegrity(id,event) {
+            event.preventDefault();
+            // 隐藏诚信分文本
+            document.getElementById("integrity-score-" + id).style.display = "none";
+            // 显示诚信分输入框
+            document.getElementById("integrity-input-" + id).style.display = "inline-block";
+            // 显示保存按钮
+            document.getElementById("save-integrity-btn-" + id).style.display = "inline-block";
+            document.getElementById("cancel-integrity-btn-" + id).style.display = "inline-block";
+            // 隐藏编辑按钮
+            document.getElementById("edit-integrity-btn-" + id).style.display = "none";
+        }
+
+        function saveIntegrity(id,event) {
+            event.preventDefault();
+            var integrityScore = document.getElementById("integrity-input-" + id).value;
+
+            // 发起 AJAX 请求保存修改的状态
+            var xhr = new XMLHttpRequest();
+            var url = "{% url 'Query:update_integrity_score' %}";
+            xhr.open("POST", url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            // 请求中发送数据
+            xhr.send(JSON.stringify({
+                "record_id": id,
+                "integrity_score": integrityScore
+            }));
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    // 更新页面显示
+                    document.getElementById("integrity-score-" + id).textContent = integrityScore;
+                    // 恢复显示
+                    document.getElementById("integrity-score-" + id).style.display = "inline-block";
+                    document.getElementById("integrity-input-" + id).style.display = "none";
+
+                    document.getElementById("cancel-integrity-btn-" + id).style.display = "none";
+                    document.getElementById("save-integrity-btn-" + id).style.display = "none";
+                    document.getElementById("edit-integrity-btn-" + id).style.display = "inline-block";
+
+                    // 页面刷新
+                    location.reload();
+                } else {
+                    alert("保存失败，请稍后再试");
+                }
+            };
+        }
+
+        function cancelIntegrityEdit(id,event) {
+            event.preventDefault();
+            // 恢复原始显示
+            var originalScore = document.getElementById("integrity-score-" + id).textContent;
+
+            document.getElementById("integrity-score-" + id).style.display = "inline-block";
+            document.getElementById("integrity-input-" + id).style.display = "none";
+
+            document.getElementById("save-integrity-btn-" + id).style.display = "none";
+            document.getElementById("cancel-integrity-btn-" + id).style.display = "none";
+            document.getElementById("edit-integrity-btn-" + id).style.display = "inline-block";
+
+            // 恢复输入框的值为原始状态
+            document.getElementById("integrity-input-" + id).value = originalScore;
+        }
     </script>
 {% endblock %}
