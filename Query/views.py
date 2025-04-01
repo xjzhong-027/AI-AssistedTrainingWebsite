@@ -927,9 +927,11 @@ def class_unit(request, class_id):
             pages = PaperPage.objects.filter(unit=unit)
 
             score_statistic = []
+
+            page_highest_scores = {} # 计算每个页面的最高分
+            highest_unit_score = 0 # 每个单元的最高分
             if unit_records:
-                # 计算每个页面的最高分
-                page_highest_scores = {}
+
                 for record in unit_records:
                     update_exam_score(record)
                     page_score = []
