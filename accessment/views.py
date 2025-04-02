@@ -1,642 +1,902 @@
-from django.contrib.auth.decorators import login_required
-from django.db.models import Q
-from django.shortcuts import render, get_object_or_404, redirect
-from django.urls import reverse
-from django.views.decorators.http import require_POST
-from django.http import HttpResponseRedirect
-from django.utils import timezone
-from .models import Post, Comment,Anonymous
-from .forms import PostForm,CommentForm
-from Account.models import Students, Teachers
-from ELW.models import SubQuestion, MainQuestion, Unit, PaperPage, PageMainQuestion
+import json
 import random
-import string
-from .filters import PostFilter
-from announce.consumers import NotificationConsumer
-from announce.models import Message
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
+
+from django.core.serializers.json import DjangoJSONEncoder
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse, HttpResponse
+from django.urls import reverse
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from datetime import datetime
+
+from forum.models import HighlightedText
+from .models import StudentMediaPlayRecord,StudentPageRecord,StudentExamRecord,StudentAnswer
+from Account.models import Students
+from ELW.models import (TimeManagement,
+                        Unit,
+                        PaperPage,
+                        MediaMaterial,
+                        SubQuestion,
+                        MainQuestion,
+                        PageMainQuestion,
+                        PageSubQuestion, Correction, )
+
+from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib import messages
-from django.core.paginator import Paginator
-from django.views.decorators.http import require_GET
-from django.http import JsonResponse
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.utils.http import url_has_allowed_host_and_scheme
-from faker import Faker
-fake = Faker()
-# Create your views here.
+from django.db import transaction
+from django.core.cache import cache
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from django.http import HttpResponseBadRequest
+from django.db import models
+from django.db.models import Sum
 
-def forum(request):
-    username = request.session.get('username')
-    print(username)
-    role = request.session.get('role','none')
-    if role == 'teacher':
-        posts = Post.objects.all()  # 教师可以看到所有帖子
+
+def confirm_info(request):
+    if request.method == 'POST':
+        # 获取学生信息
+        username = request.session.get('username')
+        try:
+            student = Students.objects.get(username=username)
+            request.session['info_confirmed'] = True
+            # 确认信息无误后跳转到考试列表页面
+            return redirect('accessment:exam_list')
+        except Students.DoesNotExist:
+            messages.error(request, 'Student information not found.')
+            return redirect('login:login_view')
     else:
-        posts = Post.objects.filter(is_public=True)  # 学生只能看到公开的帖子
-    #目前帖子显示的优先级：置顶 精选 时间
-    #精选目前是按照除了置顶的帖子之外，回复评论数量(>0)最多的前两条
-    for post in posts:
-        post.top_score = post.comments.count()
-        post.save()
-    top_posts = posts.filter(is_top=True).order_by('-top_score', '-created_at')
-    non_top_posts = posts.filter(is_top=False).order_by('-created_at')
-    reply = non_top_posts.filter(top_score__gt=0)
-    star_posts_count = reply.count()
-    if star_posts_count > 2:
-        star_posts = reply.order_by('-top_score')[:2]
-    else:
-        star_posts = reply.all()
-    rest_posts = non_top_posts.exclude(id__in=star_posts.values_list('id', flat=True)).order_by('-created_at')
+        # GET 请求，显示个人信息确认页面
+        username = request.session.get('username')
+        try:
+            student = Students.objects.get(username=username)
+            class_instance = student.class_instance
+            course = class_instance.course
+            teacher = class_instance.teacher
+            context = {
+                'student': student,
+                'class_instance': class_instance,
+                'course': course,
+                'teacher': teacher
+            }
+            return render(request, 'exam/info_confirm.html', context)
+        except Students.DoesNotExist:
+            messages.error(request, 'Student information not found.')
+            return redirect('login')
 
-    # 分页逻辑
-    paginator_top = Paginator(top_posts, 2)
-    #paginator_star = Paginator(star_posts, 2)
-    paginator_rest = Paginator(rest_posts, 5)
-
-    page_number = request.GET.get('page')
-    top_page_obj = paginator_top.get_page(page_number)
-    #star_page_obj = paginator_star.get_page(page_number)
-    rest_page_obj = paginator_rest.get_page(page_number)
-
-    post_lists = [
-        {
-            'title': '已置顶帖子',
-            'posts': top_page_obj
-        },
-        {
-            'title': '星标帖子',
-            'posts': star_posts
-        },
-        {
-            'title': '其他帖子',
-            'posts': rest_page_obj
-        }
-    ]
-
-    if role == 'teacher':
-        template = 'forum/forum_teacher.html'
-    elif role == 'student':
-        template = 'forum/forum_student.html'
-    else:
-        return redirect('login')
-    form = PostForm()
-    return render(request, template, {
-        'username': username,
-        'post_lists': post_lists,
-        'form': form,
-    })
-
-
-
-def post_new(request):
+def exam_list(request):
     if not request.session.get('is_login', False):
         return redirect('login')
 
-    main_question_id = request.GET.get('main_question_id', None)
-    sub_question_id = request.GET.get('sub_question_id', None)
-    preset_title = request.GET.get('preset_title', '')
-    announcement_id = request.GET.get('announcement_id', None)
-    start_offset = request.GET.get('start_offset', None)
-    end_offset = request.GET.get('end_offset', None)
-    content = request.GET.get('content', None)
+    if not request.session.get('info_confirmed'):
+        return redirect('accessment:confirm_info')
 
-    return_url = request.GET.get('return_url', None)
-
-    if request.method == "POST":
-        form = PostForm(request.POST)
-        if form.is_valid():
-            username = request.session.get('username')
-            role = request.session.get('role', 'none')
-
-            if role == 'teacher':
-                user = Teachers.objects.get(username=username)
-                post = form.save(commit=False)
-                post.teacher = user
-                post.author = user.username
-                post.name = user.name
-            elif role == 'student':
-                user = Students.objects.get(username=username)
-                post = form.save(commit=False)
-                post.student = user
-                post.author = user.username
-                post.name = user.name
-            else:
-                messages.error(request, 'Invalid role')
-                return redirect('forum:forum')
-
-            post.created_at = timezone.now()
-            if main_question_id:
-                post.is_question = True
-                post.main_question_id = main_question_id
-            post.save()
-            if sub_question_id:
-                post.is_question= True
-                post.sub_question_id = sub_question_id
-                post.main_question_id = main_question_id
-            post.save()
-
-            if form.cleaned_data['is_anonymous']:
-                anonymous_name = random_generate()
-                while Anonymous.objects.filter(anonymous_name=anonymous_name, post=post).exists():
-                    anonymous_name = random_generate()
-                Anonymous.objects.create(user=user, post=post, anonymous_name=anonymous_name)
-                post.anonymous_name = anonymous_name
-                post.name = anonymous_name
-                post.save()
-
-            if return_url and url_has_allowed_host_and_scheme(return_url, allowed_hosts=None):
-                return HttpResponseRedirect(return_url)
-            elif main_question_id or sub_question_id:
-                return HttpResponseRedirect(return_url)
-            else:
-                return redirect('forum:forum')
-
-    else:
-        initial_data = {'title': preset_title} if preset_title else {}
-        form = PostForm(initial=initial_data)
-
-    return render(request, 'forum/add_post.html', {'form': form})
-
-def post_detail(request, post_id):
-    post = get_object_or_404(Post, pk=post_id)
-    top_level_comments = post.comments.filter(parent_comment__isnull=True).order_by('created_at')
-    form = CommentForm()
-    reply_form = CommentForm()
-    # 分页逻辑
-    paginator = Paginator(top_level_comments, 5)  # 每页显示5个顶级评论
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    return render(request, 'forum/post_detail.html', {
-        'post': post,
-        'comments': page_obj,
-        'form': form,
-        'reply_form': reply_form
-    })
-
-def post_delete(request, post_id):
-    post = get_object_or_404(Post, pk=post_id)
-    role = request.session.get('role', 'none')
-    username = request.session.get('username')
-
-    if role == 'teacher':
-        # 教师可以删除任何帖子
-        post.delete()
-        messages.success(request, 'Post deleted successfully.')
-        return redirect('forum:forum')
-    elif post.author == username:
-        # 学生只能删除自己的帖子
-        post.delete()
-        messages.success(request, 'Post deleted successfully.')
-        return redirect('forum:forum')
-    else:
-        # 无权限删除
-        messages.error(request, 'You do not have permission to delete this post.')
-        return redirect('forum:post_detail', post_id=post.id)
-
-def post_top(request, post_id):
-    post = get_object_or_404(Post, pk=post_id)
-    post.is_top = True if not post.is_top else False
-    post.save()
-    return redirect('forum:forum')
-
-def search_posts(request):
-    filter = PostFilter(request.GET, queryset=Post.objects.all())
-    return render(request, 'forum/searchforum.html', {'filter': filter})
-
-#还需要 练习端有记录完成后才能显示 的逻辑
-def question_post(request):
-    role = request.session.get('role', 'none')
-    username = request.session.get('username')
-    selected_unit_id = request.GET.get('unit', None)
-    selected_page_id = request.GET.get('page', None)
-
-    posts = Post.objects.filter(is_question=True)
-
-    if selected_unit_id:
-        unit = Unit.objects.get(id=selected_unit_id)
-        pages = PaperPage.objects.filter(unit=unit)
-        page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
-        main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
-        sub_questions = SubQuestion.objects.filter(
-            selected_sub_questions__page_main_question__in=page_main_questions
-        )
-        posts = posts.filter(
-            Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
-        )
-
-    if selected_page_id:
-        page = PaperPage.objects.get(id=selected_page_id)
-        page_main_questions = PageMainQuestion.objects.filter(page=page)
-        main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
-        sub_questions = SubQuestion.objects.filter(
-            selected_sub_questions__page_main_question__in=page_main_questions
-        )
-        posts = posts.filter(
-            Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
-        )
-
-
-    if role == 'student':
-        student = Students.objects.get(username=username)
-        class_instance = student.class_instance
-        units = Unit.objects.filter(class_instance=class_instance)
-        pages = PaperPage.objects.filter(unit__in=units)
-        # 获取这些页面下的所有主题和小题
-        page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
-        main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
-        sub_questions = SubQuestion.objects.filter(
-            selected_sub_questions__page_main_question__in=page_main_questions
-        )
-        # 筛选与这些主题和小题相关的帖子
-        posts = posts.filter(
-            Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
-        )
-
-    elif role != 'teacher':
-        posts = Post.objects.none()
-
-    # 分页功能
-    paginator = Paginator(posts, 10)  # 每页显示 10 条帖子
-    page_number = request.GET.get('page', 1)
-    try:
-        posts = paginator.page(page_number)
-    except PageNotAnInteger:
-        posts = paginator.page(1)
-    except EmptyPage:
-        posts = paginator.page(paginator.num_pages)
-
-    # 获取所有单元和页面，用于前端选择
-    units = Unit.objects.all()
-    pages = PaperPage.objects.all()
-
-    return render(request, 'forum/question_post.html', {
-        'posts': posts,
-        'units': units,
-        'pages': pages,
-        'selected_unit_id': selected_unit_id,
-        'selected_page_id': selected_page_id
-    })
-
-
-def my_post(request):
-    username = request.session.get('username')
-    role = request.session.get('role', 'none')
-
-    if not username:
-        messages.error(request, 'You are not logged in.')
+    current_username = request.session.get('username')
+    if not current_username:
         return redirect('login')
 
-    if role == 'teacher':
-        user = Teachers.objects.get(username=username)
-        posts = Post.objects.filter(teacher=user)
-    elif role == 'student':
-        user = Students.objects.get(username=username)
-        posts = Post.objects.filter(student=user)
-    else:
-        messages.error(request, 'Invalid role')
-        return redirect('forum:forum')
+    try:
+        student = Students.objects.get(username=current_username)
+    except Students.DoesNotExist:
+        return HttpResponse("学生信息不存在，请联系管理员。", status=404)
 
-    return render(request, 'forum/my_post.html', {'posts': posts})
+    class_instance = student.class_instance
+    exam_units = Unit.objects.filter(type='exam', class_instance=class_instance)
 
-def non_public(request):
-    role = request.session.get('role', 'none')
-    username = request.session.get('username')
-    if role == 'student':
-        # 学生只能看到自己隐藏的帖子
-        posts = Post.objects.filter(is_public=False, author=username)
-    elif role == 'teacher':
-        # 教师可以看到所有隐藏的帖子
-        posts = Post.objects.filter(is_public=False)
-    else:
-        # 如果用户不是学生或教师，返回空列表或重定向
-        posts = Post.objects.none()
+    exams = []
+    current_datetime = datetime.now()
+    for unit in exam_units:
+        time_management = unit.time_management.first()
+        if time_management:
+            exam_date = time_management.exam_date
+            start_time = time_management.start_time
+            end_time = time_management.end_time
 
-    return render(request, 'forum/non_public.html', {'posts': posts})
+            # 将开始时间和结束时间转换为时间戳
+            start_datetime = datetime.combine(exam_date, start_time)
+            end_datetime = datetime.combine(exam_date, end_time)
+            start_timestamp = int(start_datetime.timestamp())
+            end_timestamp = int(end_datetime.timestamp())
+            current_timestamp = int(current_datetime.timestamp())
 
-
-def post_edit(request, post_id):
-    post = get_object_or_404(Post, pk=post_id)
-    username = request.session.get('username')
-
-    if post.author != username:
-        messages.error(request, 'You do not have permission to edit this post.')
-        return redirect('forum:my_post')
-
-    if request.method == 'POST':
-        form = PostForm(request.POST, instance=post)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Post updated successfully.')
-            return redirect('forum:my_post')
-    else:
-        form = PostForm(instance=post)  # 使用当前帖子的数据初始化表单
-
-    return render(request, 'forum/edit_post.html', {'form': form, 'post': post})
-
-
-# @login_required
-# def add_comment(request, post_id, parent_comment_id=None):
-#     post = get_object_or_404(Post, pk=post_id)
-#     if request.method == "POST":
-#         form = CommentForm(request.POST)
-#         if form.is_valid():
-#             username = request.session.get('username')
-#             if username:
-#                 user = User.objects.get(username=username)
-#                 comment = form.save(commit=False)
-#                 comment.author = user
-#                 comment.name = user
-#                 comment.post = post
-#                 if parent_comment_id:
-#                     comment.parent_comment = get_object_or_404(Comment, pk=parent_comment_id)
-#                 comment.save()
-#                 if form.cleaned_data['is_anonymous']:
-#                     # 如果已存在 使用之前的
-#                     if Anonymous.objects.filter(user=user, post=post).exists():
-#                         anonymous_instance = Anonymous.objects.get(user=user, post=post)
-#                         comment.anonymous_name = anonymous_instance.anonymous_name
-#                         comment.name = comment.anonymous_name
-#                         #comment.anonymous_name = Anonymous.objects.get(user=user, post=post)
-#                         print(comment.anonymous_name)
-#                         comment.save()
-#                     else:
-#                         anonymous_name = random_generate()
-#                         while Anonymous.objects.filter(anonymous_name=anonymous_name,post=post).exists():
-#                             anonymous_name = random_generate()
-#                         Anonymous.objects.create(user=user, post=post, anonymous_name=anonymous_name)
-#                         comment.anonymous_name = anonymous_name
-#                         comment.name = anonymous_name
-#                         comment.save()
-#                 else:
-#                     post_author = comment.post.author
-#                     if post_author != comment.author:
-#                         Message.objects.create(
-#                             sender=comment.author,
-#                             receiver=post_author,
-#                             content=f"New comment on your post '{comment.post.title}'",
-#                             post_id=post.id
-#                         )
-#                 #websocket实现实时通知
-#                 if comment.post.author != comment.author:
-#                     async_to_sync(get_channel_layer().group_send)(
-#                         f'user_{comment.post.author.id}',
-#                         {
-#                             'type': 'notification_message',
-#                             'message': f"You have a new reply on your post '{comment.post.title}'",
-#                             'post_id': comment.post.id
-#                         }
-#                     )
-#
-#                     if comment.parent_comment and comment.parent_comment.author != comment.author:
-#                         Message.objects.create(
-#                             sender=comment.author,
-#                             receiver=comment.parent_comment.author,
-#                             content=f"New reply to your comment on post '{post.title}'",
-#                             post_id=post.id
-#                         )
-#                     if comment.parent_comment and comment.parent_comment.author != comment.author:
-#                         async_to_sync(get_channel_layer().group_send)(
-#                             f'user_{comment.parent_comment.author.id}',
-#                             {
-#                                 'type': 'notification_message',
-#                                 'message': f"You have a new reply to your comment on post '{post.title}'",
-#                                 'post_id': comment.post.id
-#                             }
-#                         )
-#
-#                 return redirect('forum:post_detail', post_id=post_id)
-#     else:
-#         form = CommentForm()
-#
-#     return render(request, 'forum/add_comment.html', {'form': form, 'post_id': post_id, 'parent_comment_id': parent_comment_id})
-#
-#
-#
-# def add_comment(request, post_id, parent_comment_id=None):
-#     post = get_object_or_404(Post, pk=post_id)
-#     if request.method == "POST":
-#         form = CommentForm(request.POST)
-#         if form.is_valid():
-#             username = request.session.get('username')
-#             role = request.session.get('role', 'none')
-#             if role == 'Teacher':
-#                 user = Teachers.objects.get(username=username)
-#             else:
-#                 user = Students.objects.get(username=username)
-#             if username:
-#                 comment = form.save(commit=False)
-#                 comment.author = user.username
-#                 comment.name = user.name
-#                 comment.post = post
-#                 if parent_comment_id:
-#                     comment.parent_comment = get_object_or_404(Comment, pk=parent_comment_id)
-#                 comment.save()
-#                 if form.cleaned_data['is_anonymous']:
-#                     if Anonymous.objects.filter(user=user, post=post).exists():
-#                         anonymous_instance = Anonymous.objects.get(user=user, post=post)
-#                         comment.anonymous_name = anonymous_instance.anonymous_name
-#                         comment.name = comment.anonymous_name
-#                         comment.save()
-#                     else:
-#                         anonymous_name = random_generate()
-#                         while Anonymous.objects.filter(anonymous_name=anonymous_name, post=post).exists():
-#                             anonymous_name = random_generate()
-#                         Anonymous.objects.create(user=user, post=post, anonymous_name=anonymous_name)
-#                         comment.anonymous_name = anonymous_name
-#                         comment.name = anonymous_name
-#                         comment.save()
-#                 else:
-#                     post_author = comment.post.author
-#                     if post_author != comment.author:
-#                         Message.objects.create(
-#                             sender=comment.author,
-#                             receiver=post_author,
-#                             content=f"New comment on your post '{comment.post.title}'",
-#                             post_id=post.id
-#                         )
-#                 if comment.post.author != comment.author:
-#                     async_to_sync(get_channel_layer().group_send)(
-#                         f'user_{comment.post.author.id}',
-#                         {
-#                             'type': 'notification_message',
-#                             'message': f"You have a new reply on your post '{comment.post.title}'",
-#                             'post_id': comment.post.id
-#                         }
-#                     )
-#                     if comment.parent_comment and comment.parent_comment.author != comment.author:
-#                         Message.objects.create(
-#                             sender=comment.author,
-#                             receiver=comment.parent_comment.author,
-#                             content=f"New reply to your comment on post '{post.title}'",
-#                             post_id=post.id
-#                         )
-#                         async_to_sync(get_channel_layer().group_send)(
-#                             f'user_{comment.parent_comment.author.id}',
-#                             {
-#                                 'type': 'notification_message',
-#                                 'message': f"You have a new reply to your comment on post '{post.title}'",
-#                                 'post_id': comment.post.id
-#                             }
-#                         )
-#                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-#                     return JsonResponse({'success': True})
-#                 else:
-#                     return JsonResponse({'success': True, 'redirect': reverse('forum:post_detail', args=[post_id])})
-#             else:
-#                 return JsonResponse({'success': False, 'message': '用户未登录'})
-#         else:
-#             return JsonResponse({'success': False, 'message': '表单数据无效'})
-#     else:
-#         form = CommentForm()
-#         return render(request, 'forum/add_comment.html', {'form': form, 'post_id': post_id, 'parent_comment_id': parent_comment_id})
-
-def add_comment(request, post_id, parent_comment_id=None):
-    post = get_object_or_404(Post, pk=post_id)
-    if request.method == "POST":
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            username = request.session.get('username')
-            role = request.session.get('role', 'none')
-
-            if role == 'teacher':
-                user = Teachers.objects.get(username=username)
-                comment = form.save(commit=False)
-                comment.teacher = user
-            elif role == 'student':
-                user = Students.objects.get(username=username)
-                comment = form.save(commit=False)
-                comment.student = user
+            # 计算初始倒计时时间（仅用于页面加载时显示）
+            time_remaining = start_datetime - current_datetime
+            if time_remaining.total_seconds() < 0:
+                time_remaining_display = "考试已开始"
             else:
-                return JsonResponse({'success': False, 'message': 'Invalid role'})
+                hours, remainder = divmod(time_remaining.seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                time_remaining_display = f"{hours}小时{minutes}分钟{seconds}秒"
 
-            comment = form.save(commit=False)
-            comment.author = user.username
-            comment.post = post
-            if parent_comment_id:
-                comment.parent_comment = get_object_or_404(Comment, pk=parent_comment_id)
+            exam_data = {
+                'unit_id': unit.id,
+                'title': unit.title,
+                'start_time': start_time,
+                'end_time': end_time,
+                'start_timestamp': start_timestamp,
+                'end_timestamp': end_timestamp,
+                'current_timestamp': current_timestamp,
+                'time_remaining': time_remaining_display,
+            }
+            exams.append(exam_data)
 
-            if form.cleaned_data['is_anonymous']:
-                if Anonymous.objects.filter(user=user, post=post).exists():
-                    anonymous_instance = Anonymous.objects.get(user=user, post=post)
-                    comment.anonymous_name = anonymous_instance.anonymous_name
-                    comment.name = anonymous_instance.anonymous_name
+    return render(request, 'exam/exam_list.html', {'exams': exams})
+
+def start_exam(request, exam_id):
+
+    exam = get_object_or_404(Unit, id=exam_id, type='exam')
+    time_management = get_object_or_404(TimeManagement, unit=exam)
+
+    now = timezone.now()
+
+    exam_date = time_management.exam_date
+    start_time = time_management.start_time
+    end_time = time_management.end_time
+
+    start_datetime = datetime.combine(exam_date, start_time)
+    end_datetime = datetime.combine(exam_date, end_time)
+
+    # 检查时间范围
+    if now < start_datetime:
+        return JsonResponse({'status': 'not_start', 'message': 'It is not exam time now, please wait.'}, status=403)
+    elif now > end_datetime:
+        return JsonResponse({'status': 'expired', 'message': 'The exam has already ended.'}, status=403)
+
+    # 获取当前登录学生的用户名
+    username = request.session.get('username')
+    if not username:
+        return JsonResponse({'status': 'error', 'message': 'You are not logged in.'}, status=403)
+
+    student = get_object_or_404(Students, username=username)
+
+    # 创建或获取学生的考试记录
+    record, created = StudentExamRecord.objects.get_or_create(user=student, exam=exam)
+
+    if created:
+        # 设置考试记录的开始时间和结束时间
+        record.started_at = now
+        record.ended_at = min(now + timezone.timedelta(minutes=time_management.duration), end_datetime)
+        record.save()
+
+    if not created and record.submitted:
+        return JsonResponse({'status': 'submitted', 'message': 'You have already submitted this exam.'}, status=403)
+
+
+    first_page = exam.paper_pages.first()
+
+    if not first_page:
+        return JsonResponse({'status': 'error', 'message': 'No pages found for this exam.'}, status=404)
+
+    return redirect('accessment:exam_page', exam_id=exam.id, order=first_page.order)
+
+
+#加载答案
+def load_answers(student_page_record):
+    cache_key = f"answers_{student_page_record.id}"
+    cached_answers = cache.get(cache_key)
+
+    if cached_answers is not None:
+        # 如果缓存存在，直接使用缓存中的答案
+        answers_dict = {}
+        for sub_question_id, answer_text in cached_answers.items():
+            if answer_text:
+                if isinstance(answer_text, str) and answer_text.startswith('['):
+                    answers_dict[int(sub_question_id)] = json.loads(answer_text)
                 else:
-                    anonymous_name = random_generate()
-                    while Anonymous.objects.filter(anonymous_name=anonymous_name, post=post).exists():
-                        anonymous_name = random_generate()
-                    Anonymous.objects.create(user=user, post=post, anonymous_name=anonymous_name)
-                    comment.anonymous_name = anonymous_name
-                    comment.name = anonymous_name
+                    answers_dict[int(sub_question_id)] = answer_text
+        return answers_dict
+
+    else:
+        # 如果没有缓存，从数据库中加载答案
+        answers = StudentAnswer.objects.filter(student_page_record=student_page_record)
+        answers_dict = {}
+        for answer in answers:
+            sub_question_id = int(answer.sub_question_id)
+            if answer.sub_question.main_question.question_type == 'correction':
+                if sub_question_id not in answers_dict:
+                    answers_dict[sub_question_id] = []
+                answers_dict[sub_question_id].append({
+                    'text': answer.text,
+                    'index': answer.index,
+                    'type': answer.type
+                })
             else:
-                comment.author = user.username
-                comment.name = user.name
+                answers_dict[sub_question_id] = answer.text
 
-            comment.save()
+        # 更新缓存
+        cache.set(cache_key, answers_dict, timeout=600)
 
-            # 发送消息通知
-            if not form.cleaned_data['is_anonymous']:
-                if comment.post.author != comment.author:
-                    Message.objects.create(
-                        sender=user.username,
-                        receiver=comment.post.author,
-                        content=f"New comment on your post '{comment.post.title}'",
-                        post=post
-                    )
-                    async_to_sync(get_channel_layer().group_send)(
-                        f'user_{comment.post.author}',
-                        {
-                            'type': 'notification_message',
-                            'message': f"You have a new reply on your post '{comment.post.title}'",
-                            'post_id': post.id
-                        }
-                    )
+        return answers_dict
 
-                if comment.parent_comment and comment.parent_comment.author != comment.author:
-                    Message.objects.create(
-                        sender=user.username,
-                        receiver=comment.parent_comment.author,
-                        content=f"New reply to your comment on post '{post.title}'",
-                        post=post
-                    )
-                    async_to_sync(get_channel_layer().group_send)(
-                        f'user_{comment.parent_comment.author}',
-                        {
-                            'type': 'notification_message',
-                            'message': f"You have a new reply to your comment on post '{post.title}'",
-                            'post_id': post.id
-                        }
-                    )
+def exam_page(request, exam_id, order):
+    exam = get_object_or_404(Unit, id=exam_id, type='exam')
+    time_management = get_object_or_404(TimeManagement, unit=exam)
+    page = get_object_or_404(PaperPage, unit=exam, order=order)
+    username = request.session.get('username')
+    if not username:
+        messages.error(request, "You are not logged in.")
+        return redirect('login')
 
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': True})
-            else:
-                return JsonResponse({'success': True, 'redirect': reverse('forum:post_detail', args=[post_id])})
+    student = get_object_or_404(Students, username=username)
+    student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam=exam)
+    student_page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
+
+    if student_page_record.submitted and not page.can_modify:
+        messages.error(request, "页面已提交，无法继续答题。")
+        return next_page(request, exam_id, order)
+
+    if created:
+        if page.limited_time > 0:
+            student_page_record.remaining_time = page.limited_time* 60
         else:
-            return JsonResponse({'success': False, 'message': '表单数据无效'})
+            student_page_record.remaining_time = None
+        student_page_record.save()
+
+
+    if student_page_record.is_expired:
+        messages.error(request, "页面已超时，无法继续答题。")
+        return save_page(request, exam_id, order)
+
+    page_main_questions = PageMainQuestion.objects.filter(page=page)
+    main_questions = [pmq.main_question for pmq in page_main_questions]
+
+    page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
+    sub_questions = [psq.sub_question for psq in page_sub_questions]
+
+    media_materials = MediaMaterial.objects.filter(main_questions__in=main_questions).distinct()
+
+    random.seed(student_page_record.student_exam_record.user.id)
+
+
+    answers_dict = load_answers(student_page_record)
+
+
+    blank_data = {}
+    correction_data = {}
+    for main_question in main_questions:
+        if main_question.question_type == 'blank':  # 处理填空题
+            blank_sub_questions = main_question.sub_questions.all().order_by('id')
+            html_parts = []
+            for sub_q in blank_sub_questions:
+                blanks = sub_q.blanks.order_by('-index')
+                words = sub_q.question_text.split()
+                for blank in blanks:
+                    if 0 <= blank.index < len(words):
+                        answer = answers_dict.get(str(sub_q.id), '')
+                        input_html = f'<input type="text" class="blank-input" name="answer_{sub_q.id}" id="answer_{sub_q.id}" value="{answer}" placeholder="{sub_q.id}"/>'
+                        words.insert(blank.index + 1, input_html)
+                processed_text = ' '.join(words)
+                html_parts.append(processed_text)
+            # 合并为连贯段落
+            processed_html = ' '.join(html_parts)
+            blank_data[main_question.id] = processed_html
+
+        elif main_question.question_type == 'choice': # 选择题乱序
+            for sub_question in sub_questions:
+                options = list(sub_question.options.all())
+                random.shuffle(options)
+                sub_question.shuffled_options = options
+
+        elif main_question.question_type == 'correction':# 改错题拆词
+            correction_sub_questions = main_question.sub_questions.all().order_by('id')
+            full_text = ' '.join(sub_q.question_text for sub_q in correction_sub_questions)  # 合并为完整短文
+
+            # 记录每个单词的 sub_question_id 和局部 index
+            word_data = []
+            for sub_q in correction_sub_questions:
+                sub_q_words = sub_q.question_text.split()
+                for local_index, word in enumerate(sub_q_words):  # 使用局部索引
+                    word_data.append({
+                        'word': word,
+                        'sub_question_id': sub_q.id,
+                        'local_index': local_index,  # 使用局部索引
+                    })
+
+            correction_data[main_question.id] = {
+                'html': full_text,
+                'words': word_data,  # 存储每个单词的详细信息
+                'sub_questions': correction_sub_questions,  # 存储 SubQuestion 信息
+            }
+
+    play_records = StudentMediaPlayRecord.objects.filter(student_exam_record=student_exam_record,
+                                                         main_question__in=main_questions)
+    play_records_dict = {record.main_question_id: record.play_count for record in play_records}
+
+    is_last_page = not PaperPage.objects.filter(unit=exam, order=page.order + 1).exists()
+
+
+    context = {
+        'exam': exam,
+        'page': page,
+        'student_exam_record': student_exam_record,
+        'student_page_record': student_page_record,
+        'current_page_record_id': student_page_record.id,
+        'main_questions': main_questions,
+        'media_materials': media_materials,
+        'sub_questions': sub_questions,
+        'order': page.order,
+        'answers': json.dumps(answers_dict, cls=DjangoJSONEncoder),
+        'is_last_page': is_last_page,
+        'exam_record_id': student_exam_record.id,
+        'started_at': student_exam_record.started_at,
+        'ended_at': student_exam_record.ended_at,
+        'MEDIA_URL': settings.MEDIA_URL,
+        'play_records': play_records_dict,
+        'remaining_time': student_page_record.remaining_time,
+        'blank_data': blank_data,
+        'correction_data':correction_data,
+        'page_submitted': student_page_record.submitted,
+
+    }
+    return render(request, 'exam/exam_page.html', context)
+
+
+@csrf_exempt
+def update_remaining_time(request, page_record_id):
+    if request.method == 'POST':
+        import json
+        data = json.loads(request.body)
+        remaining_time = data.get('remaining_time')
+
+        student_page_record = get_object_or_404(StudentPageRecord, id=page_record_id)
+        student_page_record.remaining_time = remaining_time
+        if student_page_record.remaining_time and student_page_record.remaining_time<= 0:
+            student_page_record.is_expired = True
+        student_page_record.save()
+
+
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+def next_page(request, exam_id, order):
+    exam = get_object_or_404(Unit, id=exam_id, type='exam')
+    current_page = get_object_or_404(PaperPage, unit=exam, order=order)
+    next_page = exam.paper_pages.filter(order=current_page.order + 1).first()
+    # 检查是否为最后一页
+    if not next_page:
+        # 提示已完成考试，留在当前页面
+        messages.success(request, 'You have completed the exam.')
+        return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
     else:
-        form = CommentForm()
-        return render(request, 'forum/add_comment.html', {'form': form, 'post_id': post_id, 'parent_comment_id': parent_comment_id})
+        # 跳转到下一页
+        return redirect('accessment:exam_page', exam_id=exam.id, order=next_page.order)
 
-
-def comment_delete(request, comment_id):
-    comment = get_object_or_404(Comment, pk=comment_id)
-    role = request.session.get('role', 'none')
-    username = request.session.get('username')
-
-    if role == 'teacher' or comment.author == username:
-        # 教师可以删除任何评论
-        comment.delete()
-        messages.success(request, 'Comment deleted successfully.')
-        return redirect('forum:post_detail', post_id=comment.post.id)
-    else:
-        # 无权限删除
-        messages.error(request, 'You do not have permission to delete this comment.')
-        return redirect('forum:post_detail', post_id=comment.post.id)
-
-#生成随机匿名用户
-def random_generate():
-    random_length = random.randint(4, 5)
-    random_chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
-    random_string = ''.join(random.choice(random_chars) for _ in range(random_length))
-    #username = string.ascii_uppercase + string.ascii_lowercase + string.digits
-    username=fake.first_name() + fake.last_name() + "_" +random_string
-    return username
-
-# def generate_anonymous_names(request):
+# def _save_answers_logic(request, page_record_id):
+#     # 获取页面记录
+#     page_record = get_object_or_404(StudentPageRecord, id=page_record_id)
+#
+#     # 获取当前页面的所有大题
+#     page_main_questions = PageMainQuestion.objects.filter(page=page_record.page)
+#     main_questions = [pmq.main_question for pmq in page_main_questions]
+#
+#     # 获取所有相关的小题
+#     page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
+#     sub_question_ids = [psq.sub_question.id for psq in page_sub_questions]
+#
+#     # 保存答案
+#     for sub_question_id in sub_question_ids:
+#         sub_question = SubQuestion.objects.get(id=sub_question_id)
+#         main_question = sub_question.main_question
+#         question_type = main_question.question_type
+#
+#         if question_type == 'choice':
+#             # 选择题
+#             selected_option = request.POST.get(f'answer_{sub_question_id}')
+#             answer_text = selected_option
+#             # 更新或创建答案记录
+#             StudentAnswer.objects.update_or_create(
+#                 sub_question_id=sub_question_id,
+#                 student_page_record=page_record,
+#                 defaults={'text': answer_text}
+#             )
+#         elif question_type == 'matching':
+#             # 连线题
+#             answers = request.POST.getlist(f'answer_{sub_question_id}')
+#             answer_text = ','.join(answers)
+#             # 更新或创建答案记录
+#             StudentAnswer.objects.update_or_create(
+#                 sub_question_id=sub_question_id,
+#                 student_page_record=page_record,
+#                 defaults={'text': answer_text}
+#             )
+#         elif question_type == 'correction':
+#             # 改错题
+#             for key, value in request.POST.items():
+#                 if key.startswith(f'correction_type_{sub_question_id}_'):
+#                     # 提取 local_index
+#                     local_index = key.split('_')[-1]
+#
+#                     # 获取对应的错误类型、索引和修改内容
+#                     correction_type = value.strip()
+#                     correction_text = request.POST.get(f'correction_text_{sub_question_id}_{local_index}', '').strip()
+#                     correction_index = request.POST.get(f'correction_index_{sub_question_id}_{local_index}', '').strip()
+#
+#                     # 检查是否有错误
+#                     if correction_type == 'none':  # 没有错误
+#                         answer_text = 'right'
+#                     else:
+#                         # 格式化答案文本：type:index:text
+#                         answer_text = f"{correction_type}:{correction_index}:{correction_text}"
+#                     StudentAnswer.objects.create(
+#                         sub_question=sub_question,
+#                         student_page_record=page_record,
+#                         text=answer_text
+#                     )
+#
+#
+#         else:
+#             # 主观题
+#             answer_text = request.POST.get(f'answer_{sub_question_id}', '').strip()
+#             # 更新或创建答案记录
+#             StudentAnswer.objects.update_or_create(
+#                 sub_question_id=sub_question_id,
+#                 student_page_record=page_record,
+#                 defaults={'text': answer_text}
+#             )
+#
+#         # # 更新或创建答案记录
+#         # StudentAnswer.objects.update_or_create(
+#         #     sub_question_id=sub_question_id,
+#         #     student_page_record=page_record,
+#         #     defaults={'text': answer_text}
+#         # )
+#
+#     return JsonResponse({'message': '答案保存成功'})
+# def save_answers(request):
 #     if request.method == 'POST':
-#         length = int(request.POST.get('length', 10))
-#         newname = random_generate(length)
-#         #是否存在?
-#         while Anonymous.objects.filter(anonymous_name=newname).exists():
-#             newname = random_generate(length)
-#         Anonymous.objects.create(anonymous_name=newname)
-#         return redirect('forum:post_detail')
-# #     return render(request, 'username_generator/generate.html')
+#         page_record_id = request.POST.get('page_record_id')
+#         if not page_record_id:
+#             return JsonResponse({'message': '缺少页面记录 ID'}, status=400)
+#
+#         try:
+#             page_record_id = int(page_record_id)
+#         except ValueError:
+#             return JsonResponse({'message': '页面记录 ID 必须是有效的数字'}, status=400)
+#
+#         return _save_answers_logic(request, page_record_id)
+#     else:
+#         return JsonResponse({'message': '请求方法错误'}, status=400)
 
-def change_public(request, post_id):
-    post = get_object_or_404(Post, pk=post_id)
-    role = request.session.get('role', 'none')
-    username = request.session.get('username')
+#暂时缓存
+def _save_answers_to_cache(request, page_record_id):
+    page_record = get_object_or_404(StudentPageRecord, id=page_record_id)
 
-    # 检查是否有权限更改公开状态
-    if role == 'teacher' or post.author == username:
-        post.is_public = not post.is_public
+    page_main_questions = PageMainQuestion.objects.filter(page=page_record.page)
+    main_questions = [pmq.main_question for pmq in page_main_questions]
 
-        if post.is_public and not post.anonymous_name:
-            # 如果帖子变为公开且之前没有设置匿名名称，则生成一个匿名名称
-            anonymous_name = random_generate()
-            while Post.objects.filter(anonymous_name=anonymous_name).exists():
-                anonymous_name = random_generate()
-            post.anonymous_name = anonymous_name
-            post.is_anonymous= True
-            post.name = anonymous_name
+    page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
+    sub_questions = [psq.sub_question for psq in page_sub_questions]
 
-        post.save()
-        messages.success(request, 'Post status updated successfully.')
+    # 构造缓存键
+    cache_key = f"answers_{page_record_id}"
+
+    # 获取当前缓存中的答案，如果没有则初始化为空字典
+    cached_answers = cache.get(cache_key, {})
+
+    # 更新缓存中的答案
+    for sub_question in sub_questions:
+        sub_question_id = sub_question.id
+        main_question = sub_question.main_question
+        question_type = main_question.question_type
+        answer_text = ""
+
+        if question_type == 'choice':
+            # 选择题
+            selected_option = request.POST.get(f'answer_{sub_question_id}')
+            answer_text = selected_option
+        elif question_type == 'matching':
+            # 连线题
+            answers = request.POST.getlist(f'answer_{sub_question_id}')
+            answer_text = ','.join(answers)
+        elif question_type == 'correction': # 改错题
+            correction_types = []
+            correction_texts = []
+            correction_indices = []
+
+            for key, value in request.POST.items():
+                if key.startswith(f'correction_type_{sub_question_id}_'):
+                    local_index = key.split('_')[-1]
+                    correction_type = value.strip()
+                    correction_text = request.POST.get(f'correction_text_{sub_question_id}_{local_index}', '').strip()
+
+                    if correction_type != 'none':
+                        correction_types.append(correction_type)
+                        correction_texts.append(correction_text)
+                        correction_indices.append(local_index)
+            answer_text = []
+            for i in range(len(correction_types)):
+                answer_text.append({
+                    'type': correction_types[i],
+                    'index': correction_indices[i],
+                    'text': correction_texts[i]
+                })
+            answer_text = json.dumps(answer_text)  # 将列表转换为 JSON 字符串
+        else:
+            # 主观题
+            answer_text = request.POST.get(f'answer_{sub_question_id}', '').strip()
+
+        # 将答案存入缓存
+        cached_answers[sub_question_id] = answer_text
+
+    # 将更新后的答案存入缓存，设置缓存有效期为10分钟
+    cache.set(cache_key, cached_answers, timeout=600)
+
+    return JsonResponse({'message': '已保存'})
+
+# def _save_answers_to_database(page_record_id):
+#     """从缓存中读取答案并保存到数据库"""
+#     cache_key = f"answers_{page_record_id}"
+#     cached_answers = cache.get(cache_key, {})
+#
+#     for sub_question_id, answer_text in cached_answers.items():
+#         StudentAnswer.objects.update_or_create(
+#             sub_question_id=sub_question_id,
+#             student_page_record_id=page_record_id,
+#             defaults={'text': answer_text}
+#         )
+#     cache.delete(cache_key)  # 删除缓存
+#     return JsonResponse({'message': '已保存'})
+
+def _update_cache(page_record):
+    """从数据库中读取最新答案并更新缓存"""
+    cache_key = f"answers_{page_record.id}"
+    cached_answers = {}
+
+    student_answers = StudentAnswer.objects.filter(student_page_record=page_record)
+    for answer in student_answers:
+        sub_question_id = answer.sub_question.id
+        if answer.sub_question.main_question.question_type == 'correction':
+            # 对于改错题，将答案转换为 JSON 字符串
+            corrections = []
+            if answer.type and answer.index is not None and answer.text:
+                corrections.append({
+                    'type': answer.type,
+                    'index': answer.index,
+                    'text': answer.text
+                })
+            cached_answers[sub_question_id] = json.dumps(corrections)
+        else:
+            cached_answers[sub_question_id] = answer.text
+
+
+    # 更新缓存
+    cache.set(cache_key, cached_answers, timeout=600)
+
+def _save_answers_to_database(page_record_id):
+    """从缓存中读取答案并保存到数据库"""
+    cache_key = f"answers_{page_record_id}"
+    cached_answers = cache.get(cache_key, {})
+
+    for sub_question_id, answer_text in cached_answers.items():
+        sub_question_id = int(sub_question_id)
+        sub_question = SubQuestion.objects.get(id=sub_question_id)
+
+        if sub_question.main_question.question_type == 'correction':
+            if answer_text == 'none':
+                StudentAnswer.objects.filter(
+                    sub_question=sub_question,
+                    student_page_record_id=page_record_id
+                ).delete()
+            else:
+                StudentAnswer.objects.filter(
+                    sub_question=sub_question,
+                    student_page_record_id=page_record_id
+                ).delete()
+
+                corrections = json.loads(answer_text)
+                for correction in corrections:
+                    StudentAnswer.objects.create(
+                        sub_question=sub_question,
+                        student_page_record_id=page_record_id,
+                        text=correction['text'],
+                        index=int(correction['index']),
+                        type=correction['type']
+                    )
+        else:
+            # 其他题型直接更新或创建答案记录
+            StudentAnswer.objects.update_or_create(
+                sub_question_id=sub_question_id,
+                student_page_record_id=page_record_id,
+                defaults={'text': answer_text}
+            )
+    # 更新缓存
+    page_record = StudentPageRecord.objects.get(id=page_record_id)
+    _update_cache(page_record)
+    return JsonResponse({'message': '已保存'})
+
+
+@csrf_exempt
+def save_page(request, exam_id, order):
+    if request.method == 'POST':
+        exam = get_object_or_404(Unit, id=exam_id, type='exam')
+        current_page = get_object_or_404(PaperPage, unit=exam, order=order)
+        username = request.session.get('username')
+        student = get_object_or_404(Students, username=username)
+        student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam=exam)
+        page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=current_page)
+
+        page_main_questions = PageMainQuestion.objects.filter(page=current_page).exclude(
+            main_question__question_type='text')
+        main_questions = [pmq.main_question for pmq in page_main_questions]
+
+        page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
+        sub_questions = [psq.sub_question for psq in page_sub_questions]
+
+        submitted_sub_question_ids = StudentAnswer.objects.filter(
+            student_page_record=page_record
+        ).exclude(
+            text__isnull=True
+        ).exclude(
+            text=''
+        ).values_list(
+            'sub_question_id', flat=True
+        )
+
+        #检查是否有题目未完成
+        unsubmitted_main_questions = []
+
+        # 特殊处理改错题
+        for main_question in main_questions:
+            if main_question.question_type == 'correction':
+                # 改错题任意小题有答案，就视为完成
+                sub_questions_for_main = [psq.sub_question for psq in page_sub_questions if
+                                          psq.page_main_question.main_question == main_question]
+                if not any(sq.id in submitted_sub_question_ids for sq in sub_questions_for_main):
+                    unsubmitted_main_questions.append(main_question)
+            else:
+                sub_questions_for_main = [psq.sub_question for psq in page_sub_questions if
+                                          psq.page_main_question.main_question == main_question]
+                unsubmitted_sub_questions_for_main = [
+                    sq for sq in sub_questions_for_main if sq.id not in submitted_sub_question_ids
+                ]
+                if unsubmitted_sub_questions_for_main:
+                    unsubmitted_main_questions.append(main_question)
+        manual_save = request.POST.get('manual_save', 'false').lower() == 'true'
+        is_manual_submit = request.POST.get('is_manual_submit', 'false').lower() == 'true'
+        force_submit = request.POST.get('force_submit', 'false').lower() == 'true'
+        saved = request.POST.get('saved', 'false').lower() == 'true'
+
+        # 保存答案到缓存和数据库
+        if not manual_save and not is_manual_submit:  # 自动保存
+            _save_answers_to_cache(request, page_record.id)
+        if manual_save and not is_manual_submit: #手动保存
+            _save_answers_to_cache(request, page_record.id)
+            _save_answers_to_database(page_record.id)
+            if current_page.can_modify:
+                if not unsubmitted_main_questions:
+                    page_record.submitted = True
+                    page_record.save()
+
+        if is_manual_submit:
+            _save_answers_to_cache(request, page_record.id)
+            _save_answers_to_database(page_record.id)
+            if not current_page.can_modify:  # 不可修改的页面
+                if unsubmitted_main_questions:
+                    return JsonResponse({'message': '有未完成的题目，是否仍然提交？', 'status': 'unfinished'}, status=200)
+                else:
+                    return JsonResponse({'message': '是否确认提交？', 'status': 'finished'}, status=200)
+            elif current_page.can_modify:  # 可修改的页面
+                if unsubmitted_main_questions:
+                    page_record.submitted = False
+                    page_record.save()
+                    return JsonResponse({'message': '答案保存成功', 'status': 'saved'}, status=200)
+                else:
+                    page_record.submitted = True
+                    page_record.save()
+                    return JsonResponse({'message': '答案保存成功', 'status': 'saved'}, status=200)
+        if saved:
+            page_record.submitted_at = timezone.now()
+            page_record.save()
+            return next_page(request, exam.id, order)
+        if force_submit:
+            _save_answers_to_cache(request, page_record.id)
+            _save_answers_to_database(page_record.id)
+            page_record.submitted = True
+            page_record.submitted_at = timezone.now()
+            page_record.save()
+            return next_page(request, exam.id, order)
+        return _save_answers_to_cache(request, page_record.id)
+
+
     else:
-        # 如果用户没有权限更改公开状态，显示错误信息
-        messages.error(request, 'You do not have permission to change the public status of this post.')
+        return JsonResponse({'message': '请求方法错误'}, status=400)
 
-    return redirect('forum:post_detail', post_id=post_id)
+
+
+def submit_exam(request):
+    if request.method == 'POST':
+        student_exam_record_id = request.POST.get('student_exam_record_id')
+        still_submit = request.POST.get('still_submit', 'false').lower() == 'true'
+        finish_submit = request.POST.get('finish_submit', 'false').lower() == 'true'
+        force_submit = request.POST.get('force_submit', 'false').lower() == 'true'
+
+        if not student_exam_record_id:
+            return JsonResponse({'message': '缺少考试记录 ID', 'status': 'error'}, status=400)
+        try:
+            student_exam_record_id = int(student_exam_record_id)
+        except ValueError:
+            return JsonResponse({'message': '考试记录 ID 必须是有效的数字', 'status': 'error'}, status=400)
+
+        # 获取学生的考试记录
+        student_exam_record = get_object_or_404(StudentExamRecord, id=student_exam_record_id)
+        unit = student_exam_record.exam
+        pages = unit.paper_pages.all()
+        # 获取所有页面记录
+        page_records = StudentPageRecord.objects.filter(student_exam_record=student_exam_record,
+                                                        page__in=pages)
+
+        if force_submit:
+            for page in pages:
+                page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
+                page_record.submitted = True
+                page_record.submitted_at = timezone.now()
+                page_record.save()
+            student_exam_record.submitted = True
+            student_exam_record.finished_at = timezone.now()
+            student_exam_record.save()
+            return exam_result(request)
+
+        unsubmitted_pages = []
+        for page in pages:
+            page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
+            if not page_record.submitted:
+                unsubmitted_pages.append(page.order)
+
+        if unsubmitted_pages and not still_submit and not finish_submit and not force_submit:
+            # 有未提交的页面，返回提示信息
+            return JsonResponse({'message': '有未完成的页面，是否仍然交卷？', 'status': 'exam_unfinished', 'unsubmitted_pages': unsubmitted_pages}, status=200)
+
+        elif not unsubmitted_pages and not force_submit and not finish_submit:
+            return JsonResponse({'message': '是否确认交卷？', 'status': 'exam_finished'}, status=200)
+
+        if still_submit or finish_submit:
+            for page in pages:
+                page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
+                page_record.submitted = True
+                page_record.submitted_at = timezone.now()
+                page_record.save()
+            student_exam_record.submitted = True
+            student_exam_record.finished_at = timezone.now()
+            student_exam_record.save()
+
+            # 批改所有已提交的页面
+            for page_record in page_records:
+                if (student_exam_record.submitted and page_record.submitted
+                        and not page_record.is_graded):
+                    try:
+                        # 调用批改函数
+                        grade_page(page_record)
+                    except Exception as e:
+                        print(f"Error grading page {page_record.page.order}: {e}")
+
+            # 更新考试记录的总分
+            try:
+                total_score = StudentPageRecord.objects.filter(
+                    student_exam_record=student_exam_record,
+                    is_graded=True
+                ).aggregate(Sum('page_score'))['page_score__sum'] or 0
+                student_exam_record.score = total_score
+                student_exam_record.submitted = True
+                student_exam_record.finished_at = timezone.now()
+                student_exam_record.save()
+            except Exception as e:
+                print(f"Error updating exam record score: {e}")
+            return exam_result(request)
+
+    else:
+        return JsonResponse({'message': '请求方法错误', 'status': 'error'}, status=400)
+
+
+
+@csrf_exempt
+@require_POST
+def update_play_count(request):
+    try:
+        data = json.loads(request.body)
+        student_exam_record_id = data.get("student_exam_record_id")
+        main_question_id = data.get("main_question_id")
+        media_material_id = data.get("media_material_id")
+
+        if not student_exam_record_id or not main_question_id or not media_material_id:
+            return JsonResponse({"success": False, "message": "Invalid request data."}, status=400)
+
+        # 获取学生考试记录
+        student_exam_record = StudentExamRecord.objects.get(id=student_exam_record_id)
+        main_question = MainQuestion.objects.get(id=main_question_id)
+        media_material = MediaMaterial.objects.get(id=media_material_id)
+
+        # 获取或创建播放记录
+        play_record, created = StudentMediaPlayRecord.objects.get_or_create(
+            student_exam_record=student_exam_record,
+            main_question=main_question,
+            media_material=media_material,
+            defaults={"play_count": 0}
+        )
+
+        # 检查播放次数是否达到最大值
+        if play_record.play_count >= main_question.maximum_play:
+            return JsonResponse({"success": False, "message": "Maximum play count reached. Cannot play anymore."},
+                                status=403)
+
+        # 更新播放次数
+        play_record.play_count += 1
+        play_record.save()
+
+        return JsonResponse({"success": True, "message": "Play count updated successfully."})
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+def exam_result(request):
+    # 获取当前登录学生的用户名
+    username = request.session.get('username')
+    if not username:
+        return redirect('login')  # 如果没有登录，重定向到登录页面
+    student = get_object_or_404(Students, username=username)
+
+    student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam__type='exam')
+    exam = student_exam_record.exam
+    return render(request, 'exam/exam_result.html', {
+        'exam': exam,
+        'student_exam_record': student_exam_record
+    })
+
+
+def grade_page(page_record):
+    # 获取学生提交的答案
+    student_answers = StudentAnswer.objects.filter(student_page_record=page_record)
+
+    # 批改答案逻辑
+    total_score = 0
+    feedback = []
+
+    for student_answer in student_answers:
+        sub_question = student_answer.sub_question
+        correct_answer = sub_question.answer  # 假设题目模型中有正确答案字段
+
+        # 根据题型进行不同的批改逻辑
+        if sub_question.main_question.question_type == 'choice':
+            # 选择题批改逻辑
+            if student_answer.text == correct_answer:
+                score = sub_question.score
+            else:
+                score = 0
+            feedback.append(f"第{sub_question.id}题: 你的答案是 {student_answer.text}, 正确答案是 {correct_answer}")
+
+        elif sub_question.main_question.question_type == 'blank':
+            # 填空题批改逻辑
+            correct = True
+            for blank in sub_question.blanks.all():
+                student_blank = student_answer.text.split()[blank.index]
+                if student_blank != blank.answer:
+                    correct = False
+                    break
+            if correct:
+                score = sub_question.score
+            else:
+                score = 0
+            feedback.append(f"第{sub_question.id}题: 部分答案可能有误，请检查")
+
+        elif sub_question.main_question.question_type == 'correction':
+            # 改错题批改逻辑
+            correct = True
+            for correction in student_answer.corrections.all():
+                if correction.type != 'none' and (
+                        correction.text != correction.correct_text or correction.index != correction.correct_index):
+                    correct = False
+                    break
+            if correct:
+                score = sub_question.score
+            else:
+                score = 0
+            feedback.append(
+                f"第{sub_question.id}题: 你的改错有 {sub_question.corrections.count() - correct} 处错误")
+
+        # 累加总分
+        total_score += score
+        student_answer.score = score
+        student_answer.save()
+
+    # 保存批改结果
+    page_record.page_score = total_score
+    page_record.feedback = "\n".join(feedback)
+    page_record.is_graded = True
+    page_record.save()
