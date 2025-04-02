@@ -12,11 +12,57 @@
             display: inline-block;
             margin-right: 10px;
         }
+        .search-container {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .search-form .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-form .form-control {
+            padding: 10px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            transition: border-color 0.3s;
+        }
+
+        .search-form .form-control:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+        }
+
+        .search-form .btn {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .search-form .btn:hover {
+            background-color: #0056b3;
+        }
     </style>
 <body>
-<div>
-    <form method="get" action="{% url 'forum:question_post' %}">
-        <label for="unit">选择单元:</label>
+<div class="container mt-4">
+<div class="search-container">
+ <form class="search-form" method="get" action="{% url 'forum:question_post' %}">
+ <div class="form-group">
+      <label for="unit">选择单元:</label>
         <select name="unit" id="unit">
             <option value="">全部单元</option>
             {% for unit in units %}
@@ -26,21 +72,25 @@
             {% endfor %}
         </select>
 
-        <label for="page">选择页面:</label>
-        <select name="page" id="page">
+ </div>
+<div class="form-group">
+     <label for="page">选择页面:</label>
+        <select name="page" id="page" {% if not selected_unit_id %}disabled{% endif %}>
             <option value="">全部页面</option>
             {% for page in pages %}
                 <option value="{{ page.id }}"
                         {% if selected_page_id == page.id|stringformat:"s" %}
                         selected
                         {% endif %}>
-                    {{ page.order }}
+                    {{ page.text }}
                 </option>
             {% endfor %}
         </select>
-
-        <button type="submit">筛选</button>
+</div>
+        <button type="submit" class="btn">筛选</button>
     </form>
+</div>
+
 
     <!-- 帖子列表 -->
     {% if posts %}
@@ -88,5 +138,42 @@
     {% endif %}
     <a href="{% url 'forum:forum' %}">返回论坛</a>
 </div>
+<script>
+    // 预加载所有页面数据（Django 模板语法会渲染所有页面）
+    const allPages = [
+        {% for page in pages %}
+            {id: "{{ page.id }}", text: "{{ page.text }}", unit: "{{ page.unit.id }}"},
+        {% endfor %}
+    ];
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const unitSelect = document.getElementById('unit');
+        const pageSelect = document.getElementById('page');
+
+        unitSelect.addEventListener('change', function () {
+            let selectedUnitId = this.value;
+
+            // 清空页面下拉菜单，并默认添加“全部页面”选项
+            pageSelect.innerHTML = '<option value="">全部页面</option>';
+            pageSelect.disabled = true;  // 先禁用，待数据加载后再启用
+
+            if (selectedUnitId) {
+                // 筛选出属于该单元的页面
+                let filteredPages = allPages.filter(page => page.unit === selectedUnitId);
+
+                if (filteredPages.length > 0) {
+                    pageSelect.disabled = false; // 启用下拉菜单
+                    filteredPages.forEach(page => {
+                        let option = new Option(page.text, page.id);
+                        pageSelect.add(option);
+                    });
+                }
+            }
+        });
+    });
+</script>
+
 </body>
 </html>

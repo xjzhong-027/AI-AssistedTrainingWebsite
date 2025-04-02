@@ -10,11 +10,11 @@
     <link rel="stylesheet" href="{% static 'css/forum_student.css' %}">
 </head>
 <body>
-<ol class="breadcrumb">
-<li><a href="/student/student_index">Home</a></li>
-      <li class="active">论坛</li>
-    </ol>
-        <p class="mb-4">welcome, {{ request.session.username }}!</p>
+ <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/student/student_index">Home</a></li>
+            <li class="breadcrumb-item active">论坛</li>
+        </ol>
+        <p class="welcome-text">Welcome, {{ request.session.username }}!</p>
 <!-- 通知区域 -->
         <div id="notifications" class="notification-container"></div>
 
@@ -103,51 +103,7 @@
     <!-- 引入Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- add_post.html -->
-<form id="postForm" method="post" action="{% url 'forum:post_new' %}" style="display: none;">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <input type="hidden" id="selectedText" name="selected_text" value="">
-    <button type="submit" id="submitButton" style="display: none;">发帖</button>
-</form>
-<!-- question.html -->
-<script>
-// 监听选择改变事件
-document.addEventListener('selectionchange', function() {
-    var selectedText = window.getSelection().toString().trim();
-    var quoteButton = document.querySelector('button#quoteButton');
-    
-    if (selectedText) {
-        if (!quoteButton) {
-            // 如果按钮不存在，则创建它
-            quoteButton = document.createElement('button');
-            quoteButton.textContent = '发帖询问';
-            quoteButton.id = 'quoteButton';
-            quoteButton.style.position = 'absolute';
-            quoteButton.style.top = '10px'; // 根据需要调整位置
-            quoteButton.style.right = '10px';
-            quoteButton.style.zIndex = '1000';
-            document.body.appendChild(quoteButton);
-        }
-        // 显示按钮
-        quoteButton.style.display = 'inline';
-    } else {
-        // 如果没有选中文本，隐藏按钮
-        if (quoteButton) {
-            quoteButton.style.display = 'none';
-        }
-    }
-});
 
-// 监听按钮点击事件
-document.addEventListener('click', function(event) {
-    var quoteButton = document.querySelector('button#quoteButton');
-    if (event.target === quoteButton) {
-        // 直接跳转到发帖页面
-        window.location.href = '{% url "forum:post_new" %}';
-    }
-});
-</script>
 <!-- 消息提醒 -->
 <script>
     var ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";

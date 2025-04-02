@@ -1,20 +1,23 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>my posts</title>
+    <link rel="stylesheet" href="{% static 'css/forum_student.css' %}">
 </head>
 <body>
 <div>
     {% for post in posts %}
         <div>
-            <h2>{{ post.title }}</h2>
+           <h4 class="card-title">{{ post.title }}</h4>
             <p>{{ post.content }}</p>
                     {% if post.is_anonymous %}
-    <p>已匿名   {{ post.anonymous_name }}</p>
+    <p class="card-text">已匿名   {{ post.anonymous_name }}</p>
 {% endif %}
-            <p>posted at: {{ post.created_at }}</p>
-            <p>{{ post.top_score }}条评论</p>
+            <p class="card-text">posted at: {{ post.created_at }}</p>
+            <p class="card-text">{{ post.top_score }}条评论</p>
+
             <a href="{% url 'forum:post_detail' post.id %}">check</a>
             {% if request.session.role == 'teacher' or post.author == request.session.username %}
             <a href="{% url 'forum:post_delete' post.id %}">delete</a>

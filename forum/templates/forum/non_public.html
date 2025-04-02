@@ -1,17 +1,22 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>私聊</title>
+        <link rel="stylesheet" href="{% static 'css/forum_student.css' %}">
 </head>
 <body>
  {% for post in posts %}
-            <h1>{{ post.title }}</h1>
+     <div class="card mb-3">
+            <h4  class="card-title">{{ post.title }}</h4>
     <p>{{ post.content }}</p>
     <p>By: {{ post.name }}</p>
     <p>发布时间: {{ post.created_at }}</p>
-    <h2>评论</h2>
+    <h4>评论</h4>
+
     <div>
+
 {% for comment in comments %}
      {% include 'forum/_comment.html' with comment=comment %}
 {% endfor %}
@@ -22,6 +27,7 @@
         {% else %}
             <a href="{% url 'forum:change_public' post.id %}">公开</a>
         {% endif %}
+      </div>
     {% endfor %}
 <a href="{% url 'forum:forum' %}">返回论坛</a>
 </body>
