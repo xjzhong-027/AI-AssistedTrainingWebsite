@@ -1,0 +1,162 @@
+{% extends "query_base.html" %}
+
+{% block content %}
+    <style>
+        /* 模态背景遮罩层 */
+        #confirmDeleteModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* 半透明黑色背景 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            overflow: auto;
+        }
+        /* 模态框内容 */
+        #confirmDeleteModal .modal-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+            max-width: 90%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-left: 40%;
+            margin-top: 15%
+        }
+        .rule-checkbox {
+            cursor: pointer;
+        }
+        #select-all {
+            cursor: pointer;
+        }
+        #batch-delete-btn {
+            min-width: 100px;
+        }
+    </style>
+
+    <!-- 显示成功消息 -->
+    {% if messages %}
+        <ul class="messages list-group">
+            {% for message in messages %}
+                <li class="list-group-item {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                    {{ message }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <h2>逾期扣分规则列表</h2>
+    <form method="post" action="{% url 'Query:overdue_rule_batch_delete' %}" id="batch-delete-form">
+        {% csrf_token %}
+        <div class="d-flex justify-content-between mb-3">
+            <a href="{% url 'Query:overdue_rule_create' %}" class="btn btn-primary">创建新规则</a>
+            <button type="button" class="btn btn-danger" id="batch-delete-btn" disabled>批量删除</button>
+        </div>
+
+        <table class="table table-bordered table-striped" style="margin-top: 10px;">
+            <thead>
+                <tr>
+                    <th width="40px">
+                        <input type="checkbox" id="select-all">
+                    </th>
+                    <th>规则名称</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rule in rules %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="rule_ids" value="{{ rule.pk }}" class="rule-checkbox">
+                        </td>
+                        <td>{{ rule.rule_name }}</td>
+                        <td>{% if rule.is_active %}启用{% else %}禁用{% endif %}</td>
+                        <td>{{ rule.created_at|date:"Y-m-d" }}</td>
+                        <td>
+                            <a href="{% url 'Query:overdue_rule_update' rule.pk %}" class="btn btn-warning btn-sm">编辑</a>
+                            <a href="{% url 'Query:overdue_rule_detail' rule.pk %}" class="btn btn-info btn-sm">查看详情</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+
+    <!-- 确认删除模态框 -->
+    <div id="confirmDeleteModal" style="display:none;">
+        <div class="modal-container">
+            <div class="modal-body">
+                确定要删除选中的规则吗？此操作不可恢复！
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const selectAll = document.getElementById('select-all');
+            const ruleCheckboxes = document.querySelectorAll('.rule-checkbox');
+            const batchDeleteBtn = document.getElementById('batch-delete-btn');
+            const batchDeleteForm = document.getElementById('batch-delete-form');
+            const confirmDeleteBtn = document.getElementById('confirm-delete');
+
+            // 全选/取消全选
+            selectAll.addEventListener('change', function() {
+                ruleCheckboxes.forEach(checkbox => {
+                    checkbox.checked = selectAll.checked;
+                });
+                updateBatchDeleteBtn();
+            });
+
+            // 单个复选框变化时更新全选状态
+            ruleCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    selectAll.checked = [...ruleCheckboxes].every(cb => cb.checked);
+                    updateBatchDeleteBtn();
+                });
+            });
+
+            // 更新批量删除按钮状态
+            function updateBatchDeleteBtn() {
+                const checkedCount = document.querySelectorAll('.rule-checkbox:checked').length;
+                batchDeleteBtn.disabled = checkedCount === 0;
+                batchDeleteBtn.textContent = checkedCount > 0 ?
+                    `批量删除(${checkedCount})` : '批量删除';
+            }
+
+            // 批量删除按钮点击事件
+            batchDeleteBtn.addEventListener('click', function() {
+                const checkedCount = document.querySelectorAll('.rule-checkbox:checked').length;
+                if (checkedCount > 0) {
+                    // 显示确认对话框
+                    document.getElementById('confirmDeleteModal').style.display = 'block'
+                }
+            });
+
+            // 确认删除按钮点击事件
+            confirmDeleteBtn.addEventListener('click', function() {
+                batchDeleteForm.submit();
+            });
+
+        });
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('confirmDeleteModal').style.display = 'none';
+        }
+    </script>
+
+
+{% endblock %}

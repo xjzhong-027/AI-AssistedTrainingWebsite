@@ -1,5 +1,5 @@
 from django import forms
-from .models import ClassroomLayout
+from .models import ClassroomLayout, OverdueDeductionRule, OverduePeriod
 from Account.models import ClassScheduleAdjustment, ClassScheduleAddition, Class
 
 
@@ -70,9 +70,27 @@ class ClassroomLayoutForm(forms.ModelForm):
         self.fields['class_instance'].disabled = True
 
 
-# class ReevaluationForm(forms.Form):
-#     """ 重新评分表单 """
-#     class_name = forms.CharField(max_length=200, required=True, label="班级名称")
-#     unit_name = forms.CharField(max_length=100, required=True, label="单元名称")
-#     category = forms.ChoiceField(choices=Unit.TYPES, required=True, label="单元类别")
+class OverduePeriodForm(forms.ModelForm):
+    """ 逾期规则制定表单 """
+    class Meta:
+        model = OverduePeriod
+        fields = ['period_name', 'min_days', 'max_days', 'deduction_rate', 'description']
+        widgets = {
+            'min_days': forms.NumberInput(attrs={'step': '1', 'min': '1'}),
+            'max_days': forms.NumberInput(attrs={'step': '1', 'min': '1'}),
+            'deduction_rate': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'max': '1'}),
+        }
+
+OverduePeriodFormSet = forms.inlineformset_factory(
+    OverdueDeductionRule,
+    OverduePeriod,
+    form=OverduePeriodForm,
+    extra=1,
+    can_delete=True
+)
+
+class OverdueRuleForm(forms.ModelForm):
+    class Meta:
+        model = OverdueDeductionRule
+        fields = ['rule_name', 'description', 'is_active']
 

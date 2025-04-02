@@ -1,0 +1,206 @@
+{% extends "query_base.html" %}
+
+{% block content %}
+    <style>
+        .overdue-rule-form {
+            margin-top: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .form-text {
+            font-size: 0.875em;
+            color: #6c757d;
+        }
+        .period-settings {
+            margin-top: 30px;
+        }
+        table th {
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        table th small {
+            font-weight: normal;
+        }
+        .form-actions {
+            margin-top: 20px;
+        }
+        .text-danger {
+            font-size: 0.875em;
+        }
+        #add-period {
+            margin-left: 10px;
+        }
+    </style>
+
+
+    <h2>创建逾期扣分规则</h2>
+    <form method="post" class="overdue-rule-form">
+        {% csrf_token %}
+
+        <div class="rule-info">
+            <h3>基本规则信息</h3>
+            <div class="form-group">
+                <label for="{{ form.rule_name.id_for_label }}">规则名称:</label>
+                {{ form.rule_name }}
+                <small class="form-text text-muted">请输入易于识别的规则名称</small>
+            </div>
+            <div class="form-group">
+                <label for="{{ form.description.id_for_label }}">规则描述:</label>
+                {{ form.description }}
+            </div>
+            <div class="form-group form-check">
+                {{ form.is_active }}
+                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">启用此规则</label>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="period-settings">
+            <h3>逾期时间段设置 <button type="button" class="btn btn-sm btn-outline-primary" id="add-period">+ 新增一行</button></h3>
+            {{ formset.management_form }}
+            <table class="table table-bordered" id="periods-table">
+                <thead class="thead-light">
+                    <tr>
+                        <th>时间段名称</th>
+                        <th>最小天数<br><small>(≥此天数)</small></th>
+                        <th>最大天数<br><small>(<此天数，留空表示无上限)</small></th>
+                        <th>扣分比例<br><small>(0-1之间，如0.9表示扣10%)</small></th>
+                        <th>描述</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for form in formset %}
+                        <tr class="period-form">
+                            {{ form.id }}
+                            <td>
+                                {{ form.period_name }}
+                                {% if form.period_name.errors %}
+                                    <div class="text-danger">{{ form.period_name.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ form.min_days }}
+                                {% if form.min_days.errors %}
+                                    <div class="text-danger">{{ form.min_days.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ form.max_days }}
+                                {% if form.max_days.errors %}
+                                    <div class="text-danger">{{ form.max_days.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ form.deduction_rate }}
+                                {% if form.deduction_rate.errors %}
+                                    <div class="text-danger">{{ form.deduction_rate.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ form.description }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-period">删除</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success">保存规则</button>
+            <a href="{% url 'Query:overdue_rules_lists' %}" class="btn btn-danger">取消</a>
+        </div>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取表单和表格元素
+            const form = document.querySelector('.overdue-rule-form');
+            const table = document.getElementById('periods-table');
+            const tbody = table.querySelector('tbody');
+            const addButton = document.getElementById('add-period');
+            const totalForms = document.getElementById('id_periods-TOTAL_FORMS');
+
+            // 添加新行的函数
+            addButton.addEventListener('click', function() {
+                // 获取当前表单数量
+                const formCount = parseInt(totalForms.value);
+
+                // 克隆第一行作为模板
+                const newRow = tbody.querySelector('tr').cloneNode(true);
+
+                // 更新新行中的所有字段名称
+                const inputs = newRow.querySelectorAll('input, select, textarea');
+                inputs.forEach(function(input) {
+                    if (input.name) {
+                        input.name = input.name.replace('-0-', `-${formCount}-`);
+                        input.id = input.id.replace('-0-', `-${formCount}-`);
+                        input.value = ''; // 清空值
+                    }
+                });
+
+                // 清空错误显示
+                const errorDivs = newRow.querySelectorAll('.text-danger');
+                errorDivs.forEach(function(div) {
+                    div.innerHTML = '';
+                });
+
+                // 添加到表格
+                tbody.appendChild(newRow);
+
+                // 更新总表单数
+                totalForms.value = formCount + 1;
+
+                // 为新行绑定删除事件
+                bindRemoveEvent(newRow);
+            });
+
+            // 绑定删除行的事件
+            function bindRemoveEvent(row) {
+                const removeBtn = row.querySelector('.remove-period');
+                removeBtn.addEventListener('click', function() {
+                    // 如果是最后一行，不能删除
+                    if (tbody.querySelectorAll('tr').length <= 1) {
+                        alert('至少需要保留一个逾期时间段设置');
+                        return;
+                    }
+
+                    // 从DOM中移除行
+                    row.remove();
+
+                    // 重新计算和设置表单索引
+                    const rows = tbody.querySelectorAll('tr');
+                    let formIndex = 0;
+
+                    rows.forEach(function(row, index) {
+                        const inputs = row.querySelectorAll('input, select, textarea');
+                        inputs.forEach(function(input) {
+                            if (input.name) {
+                                input.name = input.name.replace(/-\d+-/, `-${index}-`);
+                                input.id = input.id.replace(/-\d+-/, `-${index}-`);
+                            }
+                        });
+                    });
+
+                    // 更新总表单数
+                    totalForms.value = rows.length;
+                });
+            }
+
+            // 为初始行绑定删除事件
+            const initialRows = tbody.querySelectorAll('tr');
+            initialRows.forEach(function(row) {
+                bindRemoveEvent(row);
+            });
+        });
+    </script>
+
+{% endblock %}

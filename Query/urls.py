@@ -59,4 +59,11 @@ urlpatterns = [
     path('unit/<int:unit_id>/statistic/<int:class_id>/', views.unit_statistic, name='unit_statistic'),
     path('statistic_announce/<int:class_id>/', views.statistic_announce, name='statistic_announce'),
 
+
+    # --------------- 逾期扣分规则 ----------------
+    path('overdue_rules_lists/', views.OverdueRuleListView.as_view(), name='overdue_rules_lists'),
+    path('overdue_rule_create/', views.overdue_rule_create, name='overdue_rule_create'),
+    path('<int:pk>/overdue_rule_update/', views.overdue_rule_update, name='overdue_rule_update'),
+    path('<int:pk>/overdue_rule_detail', views.overdue_rule_detail, name='overdue_rule_detail'),
+    path('overdue_rule_batch_delete/', views.overdue_rule_batch_delete, name='overdue_rule_batch_delete')
 ]

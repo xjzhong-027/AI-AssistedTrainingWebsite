@@ -1,0 +1,37 @@
+{% extends "query_base.html" %}
+
+{% block content %}
+    <h2>逾期扣分规则详情: {{ rule.rule_name }}</h2>
+
+    <p>状态: {% if rule.is_active %}启用{% else %}禁用{% endif %}</p>
+    <p>描述: {{ rule.description|default:"无" }}</p>
+    <p>创建时间: {{ rule.created_at|date:"Y-m-d H:i" }}</p>
+    <p>最后更新时间: {{ rule.updated_at|date:"Y-m-d H:i" }}</p>
+
+    <h3>扣分时间段设置</h3>
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>时间段名称</th>
+                <th>最小天数</th>
+                <th>最大天数</th>
+                <th>扣分比例</th>
+                <th>描述</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for period in rule.periods.all %}
+            <tr>
+                <td>{{ period.period_name }}</td>
+                <td>{{ period.min_days }}</td>
+                <td>{{ period.max_days|default:"∞" }}</td>
+                <td>{{ period.deduction_rate }}</td>
+                <td>{{ period.description|default:"无" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{% url 'Query:overdue_rules_lists' %}" class="btn btn-primary">返回列表</a>
+
+{% endblock %}

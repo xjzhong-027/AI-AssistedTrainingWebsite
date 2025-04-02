@@ -11,16 +11,18 @@ from django.http import JsonResponse, QueryDict, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils.safestring import mark_safe
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.views.generic import ListView
 
 from announce.forms import AnnouncementForm
 from announce.models import Announcement, Message
-from .models import ClassroomLayout
+from .models import ClassroomLayout, OverdueDeductionRule
 from Account.models import Class, Students, Teachers, Attendance, ClassScheduleAdjustment, ClassScheduleAddition
 from ELW.models import Unit, TimeManagement, PaperPage, PageMainQuestion, PageSubQuestion, Correction, ChoiceOption, \
     MatchingOption, Blank
 from accessment.models import StudentExamRecord, StudentPageRecord, StudentAnswer, StudentMediaPlayRecord
 from .forms import AttendanceQueryForm, ClassScheduleAdjustmentForm, ClassScheduleAdditionForm,  \
-    ClassroomLayoutForm
+    ClassroomLayoutForm, OverdueRuleForm, OverduePeriodFormSet
 
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
@@ -1314,3 +1316,77 @@ def unit_statistic(request, unit_id, class_id):
 
 
 
+# -------------------------------- 逾期扣分规则 --------------------------------
+class OverdueRuleListView(ListView):
+    """ 逾期扣分规则列表 """
+    model = OverdueDeductionRule
+    template_name = 'overdue_rules/overdue_rules_lists.html'
+    context_object_name = 'rules'
+
+def overdue_rule_detail(request, pk):
+    """ 查看详细扣分规则 """
+    rule = get_object_or_404(OverdueDeductionRule, pk=pk)
+    return render(request, 'overdue_rules/overdue_rule_detail.html', {'rule': rule})
+
+
+def overdue_rule_create(request):
+    """ 创建新扣分规则 """
+    if request.method == 'POST':
+        form = OverdueRuleForm(request.POST)
+        formset = OverduePeriodFormSet(request.POST)
+
+        if form.is_valid() and formset.is_valid():
+            rule = form.save()
+            formset.instance = rule
+            formset.save()
+            return redirect('Query:overdue_rules_lists')
+    else:
+        form = OverdueRuleForm()
+        formset = OverduePeriodFormSet()
+
+    return render(request, 'overdue_rules/overdue_rule_create.html', {
+        'form': form,
+        'formset': formset,
+    })
+
+
+def overdue_rule_update(request, pk):
+    """ 编辑逾期扣分规则 """
+    rule = get_object_or_404(OverdueDeductionRule, pk=pk)
+
+    if request.method == 'POST':
+        form = OverdueRuleForm(request.POST, instance=rule)
+        formset = OverduePeriodFormSet(request.POST, instance=rule)
+
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            return redirect('Query:overdue_rules_lists')
+    else:
+        form = OverdueRuleForm(instance=rule)
+        formset = OverduePeriodFormSet(instance=rule)
+
+    return render(request, 'overdue_rules/overdue_rule_update.html', {
+        'form': form,
+        'formset': formset,
+        'rule': rule,
+    })
+
+
+@require_POST
+def overdue_rule_batch_delete(request):
+    rule_ids = request.POST.getlist('rule_ids')
+    if not rule_ids:
+        messages.error(request, "请选择要删除的规则")
+        return redirect('Query:overdue_rules_lists')
+
+    try:
+        rules_to_delete = OverdueDeductionRule.objects.filter(pk__in=rule_ids)
+        rule_count = rules_to_delete.count()
+
+        rules_to_delete.delete()
+        messages.success(request, f"成功删除 {rule_count} 条规则")
+    except Exception as e:
+        messages.error(request, f"删除失败: {str(e)}")
+
+    return redirect('Query:overdue_rules_lists')
