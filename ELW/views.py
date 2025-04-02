@@ -50,6 +50,7 @@ from .forms import (
     CorrectionFormSet
 )
 from Account.models import Students, Teachers, Class, Attendance, Course
+from Query.models import OverdueDeductionRule
 
 # Create your views here.
 
@@ -337,6 +338,7 @@ def teacher_week_file_import(request):
     username = request.session.get('username')
     teacher_instance = Teachers.objects.get(username=username)
     classes = Class.objects.filter(teacher_id=teacher_instance.id)
+    overdue_rules = OverdueDeductionRule.objects.all()
     task_package_id = request.GET.get('task_package_id')
     # print(f'task_package_id: {task_package_id}')
     media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
@@ -395,7 +397,7 @@ def teacher_week_file_import(request):
 
 
             print('question_data: ', question_data)
-            return render(request, 'teacher_side/week_task_preview.html', {'question_data': question_data, 'classes':classes})
+            return render(request, 'teacher_side/week_task_preview.html', {'question_data': question_data, 'classes':classes, 'overdue_rules': overdue_rules})
         else:
             return JsonResponse({'status': 'error', 'message': '文件上传失败'})
 
@@ -435,6 +437,11 @@ def teacher_week_file_import(request):
                 exam_date = datetime.date.fromisoformat(post_data.get('exam_date'))
                 start_time = datetime.time.fromisoformat(post_data.get('start_time'))
                 end_time = datetime.time.fromisoformat(post_data.get('end_time'))
+            overdue_rule_id = post_data.get('selected_overdue_rule')
+            if overdue_rule_id:
+                overdue_rule_instance = OverdueDeductionRule.objects.get(id=overdue_rule_id)
+            else:
+                overdue_rule_instance = None
 
             # 创建试卷
             class_instance = Class.objects.get(pk=class_id)
@@ -443,6 +450,7 @@ def teacher_week_file_import(request):
                 order=order,
                 title=title,
                 type=type,
+                overdue_rule=overdue_rule_instance
             )
             unit_instance.save()
             print('unit_instance: ', unit_instance)
@@ -850,6 +858,7 @@ def teacher_page_save(request, material_id):
         username = request.session.get('username')
         teacher_instance = Teachers.objects.get(username=username)
         classes = Class.objects.filter(teacher_id=teacher_instance.id)
+        overdue_rules = OverdueDeductionRule.objects.all()
         if request.POST.get('selected_class'):
             preview_datas_json = request.POST.get('preview_datas')
             preview_datas = json.loads(preview_datas_json)
@@ -869,6 +878,12 @@ def teacher_page_save(request, material_id):
                 exam_date = datetime.date.fromisoformat(request.POST.get('exam_date'))
                 start_time = datetime.time.fromisoformat(request.POST.get('start_time'))
                 end_time = datetime.time.fromisoformat(request.POST.get('end_time'))
+            overdue_rule_id = request.POST.get('selected_overdue_rule')
+            if overdue_rule_id:
+                overdue_rule_instance = OverdueDeductionRule.objects.get(id=overdue_rule_id)
+            else:
+                overdue_rule_instance = None
+
 
             # 创建试卷
             class_instance = Class.objects.get(pk=class_id)
@@ -877,6 +892,7 @@ def teacher_page_save(request, material_id):
                 order=order,
                 title=title,
                 type=type,
+                overdue_rule=overdue_rule_instance
             )
             unit_instance.save()
             print('unit_instance: ', unit_instance)
@@ -968,6 +984,7 @@ def teacher_page_save(request, material_id):
                 'preview_datas_json': preview_datas_json,
                 'preview_page_infos_json': preview_page_infos_json,
                 'classes': classes,
+                'overdue_rules': overdue_rules
             })
 
 '''

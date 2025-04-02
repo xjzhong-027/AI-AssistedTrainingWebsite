@@ -54,6 +54,35 @@
         <input type="number" name="week" id="week">
     </div>
 
+    <label for="selected_overdue_rule">逾期扣分规则：</label>
+    {% if overdue_rules %}
+         <div class="rule-selection-container">
+            <select name="selected_overdue_rule" id="selected_overdue_rule">
+                {% for rule in overdue_rules %}
+                    <option value="{{ rule.id }}">{{ rule.rule_name}}</option>
+                {% endfor %}
+            </select>
+            <a href="#" id="view-rule-detail" class="btn-view-detail" target="_blank">查看详情</a>
+         </div>
+         <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const ruleSelect = document.getElementById('selected_overdue_rule');
+                const viewDetailBtn = document.getElementById('view-rule-detail');
+
+                function updateDetailLink() {
+                    const selectedRuleId = ruleSelect.value;
+                    viewDetailBtn.href = "{% url 'Query:overdue_rule_detail' 0 %}".replace('0', selectedRuleId);
+                }
+
+                updateDetailLink();
+
+                ruleSelect.addEventListener('change', updateDetailLink);
+            });
+        </script>
+    {% else %}
+        <a href="{% url 'Query:overdue_rule_create' %}" target="_blank">无可用的扣分规则，前往创建</a>
+    {% endif %}
+
 
 
     <button type="submit">确认组卷</button>

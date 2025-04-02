@@ -298,42 +298,76 @@
         <!-- 弹窗结构 -->
         <div id="modal">
             <button type="button" id="close-modal">X</button>
-            <label for="selected_class">班级：</label>
-            <select name="selected_class" id="selected_class">
-                {% for class in classes %}
-                    {% if class %}
-                        <option value="{{ class.id }}">{{ class.class_name}}</option>
-                    {% else %}
-                        <p style="color: red">您当前没有正在教授的班级，无法进行组卷！</p>
-                    {% endif %}
-                {% endfor %}
-            </select>
+            <div class="modal-content">
+                <label for="selected_class">班级：</label>
+                <select name="selected_class" id="selected_class">
+                    {% for class in classes %}
+                        {% if class %}
+                            <option value="{{ class.id }}">{{ class.class_name}}</option>
+                        {% else %}
+                            <p style="color: red">您当前没有正在教授的班级，无法进行组卷！</p>
+                        {% endif %}
+                    {% endfor %}
+                </select>
 
-            <label for="title">单元名称</label>
-            <input type="text" name="title" id="title">
-            <label for="selected_type">组卷类型：</label>
-            <select name="selected_type" id="selected_type" onchange="toggleExamTimeInput()">
-                <option value="practice">练习</option>
-                <option value="exam">考试</option>
-                <option value="task">作业</option>
-                <option value="quiz">小测</option>
-            </select>
+                <label for="title">单元名称</label>
+                <input type="text" name="title" id="title">
+                <label for="selected_type">组卷类型：</label>
+                <select name="selected_type" id="selected_type" onchange="toggleExamTimeInput()">
+                    <option value="practice">练习</option>
+                    <option value="exam">考试</option>
+                    <option value="task">作业</option>
+                    <option value="quiz">小测</option>
+                </select>
 
-            <div class="time_management" id="time_management" style="display: none">
-                <label for="exam_time" id="exam_time_label">时长限制: </label>
-                <input type="number" name="exam_time" id="exam_time"><span>分钟</span>
-            </div>
+                <div class="time_management" id="time_management" style="display: none">
+                    <label for="exam_time" id="exam_time_label">时长限制: </label>
+                    <input type="number" name="exam_time" id="exam_time"><span>分钟</span>
+                </div>
 
-            <div class="exam_time_management" id="exam_time_management" style="display: none">
-                <label>开放时间：</label>
-                <input type="date" id="exam_date" name="exam_date">
-                <input type="time" id="start_time" name="start_time">
-                <input type="time" id="end_time" name="end_time">
-            </div>
+                <div class="exam_time_management" id="exam_time_management" style="display: none">
+                    <label>开放时间：</label>
+                    <input type="date" id="exam_date" name="exam_date">
+                    <input type="time" id="start_time" name="start_time">
+                    <input type="time" id="end_time" name="end_time">
+                </div>
 
-            <div class="open_week" id="open_week">
-                <label for="week">开放周次</label>
-                <input type="number" name="week" id="week">
+                <div class="open_week" id="open_week">
+                    <label for="week">开放周次</label>
+                    <input type="number" name="week" id="week">
+                </div>
+
+                <label for="selected_overdue_rule">逾期扣分规则：</label>
+                {% if overdue_rules %}
+                     <div class="rule-selection-container">
+                        <select name="selected_overdue_rule" id="selected_overdue_rule">
+                            {% for rule in overdue_rules %}
+                                <option value="{{ rule.id }}">{{ rule.rule_name}}</option>
+                            {% endfor %}
+                        </select>
+                        <a href="#" id="view-rule-detail" class="btn-view-detail" target="_blank">查看详情</a>
+                     </div>
+                     <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const ruleSelect = document.getElementById('selected_overdue_rule');
+                            const viewDetailBtn = document.getElementById('view-rule-detail');
+
+                            // 更新查看详情链接
+                            function updateDetailLink() {
+                                const selectedRuleId = ruleSelect.value;
+                                viewDetailBtn.href = "{% url 'Query:overdue_rule_detail' 0 %}".replace('0', selectedRuleId);
+                            }
+
+                            // 初始更新
+                            updateDetailLink();
+
+                            // 选择变化时更新
+                            ruleSelect.addEventListener('change', updateDetailLink);
+                        });
+                    </script>
+                {% else %}
+                    <a href="{% url 'Query:overdue_rule_create' %}" target="_blank">无可用的扣分规则，前往创建</a>
+                {% endif %}
             </div>
 
             <button id="confirm-unit" name="save">确认组卷</button>

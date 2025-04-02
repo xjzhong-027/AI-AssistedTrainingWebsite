@@ -5,6 +5,7 @@ import uuid
 import os
 
 from Account.models import Students, Teachers, Class, Course, Admins, Attendance
+from Query.models import OverdueDeductionRule
 
 # Create your models here.
 
@@ -197,6 +198,7 @@ class Unit(models.Model):
     order = models.IntegerField(verbose_name='单元序号', blank=False, null=False)
     title = models.CharField(verbose_name='单元名称', blank=True, null=True, max_length=100)
     type = models.CharField(verbose_name='题目类型', choices=TYPES, default='practice', blank=False, null=False, max_length=20)
+    overdue_rule = models.ForeignKey(OverdueDeductionRule, on_delete=models.SET_NULL, null=True, blank=True, related_name='units')
 
     class Meta:
         verbose_name_plural = '试卷管理'
