@@ -17,7 +17,5 @@ path('my_post/', views.my_post, name='my_post'),
 path('post/edit/<int:post_id>/', views.post_edit, name='post_edit'),
 path('non_public/', views.non_public, name='non_public'),
 path('ost/<int:post_id>/change_public/', views.change_public, name='change_public'),
-
-
 ]
 

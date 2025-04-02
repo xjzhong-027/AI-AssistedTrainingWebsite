@@ -3,6 +3,7 @@ from django.db.models import Q
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_POST
+from django.http import HttpResponseRedirect
 from django.utils import timezone
 from .models import Post, Comment,Anonymous
 from .forms import PostForm,CommentForm
@@ -20,6 +21,7 @@ from django.core.paginator import Paginator
 from django.views.decorators.http import require_GET
 from django.http import JsonResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.utils.http import url_has_allowed_host_and_scheme
 from faker import Faker
 fake = Faker()
 # Create your views here.
@@ -77,7 +79,7 @@ def forum(request):
     elif role == 'student':
         template = 'forum/forum_student.html'
     else:
-        template = 'forum/forum.html'
+        return redirect('login')
     form = PostForm()
     return render(request, template, {
         'username': username,
@@ -89,12 +91,17 @@ def forum(request):
 
 def post_new(request):
     if not request.session.get('is_login', False):
-        return redirect('login')  # 确保正确重定向到登录页面
+        return redirect('login')
 
     main_question_id = request.GET.get('main_question_id', None)
     sub_question_id = request.GET.get('sub_question_id', None)
     preset_title = request.GET.get('preset_title', '')
     announcement_id = request.GET.get('announcement_id', None)
+    start_offset = request.GET.get('start_offset', None)
+    end_offset = request.GET.get('end_offset', None)
+    content = request.GET.get('content', None)
+
+    return_url = request.GET.get('return_url', None)
 
     if request.method == "POST":
         form = PostForm(request.POST)
@@ -119,6 +126,10 @@ def post_new(request):
                 return redirect('forum:forum')
 
             post.created_at = timezone.now()
+            if main_question_id:
+                post.is_question = True
+                post.main_question_id = main_question_id
+            post.save()
             if sub_question_id:
                 post.is_question= True
                 post.sub_question_id = sub_question_id
@@ -134,7 +145,13 @@ def post_new(request):
                 post.name = anonymous_name
                 post.save()
 
-            return redirect('forum:forum')
+            if return_url and url_has_allowed_host_and_scheme(return_url, allowed_hosts=None):
+                return HttpResponseRedirect(return_url)
+            elif main_question_id or sub_question_id:
+                return HttpResponseRedirect(return_url)
+            else:
+                return redirect('forum:forum')
+
     else:
         initial_data = {'title': preset_title} if preset_title else {}
         form = PostForm(initial=initial_data)
@@ -239,8 +256,6 @@ def question_post(request):
 
     elif role != 'teacher':
         posts = Post.objects.none()
-
-
 
     # 分页功能
     paginator = Paginator(posts, 10)  # 每页显示 10 条帖子
@@ -581,7 +596,7 @@ def comment_delete(request, comment_id):
         return redirect('forum:post_detail', post_id=comment.post.id)
 
 #生成随机匿名用户
-def random_generate(length=10):
+def random_generate():
     random_length = random.randint(4, 5)
     random_chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
     random_string = ''.join(random.choice(random_chars) for _ in range(random_length))
