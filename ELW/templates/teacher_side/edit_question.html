@@ -98,12 +98,31 @@
 
             {% elif edit_type == 'main' %}
                 <input type="text" name="main_question_id" value="{{ main_question.id }}" hidden>
+{#纯文本修改#}
                 {% if main_question.question_type == 'text' %}
                     <input type="text" name="edit_type" value="text" hidden>
                     <div class="text_div">
                         <h4>文本修改</h4>
                         <textarea name="main_question_text_{{ main_question.id }}">{{ main_question.question_text }}</textarea>
+{#纯文本图片#}
+                    {% if sub_question.image_url %}
+                        <div class="mainImages">
+                            {% with image_urls=main_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
+                                {% for url in image_urls %}
+                                    <img src="{{ url }}" alt="Image {{ forloop.counter }}">
+                                {% endfor %}
+                            {% endwith %}
+                        </div>
+                    {% else %}
+                        <p>no images.</p>
+                    {% endif %}
+                    <div class="main_images">
+                        <label for="mainImageUpload">纯文本图片：</label>
+                        <input type="file" name="main_images" id="mainImageUpload" accept="image/*" multiple>
+                        <div id="mainImagePreview"></div>
                     </div>
+                    </div>
+{#改错题/填空题#}
                 {% else %}
                     <div class="sub_divs">
                         <h2>题目修改</h2>
@@ -120,7 +139,7 @@
                                         <textarea name="sub_answer_{{ sub.id }}">{{ sub.answer }}</textarea>
                                     </div>
                                 </div>
-                                <!-- 改错题信息 -->
+<!-- 改错题信息 -->
                                 {% if main_question.question_type == 'correction' %}
                                 <input type="text" name="edit_type" value="correction" hidden>
                                 <div class="corrections">
@@ -144,7 +163,7 @@
                                     </div>
                                     {% endfor %}
                                 </div>
-                                <!-- 填空题信息 -->
+<!-- 填空题信息 -->
                                 {% elif main_question.question_type == 'blank' %}
                                     <input type="text" name="edit_type" value="blank" hidden>
                                     <div class="blanks">
@@ -263,6 +282,36 @@
             {% endif %}
 
         });
+    {% elif edit_type == 'main' %}
+        {% if main_question.question_type == 'text' %}
+            document.addEventListener('DOMContentLoaded', () => {
+                // 纯文本图片上传逻辑
+                const mainImageUpload = document.getElementById('mainImageUpload');
+                const mainImagePreview = document.getElementById('mainImagePreview');
+                if (mainImageUpload && mainImagePreview) {
+                    mainImageUpload.addEventListener('change', (event) => {
+                        const files = event.target.files; // 获取用户选择的所有文件
+                        if (files && files.length > 0) {
+                            // 清空之前的预览
+                            mainImagePreview.innerHTML = '';
+                            // 遍历所有文件
+                            Array.from(files).forEach(file => {
+                                const reader = new FileReader(); // 创建 FileReader 对象
+                                // 文件读取完成时的回调函数
+                                reader.onload = (e) => {
+                                    const img = document.createElement('img');
+                                    img.src = e.target.result; // 设置图片的 src
+                                    img.classList.add('mainPreviewImage'); // 添加样式类
+                                    mainImagePreview.appendChild(img); // 将图片添加到预览容器
+                                };
+                                reader.readAsDataURL(file); // 读取文件内容
+                            });
+                        }
+                    });
+                }
+            });
+
+        {% endif %}
     {% endif %}
 </script>
 

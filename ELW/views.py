@@ -1177,8 +1177,14 @@ def teacher_media_material_detail(request, material_id):
         else:
             main_question_id = int(data.get('main_question_id'))
             main_question = MainQuestion.objects.get(id=main_question_id)
+            # 更新纯文本信息
             if main_question.question_type == 'text':
                 main_question.question_text = request.POST.get(f'main_question_text_{main_question.id}', '')
+                if files.get('main_images'):
+                    material_instance = MediaMaterial.objects.get(id=main_question.media_material_id)
+                    image_uuid = material_instance.media_url.split("\\")[-1]
+                    print(f'uuid: {image_uuid}')
+                    main_images = files.getlist('main_images')
                 main_question.save()
             else:
                 # 更新小题信息
