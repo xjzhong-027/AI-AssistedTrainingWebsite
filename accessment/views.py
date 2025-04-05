@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
 
-from forum.models import HighlightedText
+# from forum.models import HighlightedText
 from .models import StudentMediaPlayRecord,StudentPageRecord,StudentExamRecord,StudentAnswer
 from Account.models import Students
 from ELW.models import (TimeManagement,

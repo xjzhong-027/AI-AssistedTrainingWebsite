@@ -95,6 +95,54 @@
                     </div>
 
                 {% endif %}
+
+            {% elif edit_type == 'main' %}
+                <input type="text" name="main_question_id" value="{{ main_question.id }}" hidden>
+                <div class="sub_divs">
+                    <h2>题目修改</h2>
+                    {% for sub in sub_questions %}
+                        <div class="sub_div" data-id="{{ sub.id }}">
+                            <div class="sub_info">
+                                <h4>小题信息</h4>
+                                <div>
+                                    <label>小题内容:</label>
+                                    <textarea name="sub_question_text_{{ sub.id }}">{{ sub.question_text }}</textarea>
+                                </div>
+                                <div>
+                                    <label>参考答案:</label>
+                                    <textarea name="sub_answer_{{ sub.id }}">{{ sub.answer }}</textarea>
+                                </div>
+                            </div>
+                            <!-- 改错题信息 -->
+                            {% if main_question.question_type == 'correction' %}
+                            <input type="text" name="edit_type" value="correction" hidden>
+                            <div class="corrections">
+                                <h4>改错信息</h4>
+                                {% for correction in sub.corrections.all %}
+                                <div class="correction" data-id="{{ correction.id }}">
+                                    <div>
+                                        <label>修改类型:</label>
+                                        <select name="correction_type_{{ correction.id }}">
+                                            {% for type_val, type_name in correction.CORRECTION_TYPES %}
+                                            <option value="{{ type_val }}" {% if type_val == correction.type %}selected{% endif %}>
+                                                {{ type_name }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label>修改位置:</label>
+                                        <input type="number" name="correction_index_{{ correction.id }}" value="{{ correction.index }}">
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+
             {% endif %}
 
 
