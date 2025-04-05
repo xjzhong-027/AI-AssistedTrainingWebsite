@@ -97,9 +97,6 @@ def post_new(request):
     sub_question_id = request.GET.get('sub_question_id', None)
     preset_title = request.GET.get('preset_title', '')
     announcement_id = request.GET.get('announcement_id', None)
-    start_offset = request.GET.get('start_offset', None)
-    end_offset = request.GET.get('end_offset', None)
-    content = request.GET.get('content', None)
 
     return_url = request.GET.get('return_url', None)
 
@@ -279,6 +276,32 @@ def question_post(request):
         'selected_page_id': selected_page_id
     })
 
+
+def get_posts_by_question(request):
+    main_question_id = request.GET.get('main_question_id')
+
+    if not main_question_id:
+        print('main_question_id is missing')
+        return JsonResponse([], safe=False)
+
+    try:
+        main_question = get_object_or_404(MainQuestion, id=main_question_id)
+        posts = Post.objects.filter(main_question=main_question)
+
+        data = []
+        for post in posts:
+            data.append({
+                'id': post.id,
+                'title': post.title,
+                'content': post.content,
+                'name': post.name,
+                'created_at': post.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            })
+
+        return JsonResponse(data, safe=False)
+    except Exception as e:
+        print('Error:', e)
+        return JsonResponse([], safe=False)
 
 def my_post(request):
     username = request.session.get('username')
