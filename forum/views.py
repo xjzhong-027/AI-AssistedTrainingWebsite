@@ -22,6 +22,7 @@ from django.views.decorators.http import require_GET
 from django.http import JsonResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.db.models import Subquery
 from faker import Faker
 fake = Faker()
 # Create your views here.
@@ -47,16 +48,15 @@ def forum(request):
         star_posts = reply.order_by('-top_score')[:2]
     else:
         star_posts = reply.all()
-    rest_posts = non_top_posts.exclude(id__in=star_posts.values_list('id', flat=True)).order_by('-created_at')
+    star_posts_ids = list(star_posts.values_list('id', flat=True))
+    rest_posts = non_top_posts.exclude(id__in=star_posts_ids).order_by('-created_at')
 
     # 分页逻辑
     paginator_top = Paginator(top_posts, 2)
-    #paginator_star = Paginator(star_posts, 2)
     paginator_rest = Paginator(rest_posts, 5)
 
     page_number = request.GET.get('page')
     top_page_obj = paginator_top.get_page(page_number)
-    #star_page_obj = paginator_star.get_page(page_number)
     rest_page_obj = paginator_rest.get_page(page_number)
 
     post_lists = [
