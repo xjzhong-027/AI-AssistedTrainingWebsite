@@ -701,8 +701,16 @@ def teacher_edit_question(request, id, material_id, question_type):
     elif question_type == 'main':
         edit_type = 'main'
         main_question = MainQuestion.objects.get(id=id)
+        if main_question.question_type == 'text':
+            return render(request, 'teacher_side/edit_question.html', {
+                'edit_type': edit_type,
+                'main_question': main_question,
+                'media_material': media_material,
+            })
         if main_question.question_type == 'correction':
             sub_questions = main_question.sub_questions.all().prefetch_related('corrections')
+        elif main_question.question_type == 'blank':
+            sub_questions = main_question.sub_questions.all().prefetch_related('blanks')
         return render(request, 'teacher_side/edit_question.html', {
             'edit_type': edit_type,
             'main_question': main_question,
@@ -1166,22 +1174,30 @@ def teacher_media_material_detail(request, material_id):
                 matching_option_instance = MatchingOption.objects.get(sub_question=sub_instance)
                 matching_option_instance.option_content = matching_option_content
                 matching_option_instance.save()
-        elif edit_type == 'correction' or edit_type == 'blank':
+        else:
             main_question_id = int(data.get('main_question_id'))
             main_question = MainQuestion.objects.get(id=main_question_id)
-            # 更新小题信息
-            for sub in main_question.sub_questions.all():
-                sub.question_text = request.POST.get(f'sub_question_text_{sub.id}', '')
-                sub.answer = request.POST.get(f'sub_answer_{sub.id}', '')
-                sub.analysis = request.POST.get(f'sub_analysis_{sub.id}', '')
-                sub.score = float(request.POST.get(f'sub_score_{sub.id}', 1.0))
-                sub.save()
-                # 如果是改错题，更新改错信息
-                if main_question.question_type == 'correction':
-                    for correction in sub.corrections.all():
-                        correction.type = request.POST.get(f'correction_type_{correction.id}', 'insert')
-                        correction.index = int(request.POST.get(f'correction_index_{correction.id}', 0))
-                        correction.save()
+            if main_question.question_type == 'text':
+                main_question.question_text = request.POST.get(f'main_question_text_{main_question.id}', '')
+                main_question.save()
+            else:
+                # 更新小题信息
+                for sub in main_question.sub_questions.all():
+                    sub.question_text = request.POST.get(f'sub_question_text_{sub.id}', '')
+                    sub.answer = request.POST.get(f'sub_answer_{sub.id}', '')
+                    sub.analysis = request.POST.get(f'sub_analysis_{sub.id}', '')
+                    sub.score = float(request.POST.get(f'sub_score_{sub.id}', 1.0))
+                    sub.save()
+                    # 如果是改错题，更新改错信息
+                    if main_question.question_type == 'correction':
+                        for correction in sub.corrections.all():
+                            correction.type = request.POST.get(f'correction_type_{correction.id}', 'insert')
+                            correction.index = int(request.POST.get(f'correction_index_{correction.id}', 0))
+                            correction.save()
+                    elif main_question.question_type == 'blank':
+                        for blank in sub.blanks.all():
+                            blank.index = int(request.POST.get(f'blank_index_{blank.id}', 0))
+                            blank.save()
     material = get_object_or_404(MediaMaterial, id=material_id)
     main_questions = material.main_questions.all()
     # 获取大题下的小题
