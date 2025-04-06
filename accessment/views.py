@@ -262,7 +262,8 @@ def exam_page(request, exam_id, order):
                     if 0 <= blank.index < len(words):
                         answer = answers_dict.get(str(sub_q.id), '')
                         input_html = f'<input type="text" class="blank-input" name="answer_{sub_q.id}" id="answer_{sub_q.id}" value="{answer}" placeholder="{sub_q.id}"/>'
-                        words.insert(blank.index + 1, input_html)
+                        tip_html = f'<span class="blank-tip" id="tip_{sub_q.id}" style="display: none;">{sub_q.tips}</span>' if sub_q.tips else ''
+                        words.insert(blank.index + 1, input_html + tip_html)
                 processed_text = ' '.join(words)
                 html_parts.append(processed_text)
             # 合并为连贯段落
@@ -348,6 +349,9 @@ def update_remaining_time(request, page_record_id):
         student_page_record.remaining_time = remaining_time
         if student_page_record.remaining_time and student_page_record.remaining_time<= 0:
             student_page_record.is_expired = True
+        else:
+            student_page_record.is_expired = False
+
         student_page_record.save()
 
 
@@ -358,14 +362,40 @@ def next_page(request, exam_id, order):
     exam = get_object_or_404(Unit, id=exam_id, type='exam')
     current_page = get_object_or_404(PaperPage, unit=exam, order=order)
     next_page = exam.paper_pages.filter(order=current_page.order + 1).first()
-    # 检查是否为最后一页
-    if not next_page:
-        # 提示已完成考试，留在当前页面
-        messages.success(request, 'You have completed the exam.')
-        return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
-    else:
-        # 跳转到下一页
-        return redirect('accessment:exam_page', exam_id=exam.id, order=next_page.order)
+    username = request.session.get('username')
+    if not username:
+        messages.error(request, "You are not logged in.")
+        return redirect('login')
+
+    student = get_object_or_404(Students, username=username)
+
+    page_main_questions = PageMainQuestion.objects.filter(page=current_page)
+    main_questions = [pmq.main_question for pmq in page_main_questions]
+
+    # 检查是否所有问题都达到了最少播放次数
+    student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam=exam)
+    play_records = StudentMediaPlayRecord.objects.filter(
+        student_exam_record=student_exam_record,
+        main_question__in=main_questions
+    )
+
+    for main_question in main_questions:
+        play_record = play_records.filter(main_question=main_question).first()
+        print(main_question.minimum_play)
+        if play_record and play_record.play_count > main_question.minimum_play:
+            # 检查是否为最后一页
+            if not next_page:
+                # 提示已完成考试，留在当前页面
+                messages.success(request, 'You have completed the exam.')
+                return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
+            else:
+                # 跳转到下一页
+                return redirect('accessment:exam_page', exam_id=exam.id, order=next_page.order)
+
+        else:
+            #return JsonResponse({'message': f"You need to play the media at least {main_question.minimum_play} times"})
+            #messages.error(request,f"You need to play the media at least {main_question.minimum_play} times"
+            return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
 
 # def _save_answers_logic(request, page_record_id):
 #     # 获取页面记录

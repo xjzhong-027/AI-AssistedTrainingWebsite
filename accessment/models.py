@@ -1,11 +1,12 @@
-from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-from Account.models import Students,Class
+from django.db import models
 from ELW.models import (
 Unit,MediaMaterial,
 MainQuestion,SubQuestion,ChoiceOption,
 MatchingOption,Correction,PaperPage,TimeManagement
 )
+from Account.models import Students, Class
+from stu_practice.models import StudentPracticeRecord
 
 
 class StudentExamRecord(models.Model):
@@ -17,24 +18,21 @@ class StudentExamRecord(models.Model):
     submitted = models.BooleanField(default=False)
     score = models.DecimalField(verbose_name='总分', max_digits=5, decimal_places=1, null=True, blank=True)
 
-
 class StudentPageRecord(models.Model):
-    student_exam_record = models.ForeignKey(StudentExamRecord, on_delete=models.CASCADE, related_name='page_records')
+    student_exam_record = models.ForeignKey(StudentExamRecord, on_delete=models.CASCADE, related_name='page_records', null=True, blank=True)
+    student_practice_record = models.ForeignKey(StudentPracticeRecord, on_delete=models.CASCADE, related_name='stu_practice_page_records', null=True, blank=True)
     page = models.ForeignKey(PaperPage, on_delete=models.CASCADE, related_name='student_records')
     submitted = models.BooleanField(default=False)
     submitted_at = models.DateTimeField(null=True, blank=True)
     is_expired = models.BooleanField(default=False)  # 页面是否已超时
     remaining_time = models.FloatField(default=0,null=True, blank=True)  # 剩余时间（分钟）
-    integrity_score = models.DecimalField(verbose_name='诚信分', max_digits=2, decimal_places=1, default=1, validators=[
-        MinValueValidator(0),  # 最小值为0
-        MaxValueValidator(1)  # 最大值为1
-    ])
-    page_score = models.DecimalField(verbose_name='页面总分', max_digits=5, decimal_places=1, default=0)
+    late_score = models.DecimalField(verbose_name='逾期扣分', max_digits=2, decimal_places=1, default=1, validators=[
+            MinValueValidator(0),  # 最小值为0
+            MaxValueValidator(1)   # 最大值为1
+        ])
+    page_score = models.DecimalField(verbose_name='页面原始分', max_digits=5, decimal_places=1, default=0)
     feedback = models.TextField(blank=True)
     is_graded = models.BooleanField(default=False)
-    def __str__(self):
-        return f"Record for {self.student_exam_record.user} on Page {self.page.order}"
-
 
 class StudentAnswer(models.Model):
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='answers')
@@ -44,12 +42,14 @@ class StudentAnswer(models.Model):
     type = models.CharField(verbose_name='改错类型', max_length=50, blank=True, null=True)
     score = models.DecimalField(verbose_name='小题得分', max_digits=5, decimal_places=1, null=True, blank=True)
 
+
     def __str__(self):
         return f"Answer to {self.sub_question} by {self.student_page_record.student_exam_record.user}"
 
 
 class StudentMediaPlayRecord(models.Model):
-    student_exam_record = models.ForeignKey(StudentExamRecord, on_delete=models.CASCADE)
+    student_exam_record = models.ForeignKey(StudentExamRecord, on_delete=models.CASCADE, null=True, blank=True)
+    student_practice_record = models.ForeignKey(StudentPracticeRecord, on_delete=models.CASCADE, null=True, blank=True)
     main_question = models.ForeignKey(MainQuestion, on_delete=models.CASCADE)
     media_material = models.ForeignKey(MediaMaterial, on_delete=models.CASCADE,blank=True,null=True)  # 新增字段
     play_count = models.IntegerField(default=0)
