@@ -5,10 +5,46 @@
     <meta charset="UTF-8">
     <title>my posts</title>
     <link rel="stylesheet" href="{% static 'css/forum_student.css' %}">
+<style>
+.back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 16px;
+            font-weight: bold;
+
+        }
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+.pagination {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.pagination-list {
+    display: inline-flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.pagination-item {
+    margin: 0 5px;
+}
+
+
+
+</style>
 </head>
+
 <body>
 <div>
-    {% for post in posts %}
+    {% for post in page_obj %}
         <div>
            <h4 class="card-title">{{ post.title }}</h4>
             <p>{{ post.content }}</p>
@@ -31,7 +67,37 @@
         </div>
         <hr>
     {% endfor %}
-    <a href="{% url 'forum:forum' %}">返回论坛</a>
+<div class="pagination">
+    <nav aria-label="Page navigation">
+        <ul class="pagination-list">
+            {% if page_obj.has_previous %}
+                <li class="pagination-item">
+                    <a href="?page=1" class="pagination-link">First</a>
+                </li>
+                <li class="pagination-item">
+                    <a href="?page={{ page_obj.previous_page_number }}" class="pagination-link">Previous</a>
+                </li>
+            {% endif %}
+
+            <li class="pagination-item">
+                <span class="pagination-current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+                <li class="pagination-item">
+                    <a href="?page={{ page_obj.next_page_number }}" class="pagination-link">Next</a>
+                </li>
+                <li class="pagination-item">
+                    <a href="?page={{ page_obj.paginator.num_pages }}" class="pagination-link">Last</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
 </div>
+    <div class="back-link">
+        <a href="{% url 'forum:forum' %}">Back to Forum</a>
+    </div>
+</div>
+
 </body>
 </html>
