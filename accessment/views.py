@@ -8,8 +8,6 @@ from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
-
-# from forum.models import HighlightedText
 from .models import StudentMediaPlayRecord,StudentPageRecord,StudentExamRecord,StudentAnswer
 from Account.models import Students
 from ELW.models import (TimeManagement,
@@ -30,6 +28,7 @@ from django.conf import settings
 from django.http import HttpResponseBadRequest
 from django.db import models
 from django.db.models import Sum
+from django.utils.cache import patch_response_headers
 
 
 def confirm_info(request):
@@ -327,7 +326,15 @@ def exam_page(request, exam_id, order):
         'page_submitted': student_page_record.submitted,
 
     }
-    return render(request, 'exam/exam_page.html', context)
+    response = render(request, 'exam/exam_page.html', context)
+
+    # 设置响应头防止缓存
+    patch_response_headers(response, cache_timeout=0)
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+
+    return response
+    # return render(request, 'exam/exam_page.html', context)
 
 
 @csrf_exempt
