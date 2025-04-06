@@ -321,7 +321,11 @@ def my_post(request):
         messages.error(request, 'Invalid role')
         return redirect('forum:forum')
 
-    return render(request, 'forum/my_post.html', {'posts': posts})
+    paginator = Paginator(posts, 10)  # 每页显示10个帖子
+    page_number = request.GET.get('page', 1)  # 获取当前页码，默认为第1页
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'forum/my_post.html', {'page_obj': page_obj})
 
 def non_public(request):
     role = request.session.get('role', 'none')
