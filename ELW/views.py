@@ -1185,6 +1185,18 @@ def teacher_media_material_detail(request, material_id):
                     image_uuid = material_instance.media_url.split("\\")[-1]
                     print(f'uuid: {image_uuid}')
                     main_images = files.getlist('main_images')
+                    if main_images:
+                        main_urls = ''
+                        for main_image in main_images:
+                            main_image_filename = uuid.uuid4().hex
+                            main_image_file_path = os.path.join(settings.MEDIA_ROOT, 'image', image_uuid, main_image_filename)
+                            main_image_url = f'\\media_material\\image\\{image_uuid}\\{main_image_filename}'
+                            main_urls = main_urls + main_image_url + ','
+                            os.makedirs(os.path.dirname(main_image_file_path), exist_ok=True)
+                            with open(main_image_file_path, 'wb+') as destination:
+                                for chunk in main_image.chunks():
+                                    destination.write(chunk)
+                        main_question.image_url = main_urls
                 main_question.save()
             else:
                 # 更新小题信息

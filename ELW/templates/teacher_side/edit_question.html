@@ -103,9 +103,9 @@
                     <input type="text" name="edit_type" value="text" hidden>
                     <div class="text_div">
                         <h4>文本修改</h4>
-                        <textarea name="main_question_text_{{ main_question.id }}">{{ main_question.question_text }}</textarea>
+                        <textarea class="text" name="main_question_text_{{ main_question.id }}">{{ main_question.question_text }}</textarea>
 {#纯文本图片#}
-                    {% if sub_question.image_url %}
+                    {% if main_question.image_url %}
                         <div class="mainImages">
                             {% with image_urls=main_question.image_url|split_image_urls %}   {# 使用自定义过滤器分割 image_url #}
                                 {% for url in image_urls %}
