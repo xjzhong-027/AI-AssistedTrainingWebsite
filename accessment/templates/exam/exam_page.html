@@ -13,7 +13,16 @@
         position: relative;
         margin-top: 10px;
     }
-
+.blank-tip, .tip{
+    color: #888;
+    font-style: italic;
+    margin-left: 5px;
+    font-size: 0.9em;
+    background-color: #fffbe6;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid #ffe082;
+}
     .toggle-posts-btn {
         background-color: #4CAF50;
         color: white;
@@ -128,7 +137,8 @@
             {% if main_question.allow_pause %}
                 <button id="pause-button_{{ main_question.id }}" disabled>Pause</button>
             {% endif %}
-            <p>Maximum plays: {{ main_question.maximum_play }}</p>
+            <p>Maximum plays:<span id="max_play_{{ main_question.id }}"> {{ main_question.maximum_play }}</span></p>
+            <p>Minimum plays: <span id="min_play_{{ main_question.id }}">{{ main_question.minimum_play }}</span></p>
             <p>Current plays: <span id="play_count_{{ main_question.id }}">{{ play_records|get_item:main_question.id|default:"0" }}</span></p>
         </div>
     {% endif %}
@@ -176,6 +186,11 @@
                 {% endif %}
                     <div class="choices">
                         <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
+                    {% if sub_question.tips %}
+                        <div class="tip" id="tip_{{ sub_question.id }}">
+                            <p>{{ sub_question.tips }}</p>
+                        </div>
+                    {% endif %}
                         {% for option in sub_question.shuffled_options %}
                         <label>
                             <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.option_label }}"
@@ -211,6 +226,11 @@
                        <div class="left-item">
                     <!-- 题目列表 -->
                     <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
+                           {% if sub_question.tips %}
+                        <div class="tip" id="tip_{{ sub_question.id }}">
+                            <p>{{ sub_question.tips }}</p>
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="right-item" id="right-{{ sub_question.id }}">
                     {% for option in sub_question.matchingOptions.all %}
@@ -248,6 +268,15 @@
                               data-local-index="{{ word_info.local_index }}"
                          data-word="{{ word_info.word }}">
                             {{ word_info.word|safe }}
+                        {% if word_info.sub_question_id %}
+                                {% with sub_question=word_info.sub_question %}
+                                    {% if sub_question.tips %}
+                                        <span class="correction-tip" id="tip_{{ word_info.sub_question_id }}_{{ word_info.local_index }}" style="display: none;">
+                                            {{ sub_question.tips }}
+                                        </span>
+                                    {% endif %}
+                                {% endwith %}
+                            {% endif %}
                         </span>
                     {% endfor %}
                 </div>
@@ -276,6 +305,11 @@
                        <div class="comprehension">
                     <!-- 题目列表 -->
                     <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
+                           {% if sub_question.tips %}
+                        <div class="tip" id="tip_{{ sub_question.id }}">
+                            <p>{{ sub_question.tips }}</p>
+                        </div>
+                    {% endif %}
                        <div class="comprehension-answer-input">
                 <!-- 输入框列表 -->
                     <input type="text" name="answer_{{ sub_question.id }}" id="answer_{{ sub_question.id }}"
@@ -331,10 +365,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">确认提交</h5>
-{#                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">#}
-{#                            <span aria-hidden="true">&times;</span>#}
-{#                        </button>#}
-                    </div>
+                   </div>
                     <div class="modal-body">
                         <p id="unfinishedConfirmationMessage">有未完成的题目，是否仍然提交？</p>
                     </div>
@@ -352,10 +383,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">确认提交</h5>
-{#                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">#}
-{#                            <span aria-hidden="true">&times;</span>#}
-{#                        </button>#}
-                    </div>
+                 </div>
                     <div class="modal-body">
                         <p id="finishedConfirmationMessage">是否确认提交？</p>
                     </div>
@@ -503,16 +531,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 将答案保存到数据库
     function manualSubmit() {
-    const examForm = document.getElementById('save-answers-form');
-    const formData = new FormData(examForm);
+        const mainQuestions = document.querySelectorAll('.media');
+        let canProceed = true;
+        mainQuestions.forEach(question => {
+            const mainQuestionId = question.getAttribute('data-main-question-id');
+            const minPlays = parseInt(document.querySelector(`#min_play_${mainQuestionId}`).textContent, 10);
+            const currentPlays = parseInt(document.querySelector(`#play_count_${mainQuestionId}`).textContent, 10) || 0; // 默认为0
 
-    // 直接在 FormData 中设置值
-    formData.set('manual_save', 'false');
-    formData.set('is_manual_submit', 'true');
+            if (currentPlays < minPlays) {
+                canProceed = false;
+                alert(`You need to play the media at least ${minPlays} times.`);
+            }
+        });
+        if (canProceed) {
+            const examForm = document.getElementById('save-answers-form');
+            const formData = new FormData(examForm);
 
-    // 调用 submitForm 提交表单
-    submitForm(formData);
-}
+            // 直接在 FormData 中设置值
+            formData.set('manual_save', 'false');
+            formData.set('is_manual_submit', 'true');
+
+            // 调用 submitForm 提交表单
+            submitForm(formData);
+        }
+    }
 
     // 提交表单的通用函数
     function submitForm(formData) {
@@ -633,15 +675,15 @@ function canModify() {
         };
     });
 </script>
-<!-- 视频播放 -->
+    <!-- 视频播放 -->
     <script>
     document.addEventListener("DOMContentLoaded", function () {
         const videoId = "{{ main_question.id }}";
         const studentExamRecordId = "{{ student_exam_record.id }}";
         const mainQuestionId = "{{ main_question.id }}";
         const mediaMaterialId = "{{ main_question.media_material.id }}";
-        const maxPlays = "{{ main_question.maximum_play }}"; // 获取最大播放次数
-        const allowPause = "{{ main_question.allow_pause }}" === "True"; // 检查是否允许暂停
+        const maxPlays = "{{ main_question.maximum_play }}";
+        const allowPause = "{{ main_question.allow_pause }}" === "True";
 
         const video = document.getElementById(`media-video_${videoId}`);
         const playButton = document.getElementById(`play-button_${videoId}`);
@@ -1235,191 +1277,42 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
-        <!--  练习端发帖 -->
-       <script>
-var subQuestionId = null;
-var quoteButton = null;
-var mainQuestionId = null;
-var pageSubmitted = false;
 
-// 页面加载时检查是否已提交
-document.addEventListener('DOMContentLoaded', function() {
-    // 检查页面是否已提交
-    var pageRecord = document.querySelector('[data-page-submitted]');
-    if (pageRecord) {
-        pageSubmitted = pageRecord.getAttribute('data-page-submitted') === 'True';
-        updateQuoteButtonVisibility();
-    }
-});
-
-document.addEventListener('selectionchange', function() {
-    var selectedText = window.getSelection().toString().trim();
-
-    var selectedElements = document.querySelectorAll('[data-sub-question-id]');
-    var selectedmainElements = document.querySelectorAll('[data-main-question-id]');
-
-    // 找到最接近的包含小题ID的元素
-    for (var i = 0; i < selectedElements.length; i++) {
-        var element = selectedElements[i];
-        var range = window.getSelection().getRangeAt(0);
-        if (range.intersectsNode(element)) {
-            subQuestionId = element.getAttribute('data-sub-question-id');
-            break;
-        }
-    }
-    console.log('subQuestionId: ' + subQuestionId);
-
-    for (var i = 0; i < selectedmainElements.length; i++) {
-        var mainelement = selectedmainElements[i];
-        var mainrange = window.getSelection().getRangeAt(0);
-        if (mainrange.intersectsNode(mainelement)) {
-            mainQuestionId = mainelement.getAttribute('data-main-question-id');
-            break;
-        }
-    }
-    console.log('mainQuestionId: ' + mainQuestionId);
-
-    if (selectedText) {
-        if (!quoteButton) {
-            // 如果按钮不存在，则创建它
-            quoteButton = document.createElement('button');
-            quoteButton.textContent = '发帖询问';
-            quoteButton.id = 'quoteButton';
-            quoteButton.style.position = 'absolute';
-            quoteButton.style.top = '10px';
-            quoteButton.style.right = '10px';
-            quoteButton.style.zIndex = '1000';
-            quoteButton.style.display = 'none'; // 默认隐藏
-            document.body.appendChild(quoteButton);
-        }
-        updateQuoteButtonVisibility();
-    } else {
-        // 如果没有选中文本，隐藏按钮
-        if (quoteButton) {
-            quoteButton.style.display = 'none';
-        }
-    }
-});
-
-// 更新发帖按钮的可见性
-function updateQuoteButtonVisibility() {
-    if (quoteButton && pageSubmitted) {
-        quoteButton.style.display = 'inline';
-    } else if (quoteButton) {
-        quoteButton.style.display = 'none';
-    }
-}
-
-// 监听按钮点击事件
-document.addEventListener('click', function(event) {
-    if (event.target === quoteButton) {
-        var currentPageUrl = window.location.href;
-        var url = '{% url "forum:post_new" %}?';
-
-        if (mainQuestionId) {
-            url += 'main_question_id=' + encodeURIComponent(mainQuestionId);
-            if (subQuestionId) {
-                url += '&sub_question_id=' + encodeURIComponent(subQuestionId);
-            }
-        } else if (subQuestionId) {
-            url += 'sub_question_id=' + encodeURIComponent(subQuestionId);
-        }
-        url += '&return_url=' + encodeURIComponent(currentPageUrl);
-        window.location.href = url;
-    }
-});
-
-// 监听表单提交事件
-document.addEventListener('submit', function(event) {
-    if (event.target.id === 'page-form') {
-        event.preventDefault();
-        // 模拟表单提交
-        pageSubmitted = true;
-        updateQuoteButtonVisibility();
-        // 这里可以添加实际的表单提交逻辑
-    }
-});
-</script>
+    <!--  返回修改 -->
 <script>
-
-document.addEventListener('DOMContentLoaded', function() {
-    var pageSubmitted = document.querySelector('[data-page-submitted]').getAttribute('data-page-submitted') === 'True';
-    document.querySelectorAll('.posts-container').forEach(container => {
-        if (pageSubmitted) {
-            container.style.display = 'block';
-        } else {
-            container.style.display = 'none';
+    // 防止用户通过浏览器返回按钮重新作答
+    window.onload = function() {
+        // 如果页面已提交且不可修改，强制刷新页面
+        if (window.performance && window.performance.navigation.type === 2) {
+            window.location.reload();
         }
-    });
-    document.querySelectorAll('.toggle-posts-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            var mainQuestionId = this.getAttribute('data-main-question-id');
-            var postsList = document.getElementById('posts-list-' + mainQuestionId);
-            if (postsList.style.display === 'block') {
-                this.textContent = '查看帖子';
-            } else {
-                this.textContent = '隐藏帖子';
+    };
+    window.onpageshow = function(event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    };
+</script>
+    <!--  blank tips -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputFields = document.querySelectorAll('.blank-input');
+        inputFields.forEach(function(inputField) {
+            const inputId = inputField.id;
+            const tipId = `tip_${inputId.split('_')[1]}`;
+            const tipElement = document.getElementById(tipId);
+
+            if (tipElement) {
+                inputField.addEventListener('focus', function() {
+                    tipElement.style.display = 'inline';
+                });
+
+                inputField.addEventListener('blur', function() {
+                    tipElement.style.display = 'none';
+                });
             }
-            fetchPosts(mainQuestionId, postsList);
-
-            postsList.style.display = postsList.style.display === 'block' ? 'none' : 'block';
-
         });
     });
-});
-
-function fetchPosts(mainQuestionId, postsList) {
-    fetch('{% url "forum:get_posts_by_question" %}?main_question_id=' + mainQuestionId, {
-        method: 'GET',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Fetched posts:', data);
-        if (data.length === 0) {
-            postsList.innerHTML = '<p>暂无帖子</p>';
-        } else {
-            var postsHtml = '';
-            data.forEach(post => {
-                // 截断标题和内容
-                var truncatedTitle = truncateText(post.title, 40);
-                var truncatedContent = truncateText(post.content, 20);
-
-                // 动态生成帖子详情页面的 URL
-                var postDetailUrl = '/forum/post/' + post.id + '/'; // 确保这个 URL 与你的路由配置一致
-
-                postsHtml += `
-                    <div class="post">
-                        <h5>${truncatedTitle}</h5>
-                        <p>${truncatedContent}</p>
-                        <p>作者: ${post.name} | 发布时间: ${post.created_at}</p>
-                        <a href="${postDetailUrl}" target="_blank">CHECK</a>
-                    </div>
-                `;
-            });
-            postsList.innerHTML = postsHtml;
-        }
-    })
-    .catch(error => {
-        console.error('Error fetching posts:', error);
-        postsList.innerHTML = '<p>加载帖子失败</p>';
-    });
-}
-
-// 截断文本的函数
-function truncateText(text, maxLength) {
-    if (text.length > maxLength) {
-        return text.substring(0, maxLength) + '...';
-    }
-    return text;
-}
 </script>
 </body>
 
