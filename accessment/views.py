@@ -382,20 +382,24 @@ def next_page(request, exam_id, order):
     for main_question in main_questions:
         play_record = play_records.filter(main_question=main_question).first()
         print(main_question.minimum_play)
-        if play_record and play_record.play_count > main_question.minimum_play:
-            # 检查是否为最后一页
-            if not next_page:
-                # 提示已完成考试，留在当前页面
-                messages.success(request, 'You have completed the exam.')
-                return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
-            else:
-                # 跳转到下一页
-                return redirect('accessment:exam_page', exam_id=exam.id, order=next_page.order)
-
-        else:
-            #return JsonResponse({'message': f"You need to play the media at least {main_question.minimum_play} times"})
-            #messages.error(request,f"You need to play the media at least {main_question.minimum_play} times"
+        if not play_record or (play_record and play_record.play_count < main_question.minimum_play):
+            print("no next page")
+            # return JsonResponse({'message': f"You need to play the media at least {main_question.minimum_play} times"})
+            # messages.error(request,f"You need to play the media at least {main_question.minimum_play} times"
             return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
+
+
+        print("next page")
+            # 检查是否为最后一页
+        if not next_page:
+            # 提示已完成考试，留在当前页面
+            messages.success(request, 'You have completed the exam.')
+            return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
+        else:
+            # 跳转到下一页
+            print("next page2")
+            return redirect('accessment:exam_page', exam_id=exam.id, order=next_page.order)
+
 
 # def _save_answers_logic(request, page_record_id):
 #     # 获取页面记录
