@@ -142,11 +142,113 @@
             <p>Current plays: <span id="play_count_{{ main_question.id }}">{{ play_records|get_item:main_question.id|default:"0" }}</span></p>
         </div>
     {% endif %}
-
 </div>
+    <!-- 视频播放 -->
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const videoId = "{{ main_question.id }}";
+        const studentExamRecordId = "{{ student_exam_record.id }}";
+        const mainQuestionId = "{{ main_question.id }}";
+        const mediaMaterialId = "{{ main_question.media_material.id }}";
+        const maxPlays = "{{ main_question.maximum_play }}";
+        const allowPause = "{{ main_question.allow_pause }}" === "True";
+
+        const video = document.getElementById(`media-video_${videoId}`);
+        const playButton = document.getElementById(`play-button_${videoId}`);
+        const pauseButton = document.getElementById(`pause-button_${videoId}`);
+        const playCountSpan = document.getElementById(`play_count_${videoId}`);
+
+
+        // 如果不允许暂停，禁用暂停按钮
+        if (!allowPause && pauseButton) {
+            pauseButton.style.display = "none"; // 隐藏暂停按钮
+        }
+
+        // 检查当前播放次数是否达到最大值
+        const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+        if (currentPlayCount >= maxPlays) {
+            pauseButton.disabled = true;
+            playButton.disabled = true;
+            playButton.textContent = "Cannot play anymore";
+        }
+
+        playButton.addEventListener("click", () => {
+            // 再次检查播放次数是否达到最大值
+            const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+            if (currentPlayCount >= maxPlays) {
+                alert("Maximum play count reached. Cannot play anymore.");
+                return; // 阻止播放
+            }
+
+            if (video.paused) {
+                video.play();
+                if (pauseButton) {
+                    pauseButton.disabled = false;
+                }
+                playButton.disabled = true;
+            }
+        });
+
+        if (pauseButton) {
+            pauseButton.addEventListener("click", () => {
+                if (!video.paused) {
+                    video.pause();
+                    playButton.disabled = false;
+                    pauseButton.disabled = true;
+                }
+            });
+        }
+
+        video.addEventListener("ended", () => {
+            const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+            playCountSpan.textContent = currentPlayCount + 1;
+
+            fetch("{% url 'accessment:update_play_count' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}",
+                },
+                body: JSON.stringify({
+                    student_exam_record_id: studentExamRecordId,
+                    main_question_id: mainQuestionId,
+                    media_material_id: mediaMaterialId,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("Play count updated successfully!");
+                } else {
+                    console.error("Failed to update play count:", data.message);
+                }
+
+                // 检查是否达到最大播放次数
+                const updatedPlayCount = parseInt(playCountSpan.textContent, 10);
+                if (updatedPlayCount >= maxPlays) {
+                    playButton.disabled = true; // 禁用播放按钮
+                    playButton.textContent = "Cannot play anymore"; // 提示用户
+                    if (pauseButton) {
+                        pauseButton.disabled = true;
+                    }
+                } else {
+                    // 恢复按钮状态
+                    playButton.disabled = false; // 启用播放按钮
+                    if (pauseButton) {
+                        pauseButton.disabled = true; // 用暂停按钮
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("Error updating play count:", error);
+            });
+        });
+    });
+</script>
 
 {% endfor %}
     </div>
+
 
 
     <!-- 页面 -->
@@ -675,107 +777,7 @@ function canModify() {
         };
     });
 </script>
-    <!-- 视频播放 -->
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const videoId = "{{ main_question.id }}";
-        const studentExamRecordId = "{{ student_exam_record.id }}";
-        const mainQuestionId = "{{ main_question.id }}";
-        const mediaMaterialId = "{{ main_question.media_material.id }}";
-        const maxPlays = "{{ main_question.maximum_play }}";
-        const allowPause = "{{ main_question.allow_pause }}" === "True";
 
-        const video = document.getElementById(`media-video_${videoId}`);
-        const playButton = document.getElementById(`play-button_${videoId}`);
-        const pauseButton = document.getElementById(`pause-button_${videoId}`);
-        const playCountSpan = document.getElementById(`play_count_${videoId}`);
-
-        // 如果不允许暂停，禁用暂停按钮
-        if (!allowPause && pauseButton) {
-            pauseButton.style.display = "none"; // 隐藏暂停按钮
-        }
-
-        // 检查当前播放次数是否达到最大值
-        const currentPlayCount = parseInt(playCountSpan.textContent, 10);
-        if (currentPlayCount >= maxPlays) {
-            pauseButton.disabled = true;
-            playButton.disabled = true;
-            playButton.textContent = "Cannot play anymore";
-        }
-
-        playButton.addEventListener("click", () => {
-            // 再次检查播放次数是否达到最大值
-            const currentPlayCount = parseInt(playCountSpan.textContent, 10);
-            if (currentPlayCount >= maxPlays) {
-                alert("Maximum play count reached. Cannot play anymore.");
-                return; // 阻止播放
-            }
-
-            if (video.paused) {
-                video.play();
-                if (pauseButton) {
-                    pauseButton.disabled = false;
-                }
-                playButton.disabled = true;
-            }
-        });
-
-        if (pauseButton) {
-            pauseButton.addEventListener("click", () => {
-                if (!video.paused) {
-                    video.pause();
-                    playButton.disabled = false;
-                    pauseButton.disabled = true;
-                }
-            });
-        }
-
-        video.addEventListener("ended", () => {
-            const currentPlayCount = parseInt(playCountSpan.textContent, 10);
-            playCountSpan.textContent = currentPlayCount + 1;
-
-            fetch("{% url 'accessment:update_play_count' %}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": "{{ csrf_token }}",
-                },
-                body: JSON.stringify({
-                    student_exam_record_id: studentExamRecordId,
-                    main_question_id: mainQuestionId,
-                    media_material_id: mediaMaterialId,
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log("Play count updated successfully!");
-                } else {
-                    console.error("Failed to update play count:", data.message);
-                }
-
-                // 检查是否达到最大播放次数
-                const updatedPlayCount = parseInt(playCountSpan.textContent, 10);
-                if (updatedPlayCount >= maxPlays) {
-                    playButton.disabled = true; // 禁用播放按钮
-                    playButton.textContent = "Cannot play anymore"; // 提示用户
-                    if (pauseButton) {
-                        pauseButton.disabled = true;
-                    }
-                } else {
-                    // 恢复按钮状态
-                    playButton.disabled = false; // 启用播放按钮
-                    if (pauseButton) {
-                        pauseButton.disabled = true; // 用暂停按钮
-                    }
-                }
-            })
-            .catch(error => {
-                console.error("Error updating play count:", error);
-            });
-        });
-    });
-</script>
         <!-- 页面导航 -->
         <script>
             document.addEventListener('DOMContentLoaded', function () {
