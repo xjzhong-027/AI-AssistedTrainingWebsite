@@ -5,6 +5,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.http import HttpResponseRedirect
 from django.utils import timezone
+
+from accessment.models import StudentPageRecord
 from .models import Post, Comment,Anonymous
 from .forms import PostForm,CommentForm
 from Account.models import Students, Teachers
@@ -27,16 +29,139 @@ from faker import Faker
 fake = Faker()
 # Create your views here.
 
+# def forum(request):
+#     username = request.session.get('username')
+#     print(username)
+#     role = request.session.get('role','none')
+#     if role == 'teacher':
+#         posts = Post.objects.all()  # 教师可以看到所有帖子
+#     else:
+#         student = Students.objects.get(username=username)
+#         class_instance = student.class_instance
+#         units = Unit.objects.filter(class_instance=class_instance)
+#         pages = PaperPage.objects.filter(unit__in=units)
+#         page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
+#         main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+#         sub_questions = SubQuestion.objects.filter(
+#             selected_sub_questions__page_main_question__in=page_main_questions
+#         )
+#         # 筛选与题目相关的帖子
+#         related_posts = Post.objects.filter(
+#             Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions),
+#             is_public=True
+#         )
+#         # 筛选与题目无关的帖子
+#         unrelated_posts = Post.objects.filter(
+#             main_question__isnull=True,
+#             sub_question__isnull=True,
+#             is_public=True
+#         )
+#         # 合并两种帖子
+#         posts = related_posts | unrelated_posts
+#
+#     #目前帖子显示的优先级：置顶 精选 时间
+#     #精选目前是按照除了置顶的帖子之外，回复评论数量(>0)最多的前两条
+#     for post in posts:
+#         post.top_score = post.comments.count()
+#         post.save()
+#     top_posts = posts.filter(is_top=True).order_by('-top_score', '-created_at')
+#     non_top_posts = posts.filter(is_top=False).order_by('-created_at')
+#     reply = non_top_posts.filter(top_score__gt=0)
+#     star_posts_count = reply.count()
+#     if star_posts_count > 2:
+#         star_posts = reply.order_by('-top_score')[:2]
+#     else:
+#         star_posts = reply.all()
+#     star_posts_ids = list(star_posts.values_list('id', flat=True))
+#     rest_posts = non_top_posts.exclude(id__in=star_posts_ids).order_by('-created_at')
+#
+#     # 分页逻辑
+#     paginator_top = Paginator(top_posts, 2)
+#     paginator_rest = Paginator(rest_posts, 5)
+#
+#     page_number = request.GET.get('page')
+#     top_page_obj = paginator_top.get_page(page_number)
+#     rest_page_obj = paginator_rest.get_page(page_number)
+#
+#     post_lists = [
+#         {
+#             'title': '已置顶帖子',
+#             'posts': top_page_obj
+#         },
+#         {
+#             'title': '星标帖子',
+#             'posts': star_posts
+#         },
+#         {
+#             'title': '其他帖子',
+#             'posts': rest_page_obj
+#         }
+#     ]
+#
+#     if role == 'teacher':
+#         template = 'forum/forum_teacher.html'
+#     elif role == 'student':
+#         template = 'forum/forum_student.html'
+#     else:
+#         return redirect('login')
+#     form = PostForm()
+#     return render(request, template, {
+#         'username': username,
+#         'post_lists': post_lists,
+#         'form': form,
+#     })
+
 def forum(request):
     username = request.session.get('username')
-    print(username)
-    role = request.session.get('role','none')
+    role = request.session.get('role', 'none')
+
     if role == 'teacher':
         posts = Post.objects.all()  # 教师可以看到所有帖子
     else:
-        posts = Post.objects.filter(is_public=True)  # 学生只能看到公开的帖子
-    #目前帖子显示的优先级：置顶 精选 时间
-    #精选目前是按照除了置顶的帖子之外，回复评论数量(>0)最多的前两条
+        try:
+            student = Students.objects.get(username=username)
+        except Students.DoesNotExist:
+            return redirect('login')
+
+        # 学生只能看到公开的帖子
+        posts = Post.objects.filter(is_public=True)
+
+        # 筛选与题目相关的帖子
+        related_posts = posts.exclude(
+            Q(main_question__isnull=True) & Q(sub_question__isnull=True)
+        )
+
+        # 筛选学生已经完成的页面
+        completed_page_records = StudentPageRecord.objects.filter(
+            student_practice_record__user=student,
+            submitted=True
+        )
+        completed_pages = completed_page_records.values_list('page', flat=True)
+
+        # 筛选与学生已完成页面相关的题目
+        completed_page_main_questions = PageMainQuestion.objects.filter(
+            page__in=completed_pages
+        )
+        completed_main_questions = MainQuestion.objects.filter(
+            selected_main_questions__in=completed_page_main_questions
+        )
+        completed_sub_questions = SubQuestion.objects.filter(
+            selected_sub_questions__page_main_question__in=completed_page_main_questions
+        )
+
+        # 筛选与学生已完成页面相关的帖子
+        completed_related_posts = related_posts.filter(
+            Q(main_question__in=completed_main_questions) | Q(sub_question__in=completed_sub_questions)
+        )
+
+        # 合并学生已完成的题目帖子和与题目无关的帖子
+        unrelated_posts = posts.filter(
+            main_question__isnull=True,
+            sub_question__isnull=True
+        )
+        posts = completed_related_posts | unrelated_posts
+
+    # 目前帖子显示的优先级：置顶 精选 时间
     for post in posts:
         post.top_score = post.comments.count()
         post.save()
@@ -86,8 +211,6 @@ def forum(request):
         'post_lists': post_lists,
         'form': form,
     })
-
-
 
 def post_new(request):
     if not request.session.get('is_login', False):
@@ -203,59 +326,239 @@ def search_posts(request):
     return render(request, 'forum/searchforum.html', {'filter': filter})
 
 #还需要 练习端有记录完成后才能显示 的逻辑
+# def question_post(request):
+#     role = request.session.get('role', 'none')
+#     username = request.session.get('username')
+#     selected_unit_id = request.GET.get('unit', None)
+#     selected_page_id = request.GET.get('page', None)
+#
+#     posts = Post.objects.filter(is_question=True)
+#
+#     if selected_unit_id:
+#         unit = Unit.objects.get(id=selected_unit_id)
+#         pages = PaperPage.objects.filter(unit=unit)
+#         page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
+#         main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+#         sub_questions = SubQuestion.objects.filter(
+#             selected_sub_questions__page_main_question__in=page_main_questions
+#         )
+#         posts = posts.filter(
+#             Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+#         )
+#
+#     if selected_page_id:
+#         page = PaperPage.objects.get(id=selected_page_id)
+#         page_main_questions = PageMainQuestion.objects.filter(page=page)
+#         main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+#         sub_questions = SubQuestion.objects.filter(
+#             selected_sub_questions__page_main_question__in=page_main_questions
+#         )
+#         posts = posts.filter(
+#             Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+#         )
+#
+#
+#     if role == 'student':
+#         student = Students.objects.get(username=username)
+#         class_instance = student.class_instance
+#         units = Unit.objects.filter(class_instance=class_instance)
+#         pages = PaperPage.objects.filter(unit__in=units)
+#         # 获取这些页面下的所有主题和小题
+#         page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
+#         main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+#         sub_questions = SubQuestion.objects.filter(
+#             selected_sub_questions__page_main_question__in=page_main_questions
+#         )
+#         # 筛选与这些主题和小题相关的帖子
+#         posts = posts.filter(
+#             Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+#         )
+#
+#     elif role != 'teacher':
+#         posts = Post.objects.none()
+#
+#     # 分页功能
+#     paginator = Paginator(posts, 10)  # 每页显示 10 条帖子
+#     page_number = request.GET.get('page', 1)
+#     try:
+#         posts = paginator.page(page_number)
+#     except PageNotAnInteger:
+#         posts = paginator.page(1)
+#     except EmptyPage:
+#         posts = paginator.page(paginator.num_pages)
+#
+#     # 获取所有单元和页面，用于前端选择
+#     units = Unit.objects.all()
+#     pages = PaperPage.objects.all()
+#
+#     return render(request, 'forum/question_post.html', {
+#         'posts': posts,
+#         'units': units,
+#         'pages': pages,
+#         'selected_unit_id': selected_unit_id,
+#         'selected_page_id': selected_page_id
+#     })
+# def question_post(request):
+#     role = request.session.get('role', 'none')
+#     username = request.session.get('username')
+#     selected_unit_id = request.GET.get('unit', None)
+#     selected_page_id = request.GET.get('page', None)
+#
+#     posts = Post.objects.filter(is_question=True)
+#
+#     if selected_unit_id:
+#         unit = Unit.objects.get(id=selected_unit_id)
+#         pages = PaperPage.objects.filter(unit=unit)
+#         page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
+#         main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+#         sub_questions = SubQuestion.objects.filter(
+#             selected_sub_questions__page_main_question__in=page_main_questions
+#         )
+#         posts = posts.filter(
+#             Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+#         )
+#
+#     if selected_page_id:
+#         page = PaperPage.objects.get(id=selected_page_id)
+#         page_main_questions = PageMainQuestion.objects.filter(page=page)
+#         main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+#         sub_questions = SubQuestion.objects.filter(
+#             selected_sub_questions__page_main_question__in=page_main_questions
+#         )
+#         posts = posts.filter(
+#             Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+#         )
+#
+#     if role == 'student':
+#         student = Students.objects.get(username=username)
+#         class_instance = student.class_instance
+#         units = Unit.objects.filter(class_instance=class_instance)
+#         pages = PaperPage.objects.filter(unit__in=units)
+#         # 获取这些页面下的所有主题和小题
+#         page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
+#         main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+#         sub_questions = SubQuestion.objects.filter(
+#             selected_sub_questions__page_main_question__in=page_main_questions
+#         )
+#         # 筛选与这些主题和小题相关的帖子
+#         posts = posts.filter(
+#             Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+#         )
+#     elif role != 'teacher':
+#         posts = Post.objects.none()
+#
+#     # 分页功能
+#     paginator = Paginator(posts, 10)  # 每页显示 10 条帖子
+#     page_number = request.GET.get('page', 1)
+#     try:
+#         posts = paginator.page(page_number)
+#     except PageNotAnInteger:
+#         posts = paginator.page(1)
+#     except EmptyPage:
+#         posts = paginator.page(paginator.num_pages)
+#
+#     # 获取所有单元和页面，用于前端选择
+#     if role == 'student':
+#         student = Students.objects.get(username=username)
+#         class_instance = student.class_instance
+#         units = Unit.objects.filter(class_instance=class_instance)
+#         pages = PaperPage.objects.filter(unit__in=units)
+#     else:
+#         units = Unit.objects.all()
+#         pages = PaperPage.objects.all()
+#
+#     return render(request, 'forum/question_post.html', {
+#         'posts': posts,
+#         'units': units,
+#         'pages': pages,
+#         'selected_unit_id': selected_unit_id,
+#         'selected_page_id': selected_page_id
+#     })
+
 def question_post(request):
     role = request.session.get('role', 'none')
     username = request.session.get('username')
     selected_unit_id = request.GET.get('unit', None)
     selected_page_id = request.GET.get('page', None)
 
-    posts = Post.objects.filter(is_question=True)
-
-    if selected_unit_id:
-        unit = Unit.objects.get(id=selected_unit_id)
-        pages = PaperPage.objects.filter(unit=unit)
-        page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
-        main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
-        sub_questions = SubQuestion.objects.filter(
-            selected_sub_questions__page_main_question__in=page_main_questions
-        )
-        posts = posts.filter(
-            Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
-        )
-
-    if selected_page_id:
-        page = PaperPage.objects.get(id=selected_page_id)
-        page_main_questions = PageMainQuestion.objects.filter(page=page)
-        main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
-        sub_questions = SubQuestion.objects.filter(
-            selected_sub_questions__page_main_question__in=page_main_questions
-        )
-        posts = posts.filter(
-            Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
-        )
-
-
     if role == 'student':
-        student = Students.objects.get(username=username)
+        try:
+            student = Students.objects.get(username=username)
+        except Students.DoesNotExist:
+            return render(request, 'forum/question_post.html', {
+                'posts': Post.objects.none(),
+                'units': Unit.objects.none(),
+                'pages': PaperPage.objects.none(),
+                'selected_unit_id': selected_unit_id,
+                'selected_page_id': selected_page_id
+            })
+
+        posts = Post.objects.filter(is_question=True, is_public=True)
+
+        completed_page_records = StudentPageRecord.objects.filter(
+            student_practice_record__user=student,
+            submitted=True
+        )
+        completed_pages = completed_page_records.values_list('page', flat=True)
+
+        completed_page_main_questions = PageMainQuestion.objects.filter(
+            page__in=completed_pages
+        )
+        completed_main_questions = MainQuestion.objects.filter(
+            selected_main_questions__in=completed_page_main_questions
+        )
+        completed_sub_questions = SubQuestion.objects.filter(
+            selected_sub_questions__page_main_question__in=completed_page_main_questions
+        )
+
+        posts = posts.filter(
+            Q(main_question__in=completed_main_questions) | Q(sub_question__in=completed_sub_questions)
+        )
+
         class_instance = student.class_instance
         units = Unit.objects.filter(class_instance=class_instance)
         pages = PaperPage.objects.filter(unit__in=units)
-        # 获取这些页面下的所有主题和小题
-        page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
-        main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
-        sub_questions = SubQuestion.objects.filter(
-            selected_sub_questions__page_main_question__in=page_main_questions
-        )
-        # 筛选与这些主题和小题相关的帖子
-        posts = posts.filter(
-            Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
-        )
-
-    elif role != 'teacher':
+    elif role == 'teacher':
+        posts = Post.objects.filter(is_question=True)
+        units = Unit.objects.all()
+        pages = PaperPage.objects.all()
+    else:
         posts = Post.objects.none()
+        units = Unit.objects.none()
+        pages = PaperPage.objects.none()
 
-    # 分页功能
-    paginator = Paginator(posts, 10)  # 每页显示 10 条帖子
+    if selected_unit_id:
+        try:
+            unit = Unit.objects.get(id=selected_unit_id)
+        except Unit.DoesNotExist:
+            unit = None
+        if unit:
+            pages = pages.filter(unit=unit)
+            page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
+            main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+            sub_questions = SubQuestion.objects.filter(
+                selected_sub_questions__page_main_question__in=page_main_questions
+            )
+            posts = posts.filter(
+                Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+            )
+
+    if selected_page_id:
+        try:
+            page = PaperPage.objects.get(id=selected_page_id)
+        except PaperPage.DoesNotExist:
+            page = None
+        if page:
+            page_main_questions = PageMainQuestion.objects.filter(page=page)
+            main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
+            sub_questions = SubQuestion.objects.filter(
+                selected_sub_questions__page_main_question__in=page_main_questions
+            )
+            posts = posts.filter(
+                Q(main_question__in=main_questions) | Q(sub_question__in=sub_questions)
+            )
+
+    paginator = Paginator(posts, 10)
     page_number = request.GET.get('page', 1)
     try:
         posts = paginator.page(page_number)
@@ -264,10 +567,6 @@ def question_post(request):
     except EmptyPage:
         posts = paginator.page(paginator.num_pages)
 
-    # 获取所有单元和页面，用于前端选择
-    units = Unit.objects.all()
-    pages = PaperPage.objects.all()
-
     return render(request, 'forum/question_post.html', {
         'posts': posts,
         'units': units,
@@ -275,7 +574,6 @@ def question_post(request):
         'selected_unit_id': selected_unit_id,
         'selected_page_id': selected_page_id
     })
-
 
 def get_posts_by_question(request):
     main_question_id = request.GET.get('main_question_id')
