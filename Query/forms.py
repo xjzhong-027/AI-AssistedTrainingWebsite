@@ -1,4 +1,6 @@
 from django import forms
+from django.core.exceptions import ValidationError
+
 from .models import ClassroomLayout, OverdueDeductionRule, OverduePeriod
 from Account.models import ClassScheduleAdjustment, ClassScheduleAddition, Class
 
@@ -76,7 +78,7 @@ class OverduePeriodForm(forms.ModelForm):
         model = OverduePeriod
         fields = ['period_name', 'min_days', 'max_days', 'deduction_rate', 'description']
         widgets = {
-            'min_days': forms.NumberInput(attrs={'step': '1', 'min': '1'}),
+            'min_days': forms.NumberInput(attrs={'step': '1', 'min': '0'}),
             'max_days': forms.NumberInput(attrs={'step': '1', 'min': '1'}),
             'deduction_rate': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'max': '1'}),
         }

@@ -5,6 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django import forms
 from django.contrib import messages
 from django.core import serializers
 from django.http import JsonResponse, QueryDict, HttpResponseBadRequest
@@ -16,13 +17,13 @@ from django.views.generic import ListView
 
 from announce.forms import AnnouncementForm
 from announce.models import Announcement, Message
-from .models import ClassroomLayout, OverdueDeductionRule
+from .models import ClassroomLayout, OverdueDeductionRule, OverduePeriod
 from Account.models import Class, Students, Teachers, Attendance, ClassScheduleAdjustment, ClassScheduleAddition
 from ELW.models import Unit, TimeManagement, PaperPage, PageMainQuestion, PageSubQuestion, Correction, ChoiceOption, \
     MatchingOption, Blank
 from accessment.models import StudentExamRecord, StudentPageRecord, StudentAnswer, StudentMediaPlayRecord
-from .forms import AttendanceQueryForm, ClassScheduleAdjustmentForm, ClassScheduleAdditionForm,  \
-    ClassroomLayoutForm, OverdueRuleForm, OverduePeriodFormSet
+from .forms import AttendanceQueryForm, ClassScheduleAdjustmentForm, ClassScheduleAdditionForm, \
+    ClassroomLayoutForm, OverdueRuleForm, OverduePeriodFormSet, OverduePeriodForm
 
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
@@ -1332,21 +1333,67 @@ def overdue_rule_detail(request, pk):
 def overdue_rule_create(request):
     """ 创建新扣分规则 """
     if request.method == 'POST':
+        print("POST data:", request.POST)
         form = OverdueRuleForm(request.POST)
         formset = OverduePeriodFormSet(request.POST)
 
         if form.is_valid() and formset.is_valid():
-            rule = form.save()
+            rule = form.save(commit=False)
+            # 确保用户不能创建默认规则
+            rule.is_default = False
+            rule.save()
             formset.instance = rule
             formset.save()
             return redirect('Query:overdue_rules_lists')
     else:
+        # 复制默认规则
+        if 'copy_default' in request.GET:
+            default_rule = OverdueDeductionRule.objects.filter(is_default=True).first()
+            if default_rule:
+                initial_data = {
+                    'rule_name': f"{default_rule.rule_name} (副本)",
+                    'description': default_rule.description
+                }
+                form = OverdueRuleForm(initial=initial_data)
+
+                periods = default_rule.periods.all()
+                # 临时创建一个新的 FormSet
+                PeriodFormSet = forms.inlineformset_factory(
+                    OverdueDeductionRule,
+                    OverduePeriod,
+                    form=OverduePeriodForm,
+                    extra=len(periods),
+                    can_delete=True
+                )
+
+                # 准备初始数据
+                initial_periods = []
+                for period in periods:
+                    initial_periods.append({
+                        'period_name': period.period_name,
+                        'min_days': period.min_days,
+                        'max_days': period.max_days,
+                        'deduction_rate': period.deduction_rate,
+                        'description': period.description
+                    })
+
+                # 使用initial初始化formset
+                formset = PeriodFormSet(initial=initial_periods)
+
+                print("formset:", formset)
+                messages.info(request, "已从默认规则复制")
+                return render(request, 'overdue_rules/overdue_rule_create.html', {
+                    'form': form,
+                    'formset': formset,
+                    'has_default_rule': OverdueDeductionRule.objects.filter(is_default=True).exists()
+                })
         form = OverdueRuleForm()
         formset = OverduePeriodFormSet()
 
     return render(request, 'overdue_rules/overdue_rule_create.html', {
         'form': form,
         'formset': formset,
+        'has_default_rule': OverdueDeductionRule.objects.filter(is_default=True).exists()
     })
 
 

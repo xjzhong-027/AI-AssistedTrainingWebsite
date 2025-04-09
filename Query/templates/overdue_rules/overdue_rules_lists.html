@@ -79,10 +79,16 @@
                             <input type="checkbox" name="rule_ids" value="{{ rule.pk }}" class="rule-checkbox">
                         </td>
                         <td>{{ rule.rule_name }}</td>
-                        <td>{% if rule.is_active %}启用{% else %}禁用{% endif %}</td>
+                        <td>
+                            {% if rule.is_default %}
+                                <span class="badge bg-primary">系统默认</span>
+                            {% else %}
+                                {% if rule.is_active %}启用{% else %}禁用{% endif %}
+                            {% endif %}
+                        </td>
                         <td>{{ rule.created_at|date:"Y-m-d" }}</td>
                         <td>
-                            <a href="{% url 'Query:overdue_rule_update' rule.pk %}" class="btn btn-warning btn-sm">编辑</a>
+                            <a href="{% url 'Query:overdue_rule_update' rule.pk %}" class="btn btn-warning btn-sm" {% if rule.is_default %}disabled{% endif %}>编辑</a>
                             <a href="{% url 'Query:overdue_rule_detail' rule.pk %}" class="btn btn-info btn-sm">查看详情</a>
                         </td>
                     </tr>
