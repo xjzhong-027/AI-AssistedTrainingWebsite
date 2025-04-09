@@ -82,7 +82,7 @@ legend {
     margin: 20px 0;
 }
 #modal {
-    background-color: red;
+    background-color: #ffffff;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     padding: 30px;
@@ -94,8 +94,8 @@ legend {
     transform: translate(-50%, -50%);
     border: 1px solid #ccc;
     z-index: 1000;
-    overflow-y: auto;
-    max-height: 80vh;
+    /*overflow-y: auto;*/
+    /*max-height: 80vh;*/
 }
 
 #modal label {
