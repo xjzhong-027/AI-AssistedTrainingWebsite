@@ -262,8 +262,16 @@ def exam_page(request, exam_id, order):
                     if 0 <= blank.index < len(words):
                         answer = answers_dict.get(str(sub_q.id), '')
                         input_html = f'<input type="text" class="blank-input" name="answer_{sub_q.id}" id="answer_{sub_q.id}" value="{answer}" placeholder="{sub_q.id}"/>'
-                        tip_html = f'<span class="blank-tip" id="tip_{sub_q.id}" style="display: none;">{sub_q.tips}</span>' if sub_q.tips else ''
-                        words.insert(blank.index + 1, input_html + tip_html)
+                        # tip_html = f'<span class="blank-tip" id="tip_{sub_q.id}" style="display: none;">{sub_q.tips}</span>' if sub_q.tips else ''
+                        tip_icon_html = ''
+                        if sub_q.tips:
+                            tip_icon_html = f'''
+                                                    <span class="tip-icon" data-tip-content="{sub_q.tips}">
+                                                        ⓘ
+                                                        <span class="tip-content">{sub_q.tips}</span>
+                                                    </span>
+                                                '''
+                        words.insert(blank.index + 1, input_html + tip_icon_html)
                 processed_text = ' '.join(words)
                 html_parts.append(processed_text)
             # 合并为连贯段落
@@ -353,8 +361,6 @@ def update_remaining_time(request, page_record_id):
             student_page_record.is_expired = False
 
         student_page_record.save()
-
-
         return JsonResponse({'status': 'success'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
@@ -382,23 +388,23 @@ def next_page(request, exam_id, order):
     for main_question in main_questions:
         play_record = play_records.filter(main_question=main_question).first()
         print(main_question.minimum_play)
-        if not play_record or (play_record and play_record.play_count < main_question.minimum_play):
-            print("no next page")
-            # return JsonResponse({'message': f"You need to play the media at least {main_question.minimum_play} times"})
-            # messages.error(request,f"You need to play the media at least {main_question.minimum_play} times"
-            return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
-
-
-        print("next page")
-            # 检查是否为最后一页
-        if not next_page:
-            # 提示已完成考试，留在当前页面
-            messages.success(request, 'You have completed the exam.')
-            return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
+        if main_question.minimum_play <= 0:
+            if next_page:
+                return redirect('accessment:exam_page', exam_id=exam.id, order=next_page.order)
+            else:
+                messages.success(request, 'You have completed the exam.')
+                return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
         else:
-            # 跳转到下一页
-            print("next page2")
-            return redirect('accessment:exam_page', exam_id=exam.id, order=next_page.order)
+            if play_record and play_record.play_count >= main_question.minimum_play:
+                if next_page:
+                    return redirect('accessment:exam_page', exam_id=exam.id, order=next_page.order)
+                else:
+                    messages.success(request, 'You have completed the exam.')
+                    return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
+            else:
+                # 播放次数不满足要求，留在当前页面
+                messages.warning(request, f'You need to play the media at least {main_question.minimum_play} times.')
+                return redirect('accessment:exam_page', exam_id=exam.id, order=current_page.order)
 
 
 # def _save_answers_logic(request, page_record_id):
