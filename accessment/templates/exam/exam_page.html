@@ -13,7 +13,7 @@
         position: relative;
         margin-top: 10px;
     }
-.blank-tip, .tip{
+.tip{
     color: #888;
     font-style: italic;
     margin-left: 5px;
@@ -22,6 +22,38 @@
     padding: 2px 5px;
     border-radius: 3px;
     border: 1px solid #ffe082;
+    width: auto;
+    max-width: 30%;
+}
+.tip p{
+    line-height: 1.2;
+}
+.tip-icon {
+    position: relative;
+    cursor: pointer;
+    color: #888;
+    margin-left: 5px;
+    font-size: 14px;
+}
+.tip-content {
+    position: absolute;
+    background-color: #fffbe6;
+    border: 1px solid #ffe082;
+    border-radius: 3px;
+    padding: 5px 10px;
+    font-size: 0.9em;
+    color: #888;
+    font-style: italic;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    bottom: 100%;
+    left: 0;
+    width: auto;
+
+}
+.tip-icon:hover .tip-content {
+    display: block;
 }
     .toggle-posts-btn {
         background-color: #4CAF50;
@@ -122,12 +154,19 @@
             </div>
         </div>
 
-    <div class="container">
-         <!-- 播放器 -->
+    <div class="main-container">
+     <form id="save-answers-form" method="post" action="{% url 'accessment:save_page' exam.id order %}">
+            {% csrf_token %}
+            <input type="hidden" name="page_record_id" value="{{ current_page_record_id }}">
+            <input type="hidden" name="is_manual_submit" value="false">
+            <input type="hidden" name="manual_save" value="false">
+    {% for main_question in main_questions %}
+
+        <div class="video-question-container" data-main-question-id="{{ main_question.id }}">
+<!-- 播放器 -->
     <div class="video-container">
-{% for main_question in main_questions %}
-<div class="media" data-main-question-id="{{ main_question.id }}">
-    {% if main_question.media_material %}
+<div class="media" data-main-question-id="{{ main_question.id }}" data-no-media="{{ main_question.no_media }}">
+    {% if not main_question.no_media %}
         <div class="media-player">
             <video id="media-video_{{ main_question.id }}" width="640" height="360">
                 <source src="{{ main_question.media_material.media_url }}" type="video/mp4">
@@ -158,7 +197,6 @@
         const pauseButton = document.getElementById(`pause-button_${videoId}`);
         const playCountSpan = document.getElementById(`play_count_${videoId}`);
 
-
         // 如果不允许暂停，禁用暂停按钮
         if (!allowPause && pauseButton) {
             pauseButton.style.display = "none"; // 隐藏暂停按钮
@@ -172,12 +210,14 @@
             playButton.textContent = "Cannot play anymore";
         }
 
+
         playButton.addEventListener("click", () => {
             // 再次检查播放次数是否达到最大值
+
             const currentPlayCount = parseInt(playCountSpan.textContent, 10);
             if (currentPlayCount >= maxPlays) {
                 alert("Maximum play count reached. Cannot play anymore.");
-                return; // 阻止播放
+                return;
             }
 
             if (video.paused) {
@@ -245,21 +285,11 @@
         });
     });
 </script>
-
-{% endfor %}
     </div>
-
-
 
     <!-- 页面 -->
     <div class="question-container">
-        <form id="save-answers-form" method="post" action="{% url 'accessment:save_page' exam.id order %}">
-            {% csrf_token %}
-            <input type="hidden" name="page_record_id" value="{{ current_page_record_id }}">
-            <input type="hidden" name="is_manual_submit" value="false">
-            <input type="hidden" name="manual_save" value="false">
             <div id="exam-content">
-                {% for main_question in main_questions %}
                 <div class="question" data-main-question-id="{{ main_question.id }}">
                     <h4>{{ main_question.question_text|safe }}</h4>
 {% if main_question.image_url %}
@@ -276,7 +306,7 @@
                     </div>
                 {% elif main_question.question_type == 'choice' %}
                     {% for sub_question in sub_questions %}
-                    {% if sub_question.mainquestion == main_question %}
+                    {% if sub_question.main_question == main_question %}
                     <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
                     <!-- 选择题 -->
                     {% if sub_question.image_url %}
@@ -297,7 +327,7 @@
                         <label>
                             <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.option_label }}"
                                 {% if answers|get_item:sub_question.id == option.option_label %} checked {% endif %}>
-                            {{ option.option_label }}. {{ option.option_content }}
+                            {{ option.option_label }}. {{ option.option_content }}<br>
                         {% if option.image_url %}
                             <div class="option-image">
                                 {% for image_path in option.image_url|split:"," %}
@@ -426,19 +456,12 @@
 
                     {% endif %}
                 </div>
-<!-- 帖子区域 -->
-        <div class="posts-container" style="display: none;">
-            <button class="toggle-posts-btn" data-main-question-id="{{ main_question.id }}" type="button">查看帖子</button>
-            <div class="posts-list" id="posts-list-{{ main_question.id }}">
-                <div class="post-template" style="display: none;">
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-
     </div>
-
-    <!-- 页面底部 -->
+    </div>
+         </div>
+        {% endfor %}
+         </form>
+                    <!-- 页面底部 -->
 <div id="page-footer">
        <div clas="lastpage">
         {% if is_last_page %}
@@ -456,8 +479,6 @@
     </div>
 
 </div>
-        </form>
-    </div>
 
     </div>
 
@@ -633,13 +654,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 将答案保存到数据库
     function manualSubmit() {
-        const mainQuestions = document.querySelectorAll('.media');
-        let canProceed = true;
-        mainQuestions.forEach(question => {
-            const mainQuestionId = question.getAttribute('data-main-question-id');
+        const videoContainers = document.querySelectorAll('.video-container');
+    let canProceed = true;
+        videoContainers.forEach(container => {
+            const mediaElement = container.querySelector('.media');
+        const mainQuestionId = mediaElement.getAttribute('data-main-question-id');
+        const noMedia = mediaElement.getAttribute('data-no-media') === 'True';
+        if (noMedia) {
+            return;
+        }
             const minPlays = parseInt(document.querySelector(`#min_play_${mainQuestionId}`).textContent, 10);
             const currentPlays = parseInt(document.querySelector(`#play_count_${mainQuestionId}`).textContent, 10) || 0; // 默认为0
 
+            if (minPlays === 0) {
+            return;
+        }
             if (currentPlays < minPlays) {
                 canProceed = false;
                 alert(`You need to play the media at least ${minPlays} times.`);
@@ -670,6 +699,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         for (let [key, value] of formData.entries()) {
         console.log(`${key}: ${value}`);
+
     }
 
         fetch(examForm.action, {
@@ -1305,11 +1335,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const tipElement = document.getElementById(tipId);
 
             if (tipElement) {
+
                 inputField.addEventListener('focus', function() {
-                    tipElement.style.display = 'inline';
+                    // 显示提示框
+                    tipElement.style.display = 'block';
+                    // 设置提示框位置
+                    const inputRect = inputField.getBoundingClientRect();
+                    tipElement.style.top = `${inputRect.bottom + 5}px`;
+                    tipElement.style.left = `${inputRect.left}px`;
                 });
 
                 inputField.addEventListener('blur', function() {
+                    // 隐藏提示框
                     tipElement.style.display = 'none';
                 });
             }
