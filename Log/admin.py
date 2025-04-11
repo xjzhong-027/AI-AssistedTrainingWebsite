@@ -15,6 +15,7 @@ class LogEntryAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'message')
     list_filter = (LogEntryTimeFilter, 'log_type', 'status')
     readonly_fields = ('user', 'log_type', 'operation_time', 'module', 'message')
+    list_per_page = 50
 
     actions = [mark_as_read, mark_as_unread]
 
