@@ -1,10 +1,14 @@
+import os
+
 import openpyxl
-from django.contrib import admin
+from django.conf import settings
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import Group, User
+from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, FileResponse
 from django.shortcuts import render
 from django.urls import path
 
@@ -94,6 +98,7 @@ class Teacher_list(admin.ModelAdmin):
 
 
 
+
 class Student_list(admin.ModelAdmin):
     # 要展示的内容
     list_display = ['username', 'name', 'class_instance', 'password']
@@ -111,93 +116,123 @@ class Student_list(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
-            path('import/', self.import_students_view, name='import_students')
+            path('import/', self.import_students_view, name='import_students'),
+            path('download-template/', self.download_template_view, name='download_student_template'),
         ]
         return custom_urls + urls
+
+    def download_template_view(self, request):
+        # 模板文件路径
+        template_path = os.path.join(settings.MEDIA_ROOT, 'admin', 'students导入模板.xlsx')
+
+        if os.path.exists(template_path):
+            response = FileResponse(open(template_path, 'rb'))
+            response['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            response['Content-Disposition'] = 'attachment; filename="students_import_template.xlsx"'
+            return response
+        else:
+            from django.contrib import messages
+            messages.error(request, "模板文件未找到，请联系管理员。")
+
 
     def import_students_view(self, request):
         if request.method == "POST" and request.FILES["xlsx_file"]:
             file = request.FILES["xlsx_file"]
-
             try:
-                # 打开 Excel 文件
-                wb = openpyxl.load_workbook(file)
-                sheet = wb.active  # 获取当前活动的工作表
-            except Exception as e:
-                return HttpResponse(f"Error opening file: {e}")
+                try:
+                    # 打开 Excel 文件
+                    wb = openpyxl.load_workbook(file)
+                    sheet = wb.active  # 获取当前活动的工作表
+                except Exception as e:
+                    messages.error(request, "文件格式错误：请上传有效的Excel文件")
+                    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-            # 读取每一行数据，跳过表头
-            for row in sheet.iter_rows(min_row=2, values_only=True):  # 从第二行开始读取
-                student_username = row[0]
-                student_name = row[1]
-                teacher_username = row[2]
-                year = row[3]
-                grade = row[4]
-                semester = row[5]
-                class_name = row[6]
-                start_date = row[7]
-                week = row[8]
-                start_time = row[9]
-                end_time = row[10]
+                with transaction.atomic():
+                    # 读取每一行数据，跳过表头
+                    for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):  # 从第二行开始读取
+                        try:
+                            student_username = row[0]
+                            student_name = row[1]
+                            teacher_username = row[2]
+                            year = row[3]
+                            grade = row[4]
+                            semester = row[5]
+                            class_name = row[6]
+                            start_date = row[7]
+                            week = row[8]
+                            start_time = row[9]
+                            end_time = row[10]
 
-                # 创建/获取教师
-                teacher_user, created = User.objects.get_or_create(username=teacher_username)
-                # 确保被添加到 '教师' 组
-                group, created = Group.objects.get_or_create(name='教师')
-                teacher_user.groups.add(group)
-                teacher_user.save()
+                            # 创建/获取教师
+                            teacher_user, created = User.objects.get_or_create(username=teacher_username)
+                            # 确保被添加到 '教师' 组
+                            group, created = Group.objects.get_or_create(name='教师')
+                            teacher_user.groups.add(group)
+                            teacher_user.save()
 
-                teacher, created = Teachers.objects.get_or_create(
-                    name=teacher_username,
-                    username=teacher_username,
-                    user=teacher_user
-                )
-
-                # 创建课程
-                course, created = Course.objects.get_or_create(
-                    year=year,
-                    grade=grade,
-                    semester=semester
-                )
-
-                # 创建班级
-                course_class, created = Class.objects.get_or_create(
-                    class_name=class_name,
-                    course=course,
-                    teacher=teacher,
-                    start_date=start_date,
-                    week=week,
-                    start_time=start_time,
-                    end_time=end_time
-                )
-
-                # 创建/获取学生
-                student_user, created = User.objects.get_or_create(username=student_username)
-                # 确保被添加到 '学生' 组
-                group, created = Group.objects.get_or_create(name='学生')
-                student_user.groups.add(group)
-                student_user.save()
-
-                student, created = Students.objects.get_or_create(
-                    username=student_username,
-                    name=student_name,
-                    password=student_username,
-                    class_instance=course_class,
-                    user=student_user
-                )
-                # 检查该学生是否已经有考勤记录
-                if not Attendance.objects.filter(student=student).exists():
-                    # 如果没有考勤记录，创建1-16周的考勤记录
-                    with transaction.atomic():  # 使用事务，确保数据一致性
-                        for week in range(1, 17):  # 1到16周
-                            Attendance.objects.create(
-                                student=student,
-                                week=week,
-                                status='absent',
+                            teacher, created = Teachers.objects.get_or_create(
+                                name=teacher_username,
+                                username=teacher_username,
+                                user=teacher_user
                             )
 
-            self.message_user(request, "学生数据导入成功！")
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+                            # 创建课程
+                            course, created = Course.objects.get_or_create(
+                                year=year,
+                                grade=grade,
+                                semester=semester
+                            )
+
+                            # 创建班级
+                            course_class, created = Class.objects.get_or_create(
+                                class_name=class_name,
+                                course=course,
+                                teacher=teacher,
+                                start_date=start_date,
+                                week=week,
+                                start_time=start_time,
+                                end_time=end_time
+                            )
+
+                            # 创建/获取学生
+                            student_user, created = User.objects.get_or_create(username=student_username)
+                            if not created:
+                                messages.warning(request, f"第 {row_idx} 行: 学生账号 {student_username} 已存在")
+                                continue
+                            # 确保被添加到 '学生' 组
+                            group, created = Group.objects.get_or_create(name='学生')
+                            student_user.groups.add(group)
+                            student_user.save()
+
+                            student, created = Students.objects.get_or_create(
+                                username=student_username,
+                                name=student_name,
+                                password=student_username,
+                                class_instance=course_class,
+                                user=student_user
+                            )
+                            # 检查该学生是否已经有考勤记录
+                            if not Attendance.objects.filter(student=student).exists():
+                                # 如果没有考勤记录，创建1-16周的考勤记录
+                                with transaction.atomic():  # 使用事务，确保数据一致性
+                                    for week in range(1, 17):  # 1到16周
+                                        Attendance.objects.create(
+                                            student=student,
+                                            week=week,
+                                            status='absent',
+                                        )
+                        except Exception as e:
+                            # 捕获单行处理中的任何错误，记录并继续下一行
+                            error_msg = f"第 {row_idx} 行处理失败: {str(e)}"
+                            messages.warning(request, error_msg)
+                            continue  # 继续处理下一行
+
+                self.message_user(request, "学生数据导入成功！")
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+            except Exception as e:
+                # 捕获全局性错误（如事务冲突、数据库连接问题）
+                messages.error(request, f"系统错误: {str(e)}")
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         return render(request, 'admin/import_students.html', {})
 
@@ -207,7 +242,7 @@ class Student_list(admin.ModelAdmin):
         导出 Excel 格式的文件
         """
         # 使用 select_related 预加载关联的 Class 对象
-        queryset = queryset.select_related('student_class')
+        queryset = queryset.select_related('class_instance')
 
         # 创建一个新的工作簿
         wb = openpyxl.Workbook()
@@ -293,11 +328,11 @@ class Class_list(admin.ModelAdmin):
         # 创建一个新的工作簿
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.append(['开课年份', '年级', '开课学期', '班级', '授课老师','上课星期', '上课时间', '下课时间'])  # 添加表头
+        ws.append(['开课年份', '年级', '开课学期', '班级', '授课老师', '开课日期', '上课星期', '上课时间', '下课时间'])  # 添加表头
 
         # 写入数据
         for obj in queryset:
-            ws.append([obj.course.year, obj.course.grade, obj.course.semester, obj.class_name, obj.teacher.name, obj.week, obj.start_time, obj.end_time])
+            ws.append([obj.course.year, obj.course.grade, obj.course.semester, obj.class_name, obj.teacher.name, obj.start_date, obj.week, obj.start_time, obj.end_time])
 
         # 设置响应头，定义文件类型为 Excel
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

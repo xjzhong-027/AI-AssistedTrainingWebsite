@@ -24,7 +24,7 @@ class Admins(models.Model):
 
 class Teachers(models.Model):
     """ 教师账号 """
-    username = models.CharField(max_length=20, verbose_name='账号')
+    username = models.CharField(max_length=20, verbose_name='账号', unique=True)
     name = models.CharField(max_length=20, verbose_name='姓名')
     password = models.CharField(max_length=100, verbose_name='密码')
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='teachers', null=True, blank=True)
@@ -79,11 +79,11 @@ class Class(models.Model):
 class Students(models.Model):
     """ 学生表 """
     class_instance = models.ForeignKey(Class, verbose_name='班级', on_delete=models.CASCADE, related_name='class_id')
-    username = models.CharField(verbose_name='学生账号', max_length=20)
+    username = models.CharField(verbose_name='学生账号', max_length=20, unique=True)
     name = models.CharField(verbose_name='学生姓名', max_length=20)
     password = models.CharField(verbose_name='学生密码', max_length=100)
     seat_number = models.CharField(verbose_name='座位号', max_length=10, null=True, blank=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="students", null=True, blank=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="students", null=True, blank=True)
 
     class Meta:
         verbose_name_plural = '学生账号'

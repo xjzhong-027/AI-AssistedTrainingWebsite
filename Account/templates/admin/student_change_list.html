@@ -6,9 +6,20 @@
             margin-left: 50px;
             margin-bottom: 10px;
         }
+       .download-template a {
+           background-color: #ffffff;
+       }
+       .download-template a:hover {
+           background-color: #ffffff;
+           text-decoration: underline;
+       }
     </style>
 
     <div class="batch_input">
+        <div class="download-template">
+            <h2>下载导入模板</h2>
+            <a href="{% url 'admin:download_student_template' %}" class="button">students导入模板.xlsx</a>
+        </div>
         <h2>导入学生账号</h2>
         <form method="post" enctype="multipart/form-data" action="{% url 'admin:import_students' %}">
             {% csrf_token %}
@@ -17,6 +28,8 @@
             <button type="submit">上传并导入</button>
         </form>
     </div>
+
+
 
     <hr>
 
