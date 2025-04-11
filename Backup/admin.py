@@ -11,6 +11,7 @@ class Database(admin.ModelAdmin):
     list_filter = ('status', 'operation')
     search_fields = ('created_at', 'operation', 'status', 'backup_to',)
     list_display_links = None
+    list_per_page = 20
     actions = ['delete_selected']
 
     def has_add_permission(self, request):
