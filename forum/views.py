@@ -186,15 +186,15 @@ def forum(request):
 
     post_lists = [
         {
-            'title': '已置顶帖子',
+            'title': 'TOP Posts',
             'posts': top_page_obj
         },
         {
-            'title': '星标帖子',
+            'title': 'Trending Posts',
             'posts': star_posts
         },
         {
-            'title': '其他帖子',
+            'title': 'Posts',
             'posts': rest_page_obj
         }
     ]
@@ -268,7 +268,7 @@ def post_new(request):
             if return_url and url_has_allowed_host_and_scheme(return_url, allowed_hosts=None):
                 return HttpResponseRedirect(return_url)
             elif main_question_id or sub_question_id:
-                return HttpResponseRedirect(return_url)
+                return JsonResponse({'success': True})
             else:
                 return redirect('forum:forum')
 
@@ -584,7 +584,7 @@ def get_posts_by_question(request):
 
     try:
         main_question = get_object_or_404(MainQuestion, id=main_question_id)
-        posts = Post.objects.filter(main_question=main_question)
+        posts = Post.objects.filter(main_question=main_question,is_public=True)
 
         data = []
         for post in posts:
@@ -595,10 +595,8 @@ def get_posts_by_question(request):
                 'name': post.name,
                 'created_at': post.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             })
-
         return JsonResponse(data, safe=False)
     except Exception as e:
-        print('Error:', e)
         return JsonResponse([], safe=False)
 
 def my_post(request):
