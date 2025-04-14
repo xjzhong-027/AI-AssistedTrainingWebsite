@@ -12,7 +12,7 @@
 <body>
  <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="/student/student_index">Home</a></li>
-            <li class="breadcrumb-item active">论坛</li>
+            <li class="breadcrumb-item active">FORUM</li>
         </ol>
         <p class="welcome-text">Welcome, {{ request.session.username }}!</p>
 <!-- 通知区域 -->
@@ -20,46 +20,46 @@
 
         <!-- 导航菜单 -->
 <nav class="nav nav-pills mb-4">
-            <a class="nav-link active" href="{% url 'forum:forum' %}">全部</a>
-            <a class="nav-link" href="{% url 'forum:question_post' %}">题目</a>
-            <a class="nav-link" href="{% url 'forum:my_post' %}">我发出的</a>
-            <a class="nav-link" href="{% url 'forum:non_public' %}">私聊</a>
+            <a class="nav-link active" href="{% url 'forum:forum' %}">All Posts</a>
+            <a class="nav-link" href="{% url 'forum:question_post' %}">Question</a>
+            <a class="nav-link" href="{% url 'forum:my_post' %}">My Posts</a>
+            <a class="nav-link" href="{% url 'forum:non_public' %}">Private</a>
         </nav>
 <div id="messages"></div>
 
 
 <!-- 搜索表单 -->
-        <h2 class="mb-3">搜索帖子</h2>
+        <h2 class="mb-3">Search Posts</h2>
         <form method="get" action="{% url 'forum:search_posts' %}" class="mb-4">
             <div class="row">
                 <div class="col-md-4">
-                    <label for="title" class="form-label">标题：</label>
-                    <input type="text" class="form-control" name="title" placeholder="搜索标题..." id="title">
+                    <label for="title" class="form-label">Title：</label>
+                    <input type="text" class="form-control" name="title" placeholder="searching title..." id="title">
                 </div>
                 <div class="col-md-4">
-                    <label for="content" class="form-label">内容：</label>
-                    <input type="text" class="form-control" name="content" placeholder="搜索内容..." id="content">
+                    <label for="content" class="form-label">Content：</label>
+                    <input type="text" class="form-control" name="content" placeholder="searching content..." id="content">
                 </div>
                 <div class="col-md-4">
-                    <label for="name" class="form-label">作者：</label>
-                    <input type="text" class="form-control" name="name" placeholder="搜索作者..." id="name">
+                    <label for="name" class="form-label">Author：</label>
+                    <input type="text" class="form-control" name="name" placeholder="searching author..." id="name">
                 </div>
             </div>
             <div class="row mt-3">
                 <div class="col-md-6">
-                    <label for="id_created_at__gte" class="form-label">发布时间（从）：</label>
+                    <label for="id_created_at__gte" class="form-label">From：</label>
                     <input type="date" class="form-control" id="id_created_at__gte" name="created_at__gte">
                 </div>
                 <div class="col-md-6">
-                    <label for="id_created_at__lte" class="form-label">发布时间（到）：</label>
+                    <label for="id_created_at__lte" class="form-label">To：</label>
                     <input type="date" class="form-control" id="id_created_at__lte" name="created_at__lte">
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary mt-3">搜索</button>
+            <button type="submit" class="btn btn-primary mt-3">Search</button>
         </form>
 
         <!-- 发帖按钮 -->
-        <a href="{% url 'forum:post_new' %}" class="btn btn-success mb-4">发布新帖子</a>
+        <a href="{% url 'forum:post_new' %}" class="btn btn-success mb-4">Add a new Post</a>
 
 
 <!-- 帖子列表 -->
@@ -72,11 +72,11 @@
                             <h5 class="card-title">{{ post.title }}</h5>
                             <p class="card-text">{{ post.content|truncatewords:20 }}</p>
                             <p class="card-text">By: {{ post.name }}</p>
-                            <p class="card-text">发布时间: {{ post.created_at|date:"Y/m/d H:i" }}</p>
-                            <p class="card-text">{{ post.top_score }}条评论</p>
-                            <a href="{% url 'forum:post_detail' post.id %}" class="btn btn-primary">查看</a>
+                            <p class="card-text">{{ post.created_at|date:"Y/m/d H:i" }}</p>
+                            <p class="card-text">{{ post.top_score }}Comments</p>
+                            <a href="{% url 'forum:post_detail' post.id %}" class="btn btn-primary">CHECK</a>
                             {% if request.session.role == 'teacher' or post.author == request.session.username %}
-                                <a href="{% url 'forum:post_delete' post.id %}" class="btn btn-danger">删除</a>
+                                <a href="{% url 'forum:post_delete' post.id %}" class="btn btn-danger">DELETE</a>
                             {% endif %}
                         </div>
                     </div>
@@ -88,11 +88,11 @@
                 <ul class="pagination">
                     {% if post_list.posts.paginator.num_pages > 1 %}
                         {% if post_list.posts.has_previous %}
-                            <li class="page-item"><a class="page-link" href="?page={{ post_list.posts.previous_page_number }}">上一页</a></li>
+                            <li class="page-item"><a class="page-link" href="?page={{ post_list.posts.previous_page_number }}">Previous</a></li>
                         {% endif %}
-                        <li class="page-item"><span class="page-link">第 {{ post_list.posts.number }} 页 / 共 {{ post_list.posts.paginator.num_pages }} 页</span></li>
+                        <li class="page-item"><span class="page-link">Page {{ post_list.posts.number }} of {{ post_list.posts.paginator.num_pages }} </span></li>
                         {% if post_list.posts.has_next %}
-                            <li class="page-item"><a class="page-link" href="?page={{ post_list.posts.next_page_number }}">下一页</a></li>
+                            <li class="page-item"><a class="page-link" href="?page={{ post_list.posts.next_page_number }}">NEXT</a></li>
                         {% endif %}
                     {% endif %}
                 </ul>
