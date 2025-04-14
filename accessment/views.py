@@ -1,5 +1,6 @@
 import json
 import random
+import threading
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.shortcuts import render, get_object_or_404, redirect
@@ -8,6 +9,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
+
+from AI_module.Get_from_AI import Get_from_AI
 from .models import StudentMediaPlayRecord,StudentPageRecord,StudentExamRecord,StudentAnswer
 from Account.models import Students
 from ELW.models import (TimeManagement,
@@ -887,9 +890,110 @@ def exam_result(request):
     })
 
 
+# def grade_page(page_record):
+#     # 获取学生提交的答案
+#     student_answers = StudentAnswer.objects.filter(student_page_record=page_record)
+#
+#     # 批改答案逻辑
+#     total_score = 0
+#     feedback = []
+#
+#     for student_answer in student_answers:
+#         sub_question = student_answer.sub_question
+#         correct_answer = sub_question.answer  # 假设题目模型中有正确答案字段
+#
+#         # 根据题型进行不同的批改逻辑
+#         if sub_question.main_question.question_type == 'choice':
+#             # 选择题批改逻辑
+#             if student_answer.text == correct_answer:
+#                 score = sub_question.score
+#             else:
+#                 score = 0
+#             feedback.append(f"第{sub_question.id}题: 你的答案是 {student_answer.text}, 正确答案是 {correct_answer}")
+#
+#         elif sub_question.main_question.question_type == 'blank':
+#             # 填空题批改逻辑
+#             correct = True
+#             for blank in sub_question.blanks.all():
+#                 student_blank = student_answer.text.split()[blank.index]
+#                 if student_blank != blank.answer:
+#                     correct = False
+#                     break
+#             if correct:
+#                 score = sub_question.score
+#             else:
+#                 score = 0
+#             feedback.append(f"第{sub_question.id}题: 部分答案可能有误，请检查")
+#
+#         elif sub_question.main_question.question_type == 'correction':
+#             # 改错题批改逻辑
+#             correct = True
+#             for correction in student_answer.corrections.all():
+#                 if correction.type != 'none' and (
+#                         correction.text != correction.correct_text or correction.index != correction.correct_index):
+#                     correct = False
+#                     break
+#             if correct:
+#                 score = sub_question.score
+#             else:
+#                 score = 0
+#             feedback.append(
+#                 f"第{sub_question.id}题: 你的改错有 {sub_question.corrections.count() - correct} 处错误")
+#
+#         # 累加总分
+#         total_score += score
+#         student_answer.score = score
+#         student_answer.save()
+#
+#     # 保存批改结果
+#     page_record.page_score = total_score
+#     page_record.feedback = "\n".join(feedback)
+#     page_record.is_graded = True
+#     page_record.save()
+def grade_comprehension(sub_question, student_answer):
+    try:
+        m = Get_from_AI(model='ZhipuAI')
+        m.set_prompt_variables(my_dict={"原文": "暂无", "题目": sub_question.question_text,
+                                         "参考答案": sub_question.answer,
+                                         "学生回答": student_answer.text, "其他要求_评分": "请按格式｛\"分数\":, \"理由\":｝给出分数和理由，使用英文符号"})
+        res = m.get_answer(m.get_prompt("题目评分"))
+        dic = json.loads(res)
+        student_answer.score = dic['分数']
+        return dic['分数']
+    except Exception as e:
+        print(e)
+def background_grade_comprehension(sub_question, student_answer):
+    try:
+        score = grade_comprehension(sub_question, student_answer)
+        student_answer.score = score
+        student_answer.save()
+
+        # 重新计算并更新页面分数
+        page_record = student_answer.student_page_record
+        answers = StudentAnswer.objects.filter(student_page_record=page_record)
+
+        # 只包括有效分数（>= 0）
+        valid_scores = [ans.score for ans in answers if ans.score is not None and ans.score >= 0]
+        if valid_scores:
+            page_record.page_score = sum(valid_scores)
+            page_record.save()
+
+        # 更新练习记录总分
+        student_practice_record = page_record.student_practice_record
+        page_records = StudentPageRecord.objects.filter(
+            student_practice_record=student_practice_record,
+            is_graded=True
+        )
+        total_score = sum(pr.page_score for pr in page_records if pr.page_score is not None)
+        student_practice_record.score = total_score
+        student_practice_record.save()
+    except Exception as e:
+        print(f"后台评分错误: {e}")
+
 def grade_page(page_record):
+    print('grade')
     # 获取学生提交的答案
-    student_answers = StudentAnswer.objects.filter(student_page_record=page_record)
+    student_answers = StudentAnswer.objects.filter(student_page_record_id=page_record.id)
 
     # 批改答案逻辑
     total_score = 0
@@ -897,7 +1001,7 @@ def grade_page(page_record):
 
     for student_answer in student_answers:
         sub_question = student_answer.sub_question
-        correct_answer = sub_question.answer  # 假设题目模型中有正确答案字段
+        correct_answer = sub_question.answer
 
         # 根据题型进行不同的批改逻辑
         if sub_question.main_question.question_type == 'choice':
@@ -907,39 +1011,67 @@ def grade_page(page_record):
             else:
                 score = 0
             feedback.append(f"第{sub_question.id}题: 你的答案是 {student_answer.text}, 正确答案是 {correct_answer}")
-
         elif sub_question.main_question.question_type == 'blank':
             # 填空题批改逻辑
-            correct = True
-            for blank in sub_question.blanks.all():
-                student_blank = student_answer.text.split()[blank.index]
-                if student_blank != blank.answer:
-                    correct = False
-                    break
+            correct = False
+            student_blank = student_answer.text
+            if student_blank == correct_answer:
+                correct = True
+
             if correct:
                 score = sub_question.score
             else:
                 score = 0
-            feedback.append(f"第{sub_question.id}题: 部分答案可能有误，请检查")
+        elif sub_question.main_question.question_type == 'matching':
+            # 连线题批改逻辑
+            correct = False
+            student_matching = student_answer.text
+            if student_matching == correct_answer:
+                correct = True
 
+            if correct:
+                score = sub_question.score
+            else:
+                score = 0
         elif sub_question.main_question.question_type == 'correction':
             # 改错题批改逻辑
+            correct_corrections = Correction.objects.filter(sub_question=sub_question)
+            student_corrections = StudentAnswer.objects.filter(sub_question=sub_question)
             correct = True
-            for correction in student_answer.corrections.all():
-                if correction.type != 'none' and (
-                        correction.text != correction.correct_text or correction.index != correction.correct_index):
+            for correct_correction in correct_corrections:
+                found = False
+                for student_correction in student_corrections:
+
+                    if (student_correction.type == correct_correction.type and
+                            student_correction.index == correct_correction.index):
+                        found = True
+                        break
+                if not found:
                     correct = False
                     break
             if correct:
                 score = sub_question.score
             else:
                 score = 0
-            feedback.append(
-                f"第{sub_question.id}题: 你的改错有 {sub_question.corrections.count() - correct} 处错误")
+        elif sub_question.main_question.question_type == 'comprehension':
+            #后续批改
+            score = -1
+            # 启动后台线程进行AI评分
+            grading_thread = threading.Thread(
+                target=background_grade_comprehension,
+                args=(sub_question, student_answer)
+            )
+            grading_thread.daemon = True  # 使线程在主程序退出时终止
+            grading_thread.start()
+            continue
 
         # 累加总分
-        total_score += score
-        student_answer.score = score
+        if(score and score >= 0):
+            total_score += score
+            student_answer.score = score
+        else:
+            student_answer.score = score
+
         student_answer.save()
 
     # 保存批改结果
