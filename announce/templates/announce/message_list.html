@@ -7,6 +7,59 @@
     <title>Message List</title>
     <link rel="stylesheet" href="{% static 'plugins/bootstrap-3.4.1/css/bootstrap.css' %}">
     <style>
+        body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+    color: #333;
+}
+        .alert {
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 5px;
+}
+        .alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    color: #856404;
+}
+        .close {
+    float: right;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #000;
+    text-shadow: 0 1px 0 #fff;
+    opacity: 0.5;
+}
+        .close:hover {
+    opacity: 1;
+}
+
+/* 消息箱标题 */
+h2 {
+    color: #2c3e50;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+    margin-top: 0;
+    font-weight: 600;
+}
+.message-link-container {
+    margin-bottom: 20px;
+}
+.message-link {
+    display: inline-block;
+    margin-right: 15px;
+    padding: 8px 15px;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+    font-size:20px;
+}
+.message-link.active {
+    background-color: #1a5276;
+}
         .notification-dot {
             width: 10px;
             height: 10px;
@@ -21,8 +74,96 @@
         .message-link {
             position: relative;
             margin-right: 20px;
-            font-size: 24px;
         }
+        button {
+    padding: 8px 15px;
+    background-color: #6dac6d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+        button:hover {
+    background-color: #457345;
+}
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+ul li {
+    background-color: white;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+ul li p {
+    margin: 10px 0;
+}
+
+.announcement-tag {
+    color: red;
+    font-weight: bold;
+}
+
+.read-status {
+    font-weight: 600;
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.read {
+    color: #27ae60;
+    background-color: rgba(39, 174, 96, 0.1);
+}
+
+.unread {
+    color: #e74c3c;
+    background-color: rgba(231, 76, 60, 0.1);
+}
+
+form {
+    display: inline-block;
+}
+
+.btn {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.btn-success {
+    background-color: #27ae60;
+    color: white;
+}
+
+.btn-warning {
+    background-color: #f39c12;
+    color: white;
+}
+
+.btn-success:hover, .btn-warning:hover {
+    opacity: 0.9;
+}
+
+/* 未读消息时的按钮样式 */
+.view-button {
+    margin-top: 10px;
+    padding: 8px;
+    background-color: #3498db;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 4px;
+}
+
+.view-button:hover {
+    background-color: #2980b9;
+}
     </style>
 </head>
 <body>
@@ -36,64 +177,67 @@
     </ol>
 
     {% if unread_count > 0 %}
-        <div class="alert alert-warning alert-dismissible" role="alert">
-          <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          <strong>Warning!</strong> 你有 {{ unread_count }} 条未读消息！
+        <div class="alert alert-warning">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <strong>Warning!</strong> 你有 {{ unread_count }} 条未读消息！
         </div>
     {% endif %}
 
     <h2>我的信息箱</h2>
-    <!-- 筛选按钮 -->
-    <div>
-        <a href="?status=read" class="message-link">已读消息</a>
-        <a href="?status=unread" class="message-link">未读消息
+    <div class="message-link-container">
+        <a href="?status=read" class="message-link {% if status == 'read' %}active{% endif %}">已读消息</a>
+        <a href="?status=unread" class="message-link {% if status == 'unread' %}active{% endif %}">
+            未读消息
             {% if unread_count > 0 %}
                 <span class="notification-dot"></span>
             {% endif %}
         </a>
-        <a href="/announce/messages/" class="message-link">所有消息</a>
-    <a href="?status=announcement" class="message-link">公告</a>
-    <button onclick="markAllAsRead()">全部标记已读</button>
+        <a href="/announce/messages/" class="message-link {% if status == 'all' %}active{% endif %}">所有消息</a>
+        <a href="?status=announcement" class="message-link {% if status == 'announcement' %}active{% endif %}">公告</a>
+        <button onclick="markAllAsRead()">全部标记已读</button>
     </div>
 
-
-    <!-- 显示消息列表 -->
     <ul>
-    {% for message in messages %}
-        <li>
+        {% for message in messages %}
+            <li>
                 {% if message.is_announcement %}
-        <strong style="color: red;">(公告)</strong><br>
-    {% endif %}
-            <strong>From:</strong> {{ message.sender }} <br>
-            <strong>Sent at:</strong> {{ message.created_at }} <br>
-            <strong>Content:</strong> {{ message.content }} <br>
+                    <p><span class="announcement-tag">(公告)</span></p>
+                {% endif %}
             {% if message.is_read %}
-                <strong>Status:</strong> 已读
-                <!-- 标记为未读按钮 -->
-                <form method="POST" action="{% url 'announce:message_list' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="message_id" value="{{ message.id }}">
-                    <input type="hidden" name="action" value="mark_unread">
-                    <button type="submit" class="btn btn-warning">标记为未读</button>
-                </form>
-            {% else %}
-                <strong>Status:</strong> 未读
-                <!-- 标记为已读按钮 -->
-                <form method="POST" action="{% url 'announce:message_list' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="message_id" value="{{ message.id }}">
-                    <input type="hidden" name="action" value="mark_read">
-                    <button type="submit" class="btn btn-success">标记为已读</button>
-
-                </form>
+                 <span class="read-status read">已读</span>
+             {% else %}
+                <span class="read-status unread">未读</span>
             {% endif %}
-{#        <a href="{% url 'announce:message_detail' message.id %}">查看详情</a>#}
-        </li>
-         <button onclick="location.href='{% url 'announce:handle_view_request' message.id %}'">去查看</button>
-    {% empty %}
-        <p>你没有收到任何消息。</p>
-    {% endfor %}
-</ul>
+                <p><strong>From:</strong> {{ message.sender }}</p>
+                <p><strong>Sent at:</strong> {{ message.created_at }}</p>
+                <p><strong>Content:</strong> {{ message.content }}</p>
+                <p>
+                    {% if message.is_read %}
+
+                        <form method="POST" action="{% url 'announce:message_list' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="message_id" value="{{ message.id }}">
+                            <input type="hidden" name="action" value="mark_unread">
+                            <button type="submit" class="btn btn-warning">标记为未读</button>
+                        </form>
+                    {% else %}
+
+                        <form method="POST" action="{% url 'announce:message_list' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="message_id" value="{{ message.id }}">
+                            <input type="hidden" name="action" value="mark_read">
+                            <button type="submit" class="btn btn-success">标记为已读</button>
+                        </form>
+                    {% endif %}
+                </p>
+                <a href="{% url 'announce:handle_view_request' message.id %}" class="view-button">去查看</a>
+            </li>
+        {% empty %}
+            <li>
+                <p>你没有收到任何消息。</p>
+            </li>
+        {% endfor %}
+    </ul>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="{% static 'plugins/bootstrap-3.4.1/js/bootstrap.js' %}"></script>

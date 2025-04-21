@@ -29,8 +29,7 @@
                     {% for announcement in announcement_list %}
                         <tr>
                             <td>
-                                <a href="{% url 'announce:announcement_detail' announcement.announcement_id %}"
-                                   class="text-decoration-none text-dark">
+                                <a href="{% url 'announce:announcement_detail' announcement.announcement_id %}">
                                     {{ announcement.a_title }}
                                 </a>
                             </td>

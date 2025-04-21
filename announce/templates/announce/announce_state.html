@@ -3,6 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <style>
+        body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+h2 {
+    color: #2c3e50;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+    margin-top: 0;
+    font-weight: 600;
+}
+
+h3 {
+    color: #34495e;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+h4 {
+    color: #7f8c8d;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 5px;
+    margin-top: 25px;
+    margin-bottom: 15px;
+}
+
+div {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+p {
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+strong {
+    color: #2c3e50;
+    font-weight: 600;
+    width: 90px;
+    display: inline-block;
+}
+
+/* 自定义表格样式 */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.table th {
+    background-color: #3498db;
+    color: white;
+    text-align: left;
+    padding: 12px 15px;
+    font-weight: 500;
+}
+
+.table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.table tr:hover {
+    background-color: #f1f1f1;
+    cursor: default;
+}
+.read-status {
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.read {
+    color: #27ae60; /* 已读，绿色 */
+    background-color: rgba(39, 174, 96, 0.1);
+}
+
+.unread {
+    color: #e74c3c; /* 未读，红色 */
+    background-color: rgba(231, 76, 60, 0.1);
+}
+/* 响应式设计 */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    div {
+        padding: 15px;
+    }
+
+    .table th, .table td {
+        padding: 8px 10px;
+    }
+
+    p {
+        font-size: 14px;
+    }
+}
+    </style>
 </head>
 <body>
 
@@ -27,7 +142,12 @@
                     {% with messages|first as message %}
                         <tr>
                             <td>{{ receiver }}</td>
-                            <td>{{ message.is_read|yesno:"已读,未读" }}</td>
+                            <td>
+                                <span
+                                        class="read-status {% if message.is_read %}
+                                        read{% else %}unread{% endif %}">
+                    {{ message.is_read|yesno:"已读,未读" }}</span>
+                            </td>
                             <td>{{ message.read_at }}</td>
                         </tr>
                     {% endwith %}
