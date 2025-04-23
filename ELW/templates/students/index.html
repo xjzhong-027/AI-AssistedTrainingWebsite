@@ -1,13 +1,11 @@
-
 {% load static %}
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>英语听力教学网站</title>
-    <link rel="stylesheet" href="{% static 'css/index.css' %}">
+    <link rel="stylesheet" href="{% static 'css/index2.css' %}">
 
 </head>
 <body>
@@ -15,13 +13,12 @@
     <div class="container">
         <aside class="sidebar">
             <ul>
-                <li><a href="{% url 'stu_practice:dashboard' %}">个人信息</a>
-                <li><a href="{% url 'stu_practice:practice_list' %}">练习</a></li>
+                <li><a href="{% url 'logout' %}">退出登录</a></li>
+                <li><a href=" {% url 'stu_practice:practice_list' %}">练习</a ></li>
                 <li><a href="{% url 'accessment:confirm_info' %}">考试</a></li>
                 <li><a href="{% url 'forum:forum' %}">论坛</a></li>
                 <li><a href="{% url 'announce:student_announcements' %}" class="btn btn-primary mb-4">公告栏</a></li>
                 <li><a href="{% url 'announce:message_list' %}" class="btn btn-primary mb-4">消息箱</a></li>
-                <li><a href="{% url 'logout' %}">退出登录</a></li>
                 <li><a href="">updating</a></li>
             </ul>
         </aside>
@@ -35,3 +32,9 @@
 <script src="{% static 'js/lastActiveTime.js' %}"></script>
 </body>
 </html>
+
+
+
+
+
+
