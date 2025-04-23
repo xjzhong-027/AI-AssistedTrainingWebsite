@@ -220,6 +220,7 @@
                 <input type="hidden" name="is_manual_submit" value="false">
                 <input type="hidden" name="manual_save" value="false">
                 {% for main_question in main_questions %}
+                    {% if not main_question.no_media %}
                 <div class="video-question-container" data-main-question-id="{{ main_question.id }}">
                     <div class="content-wrapper">
                         <div class="video-container">
@@ -239,6 +240,7 @@
                                 </div>
                                 {% endif %}
                             </div>
+                        {% endif %}
                             <script>
                                 document.addEventListener("DOMContentLoaded", function () {
                                     const videoId = "{{ main_question.id }}";
