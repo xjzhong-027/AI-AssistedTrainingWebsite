@@ -282,6 +282,7 @@ def practice_page(request, practice_id, order):
 
     is_last_page = not PaperPage.objects.filter(unit=practice, order=page.order + 1).exists()
 
+
     context = {
         'practice': practice,
         'page': page,
@@ -511,10 +512,19 @@ def save_page(request, practice_id, order):
         if is_manual_submit:
             return JsonResponse({'message': '是否确认提交？', 'status': 'finished'}, status=200)
         elif force_submit:
+            print("force submit")
             _save_answers_to_cache(request, page_record.id)
             _save_answers_to_database(page_record.id)
             page_record.submitted = True
             page_record.submitted_at = timezone.now()
+
+            is_last_page = not PaperPage.objects.filter(unit=practice, order=order + 1).exists()
+
+            if is_last_page:
+                student_practice_record.submitted = True
+                student_practice_record.finished_at = timezone.now()
+
+                student_practice_record.save()
             page_record.save()
             grade_page(page_record)
             return JsonResponse({'message': '答案已提交，页面将重新加载', 'status': 'reload'}, status=200)
@@ -780,8 +790,10 @@ def grade_comprehension(sub_question, student_answer):
                                          "学生回答": student_answer.text, "其他要求_评分": "请按格式｛\"分数\":, \"理由\":｝给出分数和理由，使用英文符号"})
         res = m.get_answer(m.get_prompt("题目评分"))
         dic = json.loads(res)
-        student_answer.score = dic['分数']
-        return dic['分数']
+        score = float(dic['分数'])*sub_question.score//100
+        student_answer.score = score
+
+        return score
     except Exception as e:
         print(e)
 
@@ -803,7 +815,7 @@ def background_grade_comprehension(sub_question, student_answer):
             page_record.save()
 
         # 更新练习记录总分
-        student_practice_record = page_record.student_practice_record
+        student_practice_record = page_record.student_exam_record
         page_records = StudentPageRecord.objects.filter(
             student_exam_record=student_practice_record,
             is_graded=True
@@ -826,7 +838,7 @@ def student_dashboard(request):
     for record in practice_records:
         total_score = StudentPageRecord.objects.filter(student_exam_record=record, is_graded=True).aggregate(Sum('page_score'))['page_score__sum'] or 0
         practice_scores.append({
-            'practice': record.practice,
+            'practice': record.exam,
             'total_score': total_score,
             'started_at': record.started_at,
             'finished_at': record.finished_at,
