@@ -133,7 +133,7 @@ def forum(request):
 
         # 筛选学生已经完成的页面
         completed_page_records = StudentPageRecord.objects.filter(
-            student_practice_record__user=student,
+            student_exam_record__user=student,
             submitted=True
         )
         completed_pages = completed_page_records.values_list('page', flat=True)
@@ -494,9 +494,8 @@ def question_post(request):
             })
 
         posts = Post.objects.filter(is_question=True, is_public=True)
-
         completed_page_records = StudentPageRecord.objects.filter(
-            student_practice_record__user=student,
+            student_exam_record__user=student,
             submitted=True
         )
         completed_pages = completed_page_records.values_list('page', flat=True)
@@ -516,7 +515,7 @@ def question_post(request):
         )
 
         class_instance = student.class_instance
-        units = Unit.objects.filter(class_instance=class_instance)
+        units = Unit.objects.filter(class_instance=class_instance).exclude(type='exam')
         pages = PaperPage.objects.filter(unit__in=units)
     elif role == 'teacher':
         posts = Post.objects.filter(is_question=True)
