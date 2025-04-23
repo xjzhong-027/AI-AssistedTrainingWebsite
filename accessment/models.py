@@ -9,6 +9,15 @@ from Account.models import Students, Class
 # from stu_practice.models import StudentPracticeRecord
 
 
+# class StudentExamRecord(models.Model):
+#     user = models.ForeignKey(Students, on_delete=models.CASCADE)
+#     exam = models.ForeignKey(Unit, on_delete=models.CASCADE)
+#     started_at = models.DateTimeField(auto_now_add=True)
+#     ended_at = models.DateTimeField(null=True, blank=True)
+#     finished_at = models.DateTimeField(null=True, blank=True)
+#     submitted = models.BooleanField(default=False)
+#     score = models.DecimalField(verbose_name='总分', max_digits=5, decimal_places=1, null=True, blank=True)
+
 class StudentExamRecord(models.Model):
     user = models.ForeignKey(Students, on_delete=models.CASCADE)
     exam = models.ForeignKey(Unit, on_delete=models.CASCADE)
@@ -16,6 +25,10 @@ class StudentExamRecord(models.Model):
     ended_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     submitted = models.BooleanField(default=False)
+    integrity_score = models.DecimalField(verbose_name='诚信分', max_digits=2, decimal_places=1, default=1, validators=[
+        MinValueValidator(0),  # 最小值为0
+        MaxValueValidator(1)  # 最大值为1
+    ])
     score = models.DecimalField(verbose_name='总分', max_digits=5, decimal_places=1, null=True, blank=True)
 
 class StudentPageRecord(models.Model):
