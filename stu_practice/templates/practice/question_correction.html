@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div class="correction-question">
+    <p>原文：{{ sub_question.question_text }}</p>
+    <p>修改内容：</p>
+    <textarea name="correction_{{ sub_question.id }}" rows="4" cols="50">{{ answers|get_item:sub_question.id|default:"" }}</textarea>
+</div>
+</body>
+</html>

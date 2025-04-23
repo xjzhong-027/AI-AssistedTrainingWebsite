@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Practice Results</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        h1 {
+            color: #343a40;
+            margin: 0;
+        }
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+        }
+        .result-table th, .result-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .result-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+        }
+        .result-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .result-table tr:hover {
+            background-color: #e9ecef;
+        }
+        .total-score-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9f7ef;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .total-score {
+            font-weight: bold;
+            color: #2ecc71;
+            font-size: 1.5em;
+            margin: 0;
+        }
+        .buttons-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .btn-home {
+            background-color: #3498db;
+            color: white;
+        }
+        .btn-home:hover {
+            background-color: #2980b9;
+        }
+        .btn-practices {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .btn-practices:hover {
+            background-color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Practice Results</h1>
+        </div>
+
+        <div class="success-message">
+            <p>✓ Submit successfully!</p>
+        </div>
+
+        <table class="result-table">
+            <thead>
+                <tr>
+                    <th>Question Type</th>
+                    <th>Question</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for question in question_scores %}
+                <tr>
+                    <td>{{ question.sub_question_type }}</td>
+                    <td>{{ question.sub_question_text }}</td>
+                    <td>{{ question.score }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="total-score-container">
+            <p class="total-score">Total Score: {{ total_score }}</p>
+        </div>
+
+        <div class="buttons-container">
+            <a href="{% url 'student_ELW:student_index' %}" class="btn btn-home">Back to Home</a>
+            <a href="{% url 'stu_practice:practice_list' %}" class="btn btn-home">All Practices</a>
+        </div>
+    </div>
+</body>
+</html>

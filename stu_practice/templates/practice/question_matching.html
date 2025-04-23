@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Matching Question</title>
+</head>
+<body>
+<div class="matching-question">
+    <div class="left-options">
+        {% for option in matching_options %}
+        <div class="option">
+            <input type="hidden" name="leftoption{{ option.id }}" value="{{ option.id }}">
+            <label>{{ option.option_label }} - {{ option.option_content }}</label>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="right-options">
+        {% for option in matching_options %}
+        <div class="option">
+            <input type="hidden" name="rightoption{{ option.id }}" value="{{ option.id }}">
+            <label>{{ option.option_label }} - {{ option.option_content }}</label>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,1116 @@
+{% load custom_filters %}
+{% load static %}
+{% load elw_custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Practice Page</title>
+        <link rel="stylesheet" href="{% static 'css/exampage.css' %}">
+        <style>
+            .posts-container {
+            position: relative;
+            margin-top: 10px;
+            }
+            .toggle-posts-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            }
+            .toggle-posts-btn:hover {
+            background-color: #45a049;
+            }
+            .posts-list {
+            display: none;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            }
+            .post {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            }
+            .post:last-child {
+            border-bottom: none;
+            }
+            a{
+            color: #6dac6d;
+            font-size: 0.8em;
+            }
+            .post h5{
+            color: #706f6f;
+            }
+            .grade-result {
+            text-align: right;
+            }
+
+        </style>
+    </head>
+    <body>
+        <div id="exam-navigation">
+            <div id="page-nav">
+                {% for p in practice.paper_pages.all %}
+                <div class="nav-circle" data-page-number="{{ p.order }}"></div>
+                {% endfor %}
+            </div>
+            <div id="timer"> <span id="time-remaining"></span></div>
+            <!-- 交卷按钮 -->
+            <form></form>
+            <button type="button" onclick="gotoHome()">Home</button>
+        </div>
+        <!-- 播放器 -->
+        {% for main_question in main_questions %}
+        <div class="question" data-main-question-id="{{ main_question.id }}">
+            {% if main_question.media_material %}
+            <div class="media-player">
+                <video id="media-video_{{ main_question.id }}" width="640" height="360">
+                    <source src="{{ MEDIA_URL }}{{ main_question.media_material.media_url }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <button id="play-button_{{ main_question.id }}">Play</button>
+                {% if main_question.allow_pause %}
+                <button id="pause-button_{{ main_question.id }}" disabled>Pause</button>
+                {% endif %}
+                <p>Maximum plays: {{ main_question.maximum_play }}</p>
+                <p>Current plays: <span id="play_count_{{ main_question.id }}">{{ play_records|get_item:main_question.id|default:"0" }}</span></p>
+            </div>
+            {% endif %}
+        </div>
+        <!-- 视频播放 -->
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const videoId = "{{ main_question.id }}";
+                const studentPracticeRecordId = "{{ student_practice_record.id }}";
+                const mainQuestionId = "{{ main_question.id }}";
+                const mediaMaterialId = "{{ main_question.media_material.id }}";
+                const maxPlays = "{{ main_question.maximum_play }}";
+                const allowPause = "{{ main_question.allow_pause }}" === "True";
+
+                const video = document.getElementById(`media-video_${videoId}`);
+                const playButton = document.getElementById(`play-button_${videoId}`);
+                const pauseButton = document.getElementById(`pause-button_${videoId}`);
+                const playCountSpan = document.getElementById(`play_count_${videoId}`);
+
+
+                // 如果不允许暂停，禁用暂停按钮
+                if (!allowPause && pauseButton) {
+                    pauseButton.style.display = "none"; // 隐藏暂停按钮
+                }
+
+                // 检查当前播放次数是否达到最大值
+                const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+                if (currentPlayCount >= maxPlays) {
+                    pauseButton.disabled = true;
+                    playButton.disabled = true;
+                    playButton.textContent = "Cannot play anymore";
+                }
+
+                playButton.addEventListener("click", () => {
+                    // 再次检查播放次数是否达到最大值
+                    const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+                    if (currentPlayCount >= maxPlays) {
+                        alert("Maximum play count reached. Cannot play anymore.");
+                        return; // 阻止播放
+                    }
+
+                    if (video.paused) {
+                        video.play();
+                        if (pauseButton) {
+                            pauseButton.disabled = false;
+                        }
+                        playButton.disabled = true;
+                    }
+                });
+
+                if (pauseButton) {
+                    pauseButton.addEventListener("click", () => {
+                        if (!video.paused) {
+                            video.pause();
+                            playButton.disabled = false;
+                            pauseButton.disabled = true;
+                        }
+                    });
+                }
+
+                video.addEventListener("ended", () => {
+                    const currentPlayCount = parseInt(playCountSpan.textContent, 10);
+                    playCountSpan.textContent = currentPlayCount + 1;
+
+                    fetch("{% url 'stu_practice:update_play_count' %}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": "{{ csrf_token }}",
+                        },
+                        body: JSON.stringify({
+                            student_practice_record_id: studentPracticeRecordId,
+                            main_question_id: mainQuestionId,
+                            media_material_id: mediaMaterialId,
+                        }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log("Play count updated successfully!");
+                        } else {
+                            console.error("Failed to update play count:", data.message);
+                        }
+
+                        // 检查是否达到最大播放次数
+                        const updatedPlayCount = parseInt(playCountSpan.textContent, 10);
+                        if (updatedPlayCount >= maxPlays) {
+                            playButton.disabled = true; // 禁用播放按钮
+                            playButton.textContent = "Cannot play anymore"; // 提示用户
+                            if (pauseButton) {
+                                pauseButton.disabled = true;
+                            }
+                        } else {
+                            // 恢复按钮状态
+                            playButton.disabled = false; // 启用播放按钮
+                            if (pauseButton) {
+                                pauseButton.disabled = true; // 用暂停按钮
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error updating play count:", error);
+                    });
+                });
+            });
+        </script>
+        {% endfor %}
+        <!-- 页面 -->
+        <div class="question-container">
+            <form id="save-answers-form" method="post" action="{% url 'stu_practice:save_page' practice.id order %}">
+                {% csrf_token %}
+                <input type="hidden" name="page_record_id" value="{{ current_page_record_id }}">
+                <input type="hidden" name="is_manual_submit" value="false">
+                <input type="hidden" name="manual_save" value="false">
+                <div id="exam-content">
+                    {% for main_question in main_questions %}
+                    <div class="question" data-main-question-id="{{ main_question.id }}">
+                        <h4>{{ main_question.question_text|safe }}</h4>
+                        {% if main_question.image_url %}
+                        <div class="image">
+                            {% for image_path in main_question.image_url|split:"," %}
+                            <img src="{{ image_path }}" alt="Question Image" width="640" height="360">
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <!-- 填空题 -->
+                        {% if main_question.question_type == 'blank' %}
+                        <div class="blank-paragraph">
+                            {{ blank_data|get_item:main_question.id|safe }}
+                        </div>
+                        <!-- 选择题 -->
+                        {% elif main_question.question_type == 'choice' %}
+                        {% for sub_question in sub_questions %}
+                        {% if sub_question.main_question == main_question %}
+                        <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
+                            {% if sub_question.image_url %}
+                            <div class="questionimage">
+                                {% for image_path in sub_question.image_url|split:"," %}
+                                <img src="{{ image_path }}" alt="Sub-question Image">
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="choices">
+                                <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
+                                {% for option in sub_question.shuffled_options %}
+                                <label>
+                                    <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.option_label }}" {% if page_submitted %}disabled{% endif %} {% if answers|get_item:sub_question.id == option.option_label %} checked {% endif %}>
+                                    {{ option.option_label }}. {{ option.option_content }}
+                                    {% if option.image_url %}
+                                    <div class="option-image">
+                                        {% for image_path in option.image_url|split:"," %}
+                                        <img src="{{ image_path }}" alt="Option Image">
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <!-- 评分结果和正确答案展示 -->
+                        <div class="grade-result" id="grade-result-{{ sub_question.id }}">
+                            {% if graded_answers|get_item:sub_question.id %}
+                            <p>正确答案：{{ graded_answers|get_item:sub_question.id }}</p>
+                            <p>你的得分：{{ scores|get_item:sub_question.id }}</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                        {% elif main_question.question_type == 'matching' %}
+                        {% for sub_question in sub_questions %}
+                        {% if sub_question.main_question == main_question %}
+                        <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
+                            {% if sub_question.image_url %}
+                            <div class="questionimage">
+                                {% for image_path in sub_question.image_url|split:"," %}
+                                <img src="{{ image_path }}" alt="Sub-question Image" width="320" height="180">
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <!--连线题 -->
+                            <div class="matching">
+                                <div class="left-item">
+                                    <!-- 题目列表 -->
+                                    <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
+                                </div>
+                                <div class="right-item" id="right-{{ sub_question.id }}">
+                                    {% for option in sub_question.matchingOptions.all %}
+                                    <div class="option" id="option-{{ option.id }}">
+                                        {{ option.option_label }}. {{ option.option_content }}
+                                        {% if option.image_url %}
+                                        <div class="option-image">
+                                            {% for image_path in option.image_url|split:"," %}
+                                            <img src="{{ image_path }}" alt="Option Image" width="320" height="180">
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="answer-input">
+                                    <!-- 输入框列表 -->
+                                    {% for option in sub_question.matchingOptions.all %}
+                                    <input type="text" name="answer_{{ sub_question.id }}" id="answer_{{ sub_question.id }}"
+                                    placeholder="填写答案" value="{{ answers|get_item:sub_question.id|default:"" }}" {% if page_submitted %}disabled{% endif %}>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 评分结果和正确答案展示 -->
+                        <div class="grade-result" id="grade-result-{{ sub_question.id }}">
+                            {% if graded_answers|get_item:sub_question.id %}
+                            <p>正确答案：{{ graded_answers|get_item:sub_question.id }}</p>
+                            <p>你的得分：{{ scores|get_item:sub_question.id }}</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                        {% elif main_question.question_type == 'correction' %}
+                        {% with correction_data|get_item:main_question.id as data %}
+                        <div class="correction-question">
+                            <div class="full-text">
+                                <div class="word-container">
+                                    {% for word_info in data.words %}
+                                    <span class="clickable-word"
+                                        data-sub-question-id="{{ word_info.sub_question_id }}"
+                                        data-local-index="{{ word_info.local_index }}"
+                                        data-word="{{ word_info.word }}">
+                                    {{ word_info.word|safe }}
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <!-- 显示错误类型选择框和输入框 -->
+                            <div class="correction-controls">
+                                <div id="dynamic-corrections">
+                                </div>
+                            </div>
+                        </div>
+                        {% endwith %}
+                        <!-- 评分结果和正确答案展示 -->
+                        <div class="grade-result" id="grade-result-{{ sub_question.id }}">
+                            {% if graded_answers|get_item:sub_question.id %}
+                            <p>正确答案：{{ graded_answers|get_item:sub_question.id }}</p>
+                            <p>你的得分：{{ scores|get_item:sub_question.id }}</p>
+                            {% endif %}
+                        </div>
+                        {% elif main_question.question_type == 'comprehension' %}
+                        {% for sub_question in sub_questions %}
+                        {% if sub_question.main_question == main_question %}
+                        <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
+                            <!--主观题 -->
+                            {% if sub_question.image_url %}
+                            <div class="questionimage">
+                                <img src="{{ sub_question.image_url }}" alt="Sub-question Image" width="320" height="180">
+                            </div>
+                            {% endif %}
+                            <div class="comprehension">
+                                <!-- 题目列表 -->
+                                <p>{{ forloop.counter }}. {{ sub_question.question_text }}</p>
+                                <div class="comprehension-answer-input">
+                                    <!-- 输入框列表 -->
+                                    <input type="text" name="answer_{{ sub_question.id }}" id="answer_{{ sub_question.id }}"
+                                    placeholder="填写答案" value="{{ answers|get_item:sub_question.id|default:"" }}" {% if page_submitted %}disabled{% endif %}>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 评分结果和正确答案展示 -->
+                        <div class="grade-result" id="grade-result-{{ sub_question.id }}">
+                            {% if graded_answers|get_item:sub_question.id %}
+                            <p>正确答案：{{ graded_answers|get_item:sub_question.id }}</p>
+                            <p>你的得分：{{ scores|get_item:sub_question.id }}</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                    <!-- 帖子区域 -->
+                    <div class="posts-container" style="display: none;">
+                        <button class="toggle-posts-btn" data-main-question-id="{{ main_question.id }}" type="button">查看帖子</button>
+                        <div class="posts-list" id="posts-list-{{ main_question.id }}">
+                            <div class="post-template" style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <!-- 页面底部 -->
+                <div id="page-footer">
+                    <div class="lastpage">
+                        {% if is_last_page %}
+                        <p>The last page</p>
+                        {% endif %}
+                    </div>
+                    <div id="footer-buttons">
+                        {% if student_page_record.is_graded and is_last_page %}
+                        <button type="button" onclick="gotoResult()">查看成绩单</button>
+                        {% elif student_page_record.is_graded and not is_last_page%}
+                        <button type="button" onclick="gotoNextPage()">下一页</button>
+                        {% else %}
+                        <button type="button" onclick="manualSave()">保存</button>
+                        <button type="button" onclick="manualSubmit()">提交</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div id="unfinishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">确认提交</h5>
+                        {#                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">#}
+                        {#                        <span aria-hidden="true">&times;</span>#}
+                        {#                        </button>#}
+                    </div>
+                    <div class="modal-body">
+                        <p id="unfinishedConfirmationMessage">有未完成的题目，请继续作答</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="gotofinishButton">继续完成</button>
+                        {#                        <button type="button" class="btn btn-primary" id="unfinishedConfirmSubmit">仍然提交</button>#}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 是否确认提交 -->
+        <div id="finishedConfirmationModal" class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">确认提交</h5>
+                        {#                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">#}
+                        {#                        <span aria-hidden="true">&times;</span>#}
+                        {#                        </button>#}
+                    </div>
+                    <div class="modal-body">
+                        <p id="finishedConfirmationMessage">是否确认提交？</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">取消</button>
+                        <button type="button" class="btn btn-primary" id="finishedConfirmSubmit">确认</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 答案保存成功的模态框 -->
+        <div id="successModal" class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <p id="successMessage">答案保存成功</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div data-page-submitted="{{ page_submitted }}"></div>
+        <!-- 已作答的答案显示-->
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const answers = JSON.parse('{{ answers|safe|escapejs }}');
+
+                // 填充选择题和填空题的答案
+                for (const sub_question_id in answers) {
+                    const answer = answers[sub_question_id];
+                    const input = document.querySelector(`input[name="answer_${sub_question_id}"]`);
+                    if (input) {
+                        input.value = answer;
+                    }
+
+                    // 填充选择题的选项
+                    const radioButtons = document.querySelectorAll(`input[name="answer_${sub_question_id}"]`);
+                    if (radioButtons.length > 0) {
+                        radioButtons.forEach(radio => {
+                            if (radio.value === answer) {
+                                radio.checked = true;
+                            }
+                        });
+                    }
+                }
+            });
+        </script>
+        <!-- 自动手动保存 提交当前页面 -->
+        <script>
+            // 手动保存
+            function manualSave() {
+                const examForm = document.getElementById('save-answers-form');
+                const formData = new FormData(examForm);
+
+                // 直接在 FormData 中设置值
+                formData.set('manual_save', 'true');
+                formData.set('is_manual_submit', 'false');
+
+                // 调用 submitForm 提交表单
+                submitForm(formData);
+            }
+
+            function manualSubmit() {
+                const examForm = document.getElementById('save-answers-form');
+                const formData = new FormData(examForm);
+
+                // 直接在 FormData 中设置值
+                formData.set('manual_save', 'false');
+                formData.set('is_manual_submit', 'true');
+
+                // 调用 submitForm 提交表单
+                submitForm(formData);
+            }
+
+            function submitForm(formData) {
+                const examForm = document.getElementById('save-answers-form');
+                const unfinishedConfirmationModal = document.getElementById('unfinishedConfirmationModal');
+                const finishedConfirmationModal = document.getElementById('finishedConfirmationModal');
+                const unfinishedConfirmationMessage = document.getElementById('unfinishedConfirmationMessage');
+                const finishedConfirmationMessage = document.getElementById('finishedConfirmationMessage');
+                const unfinishedConfirmSubmitButton = document.getElementById('unfinishedConfirmSubmit');
+                const finishedConfirmSubmitButton = document.getElementById('finishedConfirmSubmit');
+
+                fetch(examForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.status);
+                    if (data.status === 'finished') {
+                        // 没有未完成的题目，提示用户“是否确认提交？”
+                        finishedConfirmationMessage.textContent = data.message;
+                        finishedConfirmationModal.style.display = 'block';
+                        finishedConfirmSubmitButton.onclick = addForceSubmitAndSubmitForm;
+                    } else if (data.status === 'unfinished') {
+                        // 有未完成的题目，显示模态框
+                        unfinishedConfirmationMessage.textContent = data.message;
+                        unfinishedConfirmationModal.style.display = 'block';
+                        unfinishedConfirmSubmitButton.onclick = addForceSubmitAndSubmitForm;
+                    } else if (data.status === 'saved') {
+                        // 可以修改的页面但有未完成的页面
+                        successMessage.textContent = data.message;
+                        setTimeout(() => {
+                            successModal.style.display = 'none';
+                            canModify();
+                        }, 500);
+                    }  else if (data.status === 'reload') {
+                        // 如果状态是reload，则重新加载页面
+                        const pageNumber = {{ page.order | safe }};
+                        const practiceId = {{ practice.id | safe }};
+                        window.location.href = `/stu_practice/practices/${practiceId}/page/${pageNumber}/`;
+                    }   else {
+                        // 其他情况，显示返回的消息
+                        console.log(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('保存答案时出错，请检查网络连接或稍后再试。');
+                });
+            }
+
+            // 强制提交：将答案保存到数据库
+            function addForceSubmitAndSubmitForm() {
+                const examForm = document.getElementById('save-answers-form');
+                const formData = new FormData(examForm);
+
+                formData.set('manual_save', 'false');
+                formData.set('is_manual_submit', 'false');
+                formData.set('force_submit', 'true');
+
+                submitForm(formData);
+            }
+            function canModify() {
+                const examForm = document.getElementById('save-answers-form');
+                const canModifyInput = document.createElement('input');
+                canModifyInput.type = 'hidden';
+                canModifyInput.name = 'saved';
+                canModifyInput.value = 'true';
+                examForm.appendChild(canModifyInput);
+                examForm.submit();
+            }
+            // 自动保存逻辑：每隔一段时间将答案暂存到缓存
+            function autoSaveAnswers() {
+                const examForm = document.getElementById('save-answers-form');
+                const formData = new FormData(examForm);
+
+                // 设置 manual_save 为 false，表示自动保存
+                document.querySelector('input[name="manual_save"]').value = "false";
+                document.querySelector('input[name="is_manual_submit"]').value = "false";
+
+                fetch(examForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        console.log('Auto-save successful');
+                    } else {
+                        console.error('Auto-save failed');
+                    }
+                }).catch(error => {
+                    console.error('Error during auto-save:', error);
+                });
+            }
+
+            // 每隔30秒自动保存一次
+            setInterval(autoSaveAnswers, 30000);
+
+            // 页面加载完成后绑定事件
+            document.addEventListener('DOMContentLoaded', function () {
+                // 关闭模态框
+                //document.querySelector('.close').onclick = function () {
+                //    console.log('close');
+                //    document.getElementById('unfinishedConfirmationModal').style.display = 'none';
+                //    document.getElementById('finishedConfirmationModal').style.display = 'none';
+                //};
+
+                // 继续完成按钮的点击事件
+                document.querySelector('#unfinishedConfirmationModal .btn-secondary').onclick = function () {
+                    document.getElementById('unfinishedConfirmationModal').style.display = 'none';
+                };
+
+                // 取消按钮的点击事件
+                document.querySelector('#finishedConfirmationModal .btn-secondary').onclick = function () {
+                    document.getElementById('finishedConfirmationModal').style.display = 'none';
+                };
+            });
+        </script>
+        <!-- 页面导航 -->
+        <script>
+            //下一页按钮的逻辑
+            function gotoNextPage(){
+                const currentPageNumber = {{ page.order | safe }};
+                let pageNumber = currentPageNumber + 1;
+                const practiceId = {{ practice.id | safe }};  // 从模板中获取 practice.id
+                window.location.href = `/stu_practice/practices/${practiceId}/page/${pageNumber}/`;  // 跳转
+            }
+
+            function gotoResult(){
+                const practiceId = {{ practice.id | safe }};
+                window.location.href = `/stu_practice/practices/${practiceId}/result/`;
+            }
+
+            function gotoHome(){
+                window.location.href = `/student/student_index/`;
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+            const currentPageNumber = {{ page.order | safe }};
+            const pageNavCircles = document.querySelectorAll('.nav-circle');
+
+            // 更新页面导航圆点的状态
+            function updateNavCircles() {
+            pageNavCircles.forEach(circle => {
+            const pageNumber = parseInt(circle.getAttribute('data-page-number'));
+
+            // 当前页面显示为红色
+            if (pageNumber === currentPageNumber) {
+                circle.classList.add('active');
+            } else {
+                circle.classList.remove('active');
+            }
+
+            // 未到达的页面显示为灰色
+            if (pageNumber > currentPageNumber) {
+                circle.classList.add('disabled');
+            } else {
+                circle.classList.remove('disabled');
+            }
+            });
+            }
+
+            // 初始化页面导航圆点状态
+            updateNavCircles();
+            pageNavCircles.forEach(circle => {
+            circle.addEventListener('click', function () {
+            const pageNumber = parseInt(this.getAttribute('data-page-number'));
+
+            // 如果点击的是当前页面或未到达的页面，则不跳转
+            if (pageNumber === currentPageNumber || pageNumber > currentPageNumber) {
+                return;
+            }
+
+            // 跳转到对应的页面
+            const practiceId = {{ practice.id | safe }};  // 从模板中获取 practice.id
+            const url = `/stu_practice/practices/${practiceId}/page/${pageNumber}/`;  // 构造 URL
+            window.location.href = url;  // 跳转
+
+            });
+            });
+            });
+        </script>
+        <!-- 改错 -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const clickableWords = document.querySelectorAll('.clickable-word');
+                const dynamicCorrections = document.getElementById('dynamic-corrections');
+
+                // 用于存储用户选择的错误
+                let userCorrections = [];
+
+                // 输入框
+                function renderDynamicCorrections() {
+                    dynamicCorrections.innerHTML = '';  // 清空之前的输入框
+                    userCorrections.forEach((correction, index) => {
+                        const correctionDiv = document.createElement('div');
+                        correctionDiv.classList.add('correction-item');
+                        const wordDisplay = document.createElement('span');
+                        wordDisplay.classList.add('word-display');
+                        wordDisplay.textContent = `${correction.wordText}`;
+                        var pageSubmitted = document.querySelector('[data-page-submitted]').getAttribute('data-page-submitted') === 'True';
+                        // 错误类型选择框
+                        const typeSelect = document.createElement('select');
+                        typeSelect.name = `correction_type_${correction.subQuestionId}_${correction.localIndex}`;
+                        typeSelect.id = `correction_type_${correction.subQuestionId}_${correction.localIndex}`;
+                        typeSelect.classList.add('error-type-select');
+                        typeSelect.innerHTML = `
+                            <option value="insert" ${correction.type === 'insert' ? 'selected' : ''}>插入</option>
+                            <option value="delete" ${correction.type === 'delete' ? 'selected' : ''}>删除</option>
+                            <option value="revise" ${correction.type === 'revise' ? 'selected' : ''} selected>修改</option>
+                        `;
+                        if(pageSubmitted){
+                            typeSelect.disabled = true;
+                        }
+
+                        let dc = document.getElementById('dynamic-corrections');
+                        dc.appendChild(typeSelect);
+
+                        typeSelect.addEventListener('change', function () {
+                            correction.type = this.value;
+                            updateWordStyles(correction);
+                        });
+
+                        // 错误内容输入框
+                        const textInput = document.createElement('input');
+                        textInput.type = 'text';
+                        textInput.name = `correction_text_${correction.subQuestionId}_${correction.localIndex}`;
+                        textInput.id = `correction_text_${correction.subQuestionId}_${correction.localIndex}`;
+                        textInput.placeholder = '输入修改内容';
+                        textInput.value = correction.text || '';
+                        if(pageSubmitted){
+                            textInput.disabled = true;
+                        }
+
+                        textInput.addEventListener('input', function () {
+                            correction.text = this.value;
+                        });
+
+                        // 删除按钮
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = '删除';
+                        deleteButton.addEventListener('click', function () {
+                            userCorrections = userCorrections.filter(c =>
+                                c.subQuestionId !== correction.subQuestionId || c.localIndex !== correction.localIndex
+                            );
+                            renderDynamicCorrections();
+
+                            // 移除对应的高亮样式
+                            const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
+                            if (wordElement) {
+                                wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
+                            }
+                        });
+
+                        correctionDiv.appendChild(wordDisplay);
+                        correctionDiv.appendChild(typeSelect);
+                        correctionDiv.appendChild(textInput);
+                        correctionDiv.appendChild(deleteButton);
+                        dynamicCorrections.appendChild(correctionDiv);
+                    });
+                }
+
+                // 更新单词的样式
+                function updateWordStyles(correction) {
+                    const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
+                    if (wordElement) {
+                        wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
+                        if (correction.type !== 'none') {
+                            wordElement.classList.add('highlight', correction.type);
+                        }
+                    }
+                }
+
+                // 点击单词时添加填写框
+                clickableWords.forEach(word => {
+                    word.addEventListener('click', function () {
+                        const subQuestionId = word.dataset.subQuestionId;
+                        const localIndex = word.dataset.localIndex;
+                        const wordText = word.dataset.word;
+
+                        // 检查是否已经记录了这个单词的错误
+                        const existingCorrection = userCorrections.find(correction =>
+                            correction.subQuestionId === subQuestionId && correction.localIndex === localIndex);
+                        word.classList.add('highlight');
+                        if (existingCorrection) {
+                            alert("该词已被标记！");
+                            return;
+                        }
+
+                        // 添加新的错误记录
+                        userCorrections.push({
+                            subQuestionId,
+                            localIndex,
+                            wordText,
+                            type: 'none',  // 默认类型
+                            text: ''
+                        });
+
+                        // 更新动态输入框
+                        renderDynamicCorrections();
+
+                    });
+                });
+            });
+        </script>
+        <!--  练习端发帖 -->
+       <script>
+var subQuestionId = null;
+var quoteButton = null;
+var mainQuestionId = null;
+var pageSubmitted = false;
+
+// 页面加载时检查是否已提交
+document.addEventListener('DOMContentLoaded', function() {
+    // 检查页面是否已提交
+    var pageRecord = document.querySelector('[data-page-submitted]');
+    if (pageRecord) {
+        pageSubmitted = pageRecord.getAttribute('data-page-submitted') === 'True';
+        updateQuoteButtonVisibility();
+    }
+});
+
+document.addEventListener('selectionchange', function() {
+    var selectedText = window.getSelection().toString().trim();
+
+    var selectedElements = document.querySelectorAll('[data-sub-question-id]');
+    var selectedmainElements = document.querySelectorAll('[data-main-question-id]');
+
+    // 找到最接近的包含小题ID的元素
+    for (var i = 0; i < selectedElements.length; i++) {
+        var element = selectedElements[i];
+        var range = window.getSelection().getRangeAt(0);
+        if (range.intersectsNode(element)) {
+            subQuestionId = element.getAttribute('data-sub-question-id');
+            break;
+        }
+    }
+    console.log('subQuestionId: ' + subQuestionId);
+
+    for (var i = 0; i < selectedmainElements.length; i++) {
+        var mainelement = selectedmainElements[i];
+        var mainrange = window.getSelection().getRangeAt(0);
+        if (mainrange.intersectsNode(mainelement)) {
+            mainQuestionId = mainelement.getAttribute('data-main-question-id');
+            break;
+        }
+    }
+    console.log('mainQuestionId: ' + mainQuestionId);
+
+    if (selectedText) {
+        if (!quoteButton) {
+            // 如果按钮不存在，则创建它
+            quoteButton = document.createElement('button');
+            quoteButton.textContent = '发帖询问';
+            quoteButton.id = 'quoteButton';
+            quoteButton.style.position = 'absolute';
+            quoteButton.style.zIndex = '1000';
+            quoteButton.style.display = 'none'; // 默认隐藏
+            document.body.appendChild(quoteButton);
+        }
+
+        // 获取选中文本的边界矩形
+        var selection = window.getSelection();
+        var range = selection.getRangeAt(0);
+        var rect = range.getBoundingClientRect();
+
+        // 设置按钮位置为选中文本的右下角
+        quoteButton.style.left = (rect.right + 10) + 'px'; // 右侧偏移10px
+        quoteButton.style.top = (rect.bottom + 5) + 'px'; // 底部偏移5px
+
+        updateQuoteButtonVisibility();
+    } else {
+        // 如果没有选中文本，隐藏按钮
+        if (quoteButton) {
+            quoteButton.style.display = 'none';
+        }
+    }
+});
+
+// 更新发帖按钮的可见性
+function updateQuoteButtonVisibility() {
+    if (quoteButton && pageSubmitted) {
+        quoteButton.style.display = 'inline';
+    } else if (quoteButton) {
+        quoteButton.style.display = 'none';
+    }
+}
+
+// 监听按钮点击事件
+document.addEventListener('click', function(event) {
+    if (event.target === quoteButton) {
+        // 显示发帖模态框
+        showPostModal();
+    }
+});
+
+// 显示发帖模态框
+function showPostModal() {
+    // 创建模态框
+    var modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    modal.style.display = 'flex';
+    modal.style.justifyContent = 'center';
+    modal.style.alignItems = 'center';
+    modal.style.zIndex = '2000';
+
+    // 创建模态框内容
+    var modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    modalContent.style.backgroundColor = 'white';
+    modalContent.style.padding = '20px';
+    modalContent.style.borderRadius = '5px';
+    modalContent.style.width = '500px';
+    modalContent.style.maxWidth = '90%';
+    var style = document.createElement('style');
+    style.textContent = `
+        .modal-content label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+    `;
+    modalContent.appendChild(style);
+
+    // 创建表单
+    var form = document.createElement('form');
+    form.id = 'postForm';
+    form.innerHTML = `
+        <h3>ADD A POST</h3>
+        <div>
+            <label for="postTitle">Title:</label>
+            <input type="text" id="postTitle" name="title" required>
+        </div>
+        <div>
+            <label for="postContent">Content:</label>
+            <textarea id="postContent" name="content" rows="5" required></textarea>
+        </div>
+        <div>
+            <label for="isAnonymous">Is Anonymous?</label>
+            <input type="checkbox" id="isAnonymous" name="is_anonymous">
+        </div>
+        <div>
+            <label for="isPublic">Is Public?</label>
+            <input type="checkbox" id="isPublic" name="is_public">
+        </div>
+        <div>
+            <button type="submit">POST</button>
+            <button type="button" id="cancelPost">CANCEL</button>
+        </div>
+    `;
+
+    // 添加表单到模态框内容
+    modalContent.appendChild(form);
+
+    // 添加模态框内容到模态框
+    modal.appendChild(modalContent);
+
+    // 添加模态框到文档
+    document.body.appendChild(modal);
+
+    // 监听表单提交事件
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        submitPost();
+    });
+
+    // 监听取消按钮点击事件
+    document.getElementById('cancelPost').addEventListener('click', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+// 提交帖子
+function submitPost() {
+    var title = document.getElementById('postTitle').value;
+    var content = document.getElementById('postContent').value;
+    var isAnonymous = document.getElementById('isAnonymous').checked;
+    var isPublic = document.getElementById('isPublic').checked;
+
+    var formData = new FormData();
+    formData.append('title', title);
+    formData.append('content', content);
+    formData.append('is_anonymous', isAnonymous);
+    formData.append('is_public', isPublic);
+
+    // 构建发帖的URL
+    var postUrl = '{% url "forum:post_new" %}';
+    if (mainQuestionId) {
+        postUrl += '?main_question_id=' + encodeURIComponent(mainQuestionId);
+        if (subQuestionId) {
+            postUrl += '&sub_question_id=' + encodeURIComponent(subQuestionId);
+        }
+    } else if (subQuestionId) {
+        postUrl += '?sub_question_id=' + encodeURIComponent(subQuestionId);
+    }
+
+    // 使用AJAX提交表单
+    fetch(postUrl, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 提交成功，显示成功消息
+            alert('帖子已成功发布！');
+            // 关闭模态框
+            document.body.removeChild(document.querySelector('.modal'));
+            // 刷新页面
+            window.location.reload();
+        } else {
+            // 提交失败，显示错误消息
+            alert('发布帖子失败: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error submitting post:', error);
+        alert('发布帖子时发生错误');
+    });
+}
+
+
+
+// 监听表单提交事件
+document.addEventListener('submit', function(event) {
+    if (event.target.id === 'page-form') {
+        event.preventDefault();
+        // 模拟表单提交
+        pageSubmitted = true;
+        updateQuoteButtonVisibility();
+        // 这里可以添加实际的表单提交逻辑
+    }
+});
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var pageSubmitted = document.querySelector('[data-page-submitted]').getAttribute('data-page-submitted') === 'True';
+        document.querySelectorAll('.posts-container').forEach(container => {
+            if (pageSubmitted) {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        });
+        document.querySelectorAll('.toggle-posts-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                var mainQuestionId = this.getAttribute('data-main-question-id');
+                var postsList = document.getElementById('posts-list-' + mainQuestionId);
+                if (postsList.style.display === 'block') {
+                    this.textContent = '查看帖子';
+                } else {
+                    this.textContent = '隐藏帖子';
+                }
+                fetchPosts(mainQuestionId, postsList);
+
+                postsList.style.display = postsList.style.display === 'block' ? 'none' : 'block';
+            });
+        });
+    });
+
+    function fetchPosts(mainQuestionId, postsList) {
+        fetch('{% url "forum:get_posts_by_question" %}?main_question_id=' + mainQuestionId, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Fetched posts:', data);
+            if (data.length === 0) {
+                postsList.innerHTML = '<p>暂无帖子</p>';
+            } else {
+                var postsHtml = '';
+                data.forEach(post => {
+                    // 截断标题和内容
+                    var truncatedTitle = truncateText(post.title, 40);
+                    var truncatedContent = truncateText(post.content, 20);
+
+                    // 动态生成帖子详情页面的 URL
+                    var postDetailUrl = '/forum/post/' + post.id + '/'; // 确保这个 URL 与你的路由配置一致
+
+                    postsHtml += `
+                        <div class="post">
+                            <h5>${truncatedTitle}</h5>
+                            <p>${truncatedContent}</p>
+                            <p>作者: ${post.name} | 发布时间: ${post.created_at}</p>
+                            <a href="${postDetailUrl}" target="_blank">CHECK</a>
+                        </div>
+                    `;
+                });
+                postsList.innerHTML = postsHtml;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching posts:', error);
+            postsList.innerHTML = '<p>加载帖子失败</p>';
+        });
+    }
+
+    // 截断文本的函数
+    function truncateText(text, maxLength) {
+        if (text.length > maxLength) {
+            return text.substring(0, maxLength) + '...';
+        }
+        return text;
+    }
+
+</script>
+    </body>
+</html>

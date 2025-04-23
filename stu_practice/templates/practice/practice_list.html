@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Practices</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #343a40;
+            margin-bottom: 30px;
+        }
+        .practice-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .practice-list li {
+            background-color: #e9ecef;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .practice-list a {
+            color: #457345;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .practice-list a:hover {
+            text-decoration: underline;
+        }
+        .practice-time {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        .overdue {
+            color: red;
+        }
+        .accordion {
+            margin-top: 20px;
+        }
+        .status-submitted {
+            color: black;
+        }
+        .status-not-submitted {
+            color: red;
+        }
+        .status-overdue {
+            color: red;
+        }
+        /* Home button style */
+        .home-button {
+            display: inline-block;
+            background-color: #3498db;
+            color: white !important;
+            border: none;
+            padding: 8px 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: normal;
+        }
+        .home-button:hover {
+            background-color: #2980b9;
+            text-decoration: none !important;
+        }
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-container">
+            <h1>Available Practices</h1>
+            <!-- Home button added here -->
+            <a href="{% url 'student_ELW:student_index' %}" class="home-button">Home</a>
+        </div>
+
+        <div id="accordion">
+            {% if practices.practice %}
+            <div class="card">
+                <div class="card-header" id="headingPractice">
+                    <h5 class="mb-0">
+                        <button class="btn btn-link" data-toggle="collapse" data-target="#collapsePractice" aria-expanded="true" aria-controls="collapsePractice">
+                            In-class Practice
+                        </button>
+                    </h5>
+                </div>
+                <div id="collapsePractice" class="collapse show" aria-labelledby="headingPractice" data-parent="#accordion">
+                    <div class="card-body">
+                        <ul class="practice-list">
+                            {% for practice in practices.practice %}
+                                <li>
+                                    <a href="{% url 'stu_practice:start_practice' practice.unit_id %}">{{ practice.title }}</a>
+                                    <span class="practice-time"> - {{ practice.start_date }} to {{ practice.end_date }}</span>
+                                    {% if practice.is_overdue %}
+                                        <span class="badge badge-danger">已超时</span>
+                                        {% else %}
+                                            <span class="badge badge-primary">{{ practice.page_status }}</span>
+                                    {% endif %}
+
+
+                                    <span class="status-submitted"></span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if practices.quiz %}
+            <div class="card">
+                <div class="card-header" id="headingQuiz">
+                    <h5 class="mb-0">
+                        <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapseQuiz" aria-expanded="false" aria-controls="collapseQuiz">
+                            Quiz
+                        </button>
+                    </h5>
+                </div>
+                <div id="collapseQuiz" class="collapse" aria-labelledby="headingQuiz" data-parent="#accordion">
+                    <div class="card-body">
+                        <ul class="practice-list">
+                            {% for practice in practices.quiz %}
+                                <li>
+                                    <a href="{% url 'stu_practice:start_practice' practice.unit_id %}">{{ practice.title }}</a>
+                                    <span class="practice-time"> - {{ practice.start_date }} to {{ practice.end_date }}</span>
+                                    {% if practice.is_overdue %}
+                                        <span class="badge badge-danger">已超时</span>
+                                        {% else %}
+                                            <span class="badge badge-primary">{{ practice.page_status }}</span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if practices.task %}
+            <div class="card">
+                <div class="card-header" id="headingTask">
+                    <h5 class="mb-0">
+                        <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapseTask" aria-expanded="false" aria-controls="collapseTask">
+                            Homework
+                        </button>
+                    </h5>
+                </div>
+                <div id="collapseTask" class="collapse" aria-labelledby="headingTask" data-parent="#accordion">
+                    <div class="card-body">
+                        <ul class="practice-list">
+                            {% for practice in practices.task %}
+                                <li>
+                                    <a href="{% url 'stu_practice:start_practice' practice.unit_id %}">{{ practice.title }}</a>
+                                    <span class="practice-time"> - {{ practice.start_date }} to {{ practice.end_date }}</span>
+                                    {% if practice.is_overdue %}
+                                        <span class="badge badge-danger">已超时</span>
+                                        {% else %}
+                                            <span class="badge badge-primary">{{ practice.page_status }}</span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
