@@ -20,8 +20,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
 
 
-from accessment.models import StudentMediaPlayRecord, StudentAnswer, StudentPageRecord
-from .models import StudentPracticeRecord
+from accessment.models import StudentMediaPlayRecord, StudentAnswer, StudentPageRecord,StudentExamRecord
 from ELW.models import (
     TimeManagement,
     Unit,
@@ -83,11 +82,11 @@ def practice_list(request):
             continue
 
         # 获取当前学生在该练习中的记录
-        student_practice_record = StudentPracticeRecord.objects.filter(user=student, practice=practice).first()
+        student_practice_record = StudentExamRecord.objects.filter(user=student, exam=practice).first()
         if student_practice_record:
             pages = practice.paper_pages.all()
             for page in pages:
-                page_record = StudentPageRecord.objects.filter(student_practice_record=student_practice_record, page=page).first()
+                page_record = StudentPageRecord.objects.filter(student_exam_record=student_practice_record, page=page).first()
                 if page_record:
                     if page_record.submitted:
                         page_status = "已提交"
@@ -125,7 +124,7 @@ def start_practice(request, practice_id):
 
     student = get_object_or_404(Students, username=username)
 
-    record, created = StudentPracticeRecord.objects.get_or_create(user=student, practice=practice)
+    record, created = StudentExamRecord.objects.get_or_create(user=student, exam=practice)
 
     if created:
         record.started_at = timezone.now()
@@ -178,10 +177,10 @@ def practice_page(request, practice_id, order):
         return redirect('login')
 
     student = get_object_or_404(Students, username=username)
-    student_practice_record = get_object_or_404(StudentPracticeRecord, user=student, practice=practice)
-    student_page_record, created = StudentPageRecord.objects.get_or_create(student_practice_record=student_practice_record, page=page)
+    student_practice_record = get_object_or_404(StudentExamRecord, user=student, exam=practice)
+    student_page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_practice_record, page=page)
 
-    page_record = StudentPageRecord.objects.filter(student_practice_record=student_practice_record, page=page).first()
+    page_record = StudentPageRecord.objects.filter(student_exam_record=student_practice_record, page=page).first()
 
     if page_record.submitted:
         is_submitted = True
@@ -277,7 +276,7 @@ def practice_page(request, practice_id, order):
                 'sub_questions': correction_sub_questions,
             }
 
-    play_records = StudentMediaPlayRecord.objects.filter(student_practice_record=student_practice_record,
+    play_records = StudentMediaPlayRecord.objects.filter(student_exam_record=student_practice_record,
                                                          main_question__in=main_questions)
     play_records_dict = {record.main_question_id: record.play_count for record in play_records}
 
@@ -340,9 +339,9 @@ def next_page(request, practice_id, order):
     main_questions = [pmq.main_question for pmq in page_main_questions]
 
     # 检查是否所有问题都达到了最少播放次数
-    student_practice_record = get_object_or_404(StudentPracticeRecord, user=student, practice=practice)
+    student_practice_record = get_object_or_404(StudentExamRecord, user=student, exam=practice)
     play_records = StudentMediaPlayRecord.objects.filter(
-        student_practice_record=student_practice_record,
+        student_exam_record=student_practice_record,
         main_question__in=main_questions
     )
 
@@ -489,8 +488,8 @@ def save_page(request, practice_id, order):
         current_page = get_object_or_404(PaperPage, unit=practice, order=order)
         username = request.session.get('username')
         student = get_object_or_404(Students, username=username)
-        student_practice_record = get_object_or_404(StudentPracticeRecord, user=student, practice=practice)
-        page_record, created = StudentPageRecord.objects.get_or_create(student_practice_record=student_practice_record, page=current_page)
+        student_practice_record = get_object_or_404(StudentExamRecord, user=student, exam=practice)
+        page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_practice_record, page=current_page)
         can_modify = page_record.submitted
 
         manual_save = request.POST.get('manual_save', 'false').lower() == 'true'
@@ -539,16 +538,16 @@ def submit_practice(request):
             return JsonResponse({'message': '练习记录 ID 必须是有效的数字', 'status': 'error'}, status=400)
 
         # 获取学生的练习记录
-        student_practice_record = get_object_or_404(StudentPracticeRecord, id=student_practice_record_id)
-        unit = student_practice_record.practice
+        student_practice_record = get_object_or_404(StudentExamRecord, id=student_practice_record_id)
+        unit = student_practice_record.exam
         pages = unit.paper_pages.all()
         # 获取所有页面记录
-        page_records = StudentPageRecord.objects.filter(student_practice_record_id=student_practice_record.id,
+        page_records = StudentPageRecord.objects.filter(student_exam_record_id=student_practice_record.id,
                                                         page__in=pages)
 
         if force_submit:
             for page in pages:
-                page_record, created = StudentPageRecord.objects.get_or_create(student_practice_record_id=student_practice_record.id, page=page)
+                page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record_id=student_practice_record.id, page=page)
                 page_record.submitted = True
                 page_record.submitted_at = timezone.now()
                 page_record.save()
@@ -579,7 +578,7 @@ def submit_practice(request):
 
         if still_submit or finish_submit:
             for page in pages:
-                page_record, created = StudentPageRecord.objects.get_or_create(student_practice_record_id=student_practice_record.id, page=page)
+                page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record_id=student_practice_record.id, page=page)
                 page_record.submitted = True
                 page_record.submitted_at = timezone.now()
                 page_record.save()
@@ -599,7 +598,7 @@ def submit_practice(request):
             # 更新练习记录的总分
             try:
                 total_score = StudentPageRecord.objects.filter(
-                    student_practice_record=student_practice_record,
+                    student_exam_record=student_practice_record,
                     is_graded=True
                 ).aggregate(Sum('page_score'))['page_score__sum'] or 0
                 student_practice_record.score = total_score
@@ -612,8 +611,8 @@ def submit_practice(request):
 
 def practice_result(request, practice_id):
     practice = get_object_or_404(Unit, id=practice_id)
-    student_practice_record = get_object_or_404(StudentPracticeRecord, practice=practice)
-    page_records = StudentPageRecord.objects.filter(student_practice_record_id=student_practice_record.id)
+    student_practice_record = get_object_or_404(StudentExamRecord, exam=practice)
+    page_records = StudentPageRecord.objects.filter(student_exam_record_id=student_practice_record.id)
 
     question_scores = []
     for page_record in page_records:
@@ -752,12 +751,12 @@ def update_play_count(request):
         if not student_practice_record_id or not main_question_id or not media_material_id:
             return JsonResponse({"success": False, "message": "Invalid request data."}, status=400)
 
-        student_practice_record = StudentPracticeRecord.objects.get(id=student_practice_record_id)
+        student_practice_record = StudentExamRecord.objects.get(id=student_practice_record_id)
         main_question = MainQuestion.objects.get(id=main_question_id)
         media_material = MediaMaterial.objects.get(id=media_material_id)
 
         play_record, created = StudentMediaPlayRecord.objects.get_or_create(
-            student_practice_record=student_practice_record,
+            student_exam_record=student_practice_record,
             main_question=main_question,
             media_material=media_material,
             defaults={"play_count": 0}
@@ -806,7 +805,7 @@ def background_grade_comprehension(sub_question, student_answer):
         # 更新练习记录总分
         student_practice_record = page_record.student_practice_record
         page_records = StudentPageRecord.objects.filter(
-            student_practice_record=student_practice_record,
+            student_exam_record=student_practice_record,
             is_graded=True
         )
         total_score = sum(pr.page_score for pr in page_records if pr.page_score is not None)
@@ -820,12 +819,12 @@ def student_dashboard(request):
     student = Students.objects.get(user=request.user)
 
     # 获取学生的练习记录
-    practice_records = StudentPracticeRecord.objects.filter(user=student).order_by('-started_at')
+    practice_records = StudentExamRecord.objects.filter(user=student).order_by('-started_at')
 
     # 获取学生的成绩统计
     practice_scores = []
     for record in practice_records:
-        total_score = StudentPageRecord.objects.filter(student_practice_record=record, is_graded=True).aggregate(Sum('page_score'))['page_score__sum'] or 0
+        total_score = StudentPageRecord.objects.filter(student_exam_record=record, is_graded=True).aggregate(Sum('page_score'))['page_score__sum'] or 0
         practice_scores.append({
             'practice': record.practice,
             'total_score': total_score,

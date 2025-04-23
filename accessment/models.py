@@ -6,7 +6,7 @@ MainQuestion,SubQuestion,ChoiceOption,
 MatchingOption,Correction,PaperPage,TimeManagement
 )
 from Account.models import Students, Class
-from stu_practice.models import StudentPracticeRecord
+# from stu_practice.models import StudentPracticeRecord
 
 
 class StudentExamRecord(models.Model):
@@ -20,7 +20,7 @@ class StudentExamRecord(models.Model):
 
 class StudentPageRecord(models.Model):
     student_exam_record = models.ForeignKey(StudentExamRecord, on_delete=models.CASCADE, related_name='page_records', null=True, blank=True)
-    student_practice_record = models.ForeignKey(StudentPracticeRecord, on_delete=models.CASCADE, related_name='stu_practice_page_records', null=True, blank=True)
+    # student_practice_record = models.ForeignKey(StudentPracticeRecord, on_delete=models.CASCADE, related_name='stu_practice_page_records', null=True, blank=True)
     page = models.ForeignKey(PaperPage, on_delete=models.CASCADE, related_name='student_records')
     submitted = models.BooleanField(default=False)
     submitted_at = models.DateTimeField(null=True, blank=True)
@@ -49,7 +49,7 @@ class StudentAnswer(models.Model):
 
 class StudentMediaPlayRecord(models.Model):
     student_exam_record = models.ForeignKey(StudentExamRecord, on_delete=models.CASCADE, null=True, blank=True)
-    student_practice_record = models.ForeignKey(StudentPracticeRecord, on_delete=models.CASCADE, null=True, blank=True)
+    # student_practice_record = models.ForeignKey(StudentPracticeRecord, on_delete=models.CASCADE, null=True, blank=True)
     main_question = models.ForeignKey(MainQuestion, on_delete=models.CASCADE)
     media_material = models.ForeignKey(MediaMaterial, on_delete=models.CASCADE,blank=True,null=True)  # 新增字段
     play_count = models.IntegerField(default=0)
