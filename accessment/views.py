@@ -773,7 +773,7 @@ def submit_exam(request):
         # 获取所有页面记录
         page_records = StudentPageRecord.objects.filter(student_exam_record=student_exam_record,
                                                         page__in=pages)
-
+        exam = student_exam_record.exam
         if force_submit:
             for page in pages:
                 page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
@@ -783,7 +783,7 @@ def submit_exam(request):
             student_exam_record.submitted = True
             student_exam_record.finished_at = timezone.now()
             student_exam_record.save()
-            return exam_result(request)
+            return exam_result(request,exam_id=exam.id)
 
         unsubmitted_pages = []
         for page in pages:
@@ -830,7 +830,7 @@ def submit_exam(request):
                 student_exam_record.save()
             except Exception as e:
                 print(f"Error updating exam record score: {e}")
-            return exam_result(request)
+            return exam_result(request,exam_id=exam.id)
 
     else:
         return JsonResponse({'message': '请求方法错误', 'status': 'error'}, status=400)
@@ -875,14 +875,14 @@ def update_play_count(request):
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
 
-def exam_result(request):
+def exam_result(request,exam_id):
     # 获取当前登录学生的用户名
     username = request.session.get('username')
     if not username:
         return redirect('login')  # 如果没有登录，重定向到登录页面
     student = get_object_or_404(Students, username=username)
 
-    student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam__type='exam')
+    student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam_id=exam_id,)
     exam = student_exam_record.exam
     return render(request, 'exam/exam_result.html', {
         'exam': exam,
