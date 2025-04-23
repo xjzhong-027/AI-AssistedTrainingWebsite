@@ -19,10 +19,10 @@ class Get_from_AI:
                 "题目评分": "原文：{原文}\
                            \n题目：{题目}\
                            \n学生回答：'{学生回答}'\
-                           \n评分标准：基本与参考答案无关的为0分；完全匹配参考答案关键词的100分；部分匹配参考答案内关键词的90分；此外每有一个语法错误扣5分；最低得分为0分\
+                           \n评分标准：1. 基本与参考答案无关的或没有作答的为0分 2.完全匹配参考答案关键词的100分 3.部分匹配参考答案内关键词的，每个关键词得到30分，最多不超过100分 4. 此外每有一个语法错误扣5分 5.最低得分为0分\
                            \n其他要求：{其他要求_评分}\
                            \n请你根据参考答案为学生回答打出评分:\
-                           \n参考答案：'{参考答案}'"
+                           \n参考答案：'{参考答案}'",
                          }
 
     AI_model_name = ""
@@ -92,7 +92,8 @@ class Get_from_AI:
         if text == "": return "未接收到输入文本。"
         elif model == "ZhipuAI":
             try:
-                return self.m.get_msg(text)
+                res = self.m.get_msg(text)
+                return res
             except Exception as e:
                 print(e)
                 return self.local.get_answer_once(text)

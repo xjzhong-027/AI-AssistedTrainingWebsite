@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "announce",
     "accessment",
     'student_ELW',
+    'stu_practice',
     'Account.apps.AccountConfig',
     'Backup.apps.BackupConfig',
     'Log.apps.LogConfig',

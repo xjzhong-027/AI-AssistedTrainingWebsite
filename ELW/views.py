@@ -203,6 +203,7 @@ def user_login(request):
                     end_datetime = datetime.datetime.combine(this_date, end_time)
                     this_datetime = datetime.datetime.now()
                     interval = (this_datetime-start_datetime).total_seconds()
+                    print(week)
                     status = Attendance.objects.get(week=week, student_id=student_instance.id).status
                     # 对在考勤时间范围内且尚未登记考勤状态的学生进行考勤
                     if (interval >= -900) and (interval <= 900) and status == 'absent':

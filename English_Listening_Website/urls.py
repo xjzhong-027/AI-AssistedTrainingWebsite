@@ -53,6 +53,8 @@ urlpatterns = [
 path('forum/', include('forum.urls')),
     path('announce/', include('announce.urls')),
                   path('accessment/', include('accessment.urls')),
+
+    path('stu_practice/', include('stu_practice.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)   #添加对媒体文件的访问路由
 
 

@@ -56,9 +56,14 @@
             }
 
             /* 图片宽度适应 */
-            .question .image img {
-                max-width: 100%;
+            .questionimage img,.option-image img {
                 height: auto;
+                width:250px;
+            }
+
+            .image img{
+                height: auto;
+                width:500px;
             }
 
             /* 帖子相关样式 */
@@ -222,7 +227,7 @@
                                 {% if main_question.media_material %}
                                 <div class="media-player">
                                     <video id="media-video_{{ main_question.id }}" width="320" height="180" controls>
-                                        <source src="{{ MEDIA_URL }}{{ main_question.media_material.media_url }}" type="video/mp4">
+                                        <source src="{{ main_question.media_material.media_url }}" type="video/mp4">
                                         Your browser does not support the video tag.
                                     </video>
                                     <button id="play-button_{{ main_question.id }}">Play</button>
@@ -393,7 +398,7 @@
                                         {% if sub_question.image_url %}
                                         <div class="questionimage">
                                             {% for image_path in sub_question.image_url|split:"," %}
-                                            <img src="{{ image_path }}" alt="Sub-question Image" width="320" height="180">
+                                            <img src="{{ image_path }}" alt="Sub-question Image" >
                                             {% endfor %}
                                         </div>
                                         {% endif %}
@@ -413,7 +418,7 @@
                                                     {% if option.image_url %}
                                                     <div class="option-image">
                                                         {% for image_path in option.image_url|split:"," %}
-                                                        <img src="{{ image_path }}" alt="Option Image" width="320" height="180">
+                                                        <img src="{{ image_path }}" alt="Option Image">
                                                         {% endfor %}
                                                     </div>
                                                     {% endif %}
@@ -477,7 +482,7 @@
                                     <div class="sub-question" data-sub-question-id="{{ sub_question.id }}">
                                         {% if sub_question.image_url %}
                                         <div class="questionimage">
-                                            <img src="{{ sub_question.image_url }}" alt="Sub-question Image" width="320" height="180">
+                                            <img src="{{ sub_question.image_url }}" alt="Sub-question Image">
                                         </div>
                                         {% endif %}
                                         <div class="comprehension">

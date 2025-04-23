@@ -91,6 +91,16 @@
     .post h5{
         color: #706f6f;
     }
+    .questionimage img,.option-image img {
+                height: auto;
+                width:250px;
+            }
+
+            .image img{
+                height: auto;
+                width:500px;
+            }
+
 </style>
 </head>
 
@@ -295,7 +305,7 @@
 {% if main_question.image_url %}
         <div class="image">
         {% for image_path in main_question.image_url|split:"," %}
-                    <img src="{{ image_path }}" alt="Question Image" width="640" height="360">
+                    <img src="{{ image_path }}" alt="Question Image">
                 {% endfor %}
              </div>
     {% endif %}
@@ -349,7 +359,7 @@
                         {% if sub_question.image_url %}
                     <div class="questionimage">
                         {% for image_path in sub_question.image_url|split:"," %}
-                            <img src="{{ image_path }}" alt="Sub-question Image" width="320" height="180">
+                            <img src="{{ image_path }}" alt="Sub-question Image">
                         {% endfor %}
                     </div>
                 {% endif %}
@@ -371,7 +381,7 @@
                         {% if option.image_url %}
                             <div class="option-image">
                                 {% for image_path in option.image_url|split:"," %}
-                                    <img src="{{ image_path }}" alt="Option Image" width="320" height="180">
+                                    <img src="{{ image_path }}" alt="Option Image">
                                 {% endfor %}
                             </div>
                         {% endif %}
@@ -431,7 +441,7 @@
                         <!--主观题 -->
                             {% if sub_question.image_url %}
                     <div class="questionimage">
-                        <img src="{{ sub_question.image_url }}" alt="Sub-question Image" width="320" height="180">
+                        <img src="{{ sub_question.image_url }}" alt="Sub-question Image">
                     </div>
                 {% endif %}
                        <div class="comprehension">
