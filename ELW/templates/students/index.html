@@ -6,7 +6,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>英语听力教学网站</title>
     <link rel="stylesheet" href="{% static 'css/index2.css' %}">
+<style>
 
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    z-index: 1000;
+}
+
+.notification {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+    padding: 15px;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.notification button {
+    margin-right: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    border: none;
+    background-color: #007bff;
+    color: #fff;
+    border-radius: 3px;
+}
+
+.notification button:hover {
+    background-color: #0056b3;
+}
+</style>
 </head>
 <body>
 <script src="{% static 'js/lastActiveTime.js' %}"></script>
@@ -27,8 +62,71 @@
             <p>点击左侧边栏中的栏目以进行相应操作。</p>
         </main>
     </div>
+<!-- 通知区域 -->
+        <div id="notifications" class="notification-container"></div>
+<!-- 消息提醒 -->
+<script>
+    var ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    var ws_path = ws_scheme + '://' + window.location.host + '/ws/notifications/';
+    var socket = new WebSocket(ws_path);
 
+    socket.onopen = function(e) {
+        console.log('WebSocket is open now.');
+    };
 
+    socket.onmessage = function(e) {
+        console.log('Message from server ', e.data);
+        var messageData = JSON.parse(e.data);
+        var message = messageData.message;
+        var postId = messageData.post_id;
+        var announcementId = messageData.announcement_id;
+        var id = postId || announcementId;  // 如果 postId 存在则使用 postId，否则使用 announcementId
+        var messageType = postId ? 'post' : 'announcement';
+        console.log('Post ID:', postId);
+        console.log('announceID:', announcementId);
+        console.log('messageType:', messageType);
+
+        // 创建通知元素
+        var notificationsContainer = document.getElementById('notifications');
+        var newNotification = document.createElement('div');
+        newNotification.classList.add('notification');
+        newNotification.innerHTML = `
+            <p>${message}</p>
+{#            <button onclick="handleReminder()">稍后提醒</button>#}
+            <button onclick="closeNotification(this)">知道了</button>
+            <button onclick="handleView('${messageType}','${postId}', '${announcementId}')">去查看</button>
+        `;
+
+        // 添加到页面
+        notificationsContainer.appendChild(newNotification);
+    };
+
+    socket.onclose = function(e) {
+        console.log('WebSocket is closed now.');
+    };
+
+    socket.onerror = function(e) {
+        console.error('WebSocket error observed:', e);
+    };
+
+    {#// 处理稍后提醒的函数#}
+    {#function handleReminder() {#}
+    {#    alert('稍后提醒功能尚未实现');}#}
+
+    // 处理去查看的函数
+    function handleView(messageType,postId, announcementId) {
+       if (messageType==='post' && postId !== 'undefined') {
+        window.location.href = `/forum/post/${postId}/`;
+    } else if (messageType==='announcement' && announcementId !== 'undefined') {
+        window.location.href = `/announce/announcements/detail/${announcementId}/`;
+    } else {
+        console.error('Invalid message type');
+    }
+    }
+    function closeNotification(button) {
+        button.closest('.notification').remove();
+    }
+</script>
 <script src="{% static 'js/lastActiveTime.js' %}"></script>
 </body>
 </html>
