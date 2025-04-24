@@ -152,6 +152,7 @@ def load_answers(student_page_record):
 
     answers = StudentAnswer.objects.filter(student_page_record=student_page_record)
     answers_dict = {}
+
     for answer in answers:
         sub_question_id = int(answer.sub_question_id)
         if answer.sub_question.main_question.question_type == 'correction':
@@ -166,6 +167,7 @@ def load_answers(student_page_record):
             answers_dict[sub_question_id] = answer.text
 
     cache.set(cache_key, answers_dict, timeout=600)
+    print(answers_dict)
     return answers_dict
 
 def practice_page(request, practice_id, order):
@@ -229,6 +231,7 @@ def practice_page(request, practice_id, order):
 
     random.seed(student_practice_record.user.id)
     answers_dict = load_answers(student_page_record)
+    print(answers_dict)
 
     blank_data = {}
     correction_data = {}
@@ -241,7 +244,7 @@ def practice_page(request, practice_id, order):
                 words = sub_q.question_text.split()
                 for blank in blanks:
                     if 0 <= blank.index < len(words):
-                        answer = answers_dict.get(str(sub_q.id), '')
+                        answer = answers_dict.get(sub_q.id, '')
                         if is_submitted: input_html = f'<input type="text" class="blank-input" name="answer_{sub_q.id}" id="answer_{sub_q.id}" value="{answer}" disabled/>'
                         else: input_html = f'<input type="text" class="blank-input" name="answer_{sub_q.id}" id="answer_{sub_q.id}" value="{answer}" />'
                         words.insert(blank.index + 1, input_html)
@@ -861,10 +864,9 @@ def student_dashboard(request):
 @login_required
 def change_password(request):
     if request.method == 'POST':
-        context = request.POST
-        old = context['old_password']
-        new = context['new_password']
-        confirm = context['confirm_password']
+        old = request.POST['old_password']
+        new = request.POST['new_password']
+        confirm = request.POST['confirm_password']
         try:
             student = Students.objects.filter(user=request.user, password=old)[0]
         except:
@@ -873,13 +875,13 @@ def change_password(request):
         if student and (new == confirm):
             student.password = new
             student.save()
-            messages.success(request, 'Password changed successfully.')
-            time.sleep(2)
-            return redirect('stu_practice:dashboard')  # Redirect to a success page or dashboard
+            messages.success(request, '密码修改成功。')
+            return render(request, 'practice/change_password.html')
+        elif new != confirm:
+            messages.error(request, '新密码与确认密码不一致。')
+            return render(request, 'practice/change_password.html')
         else:
-            messages.error(request, 'Password change failed.')
-            time.sleep(2)
-            return redirect('stu_practice:dashboard')
+            messages.error(request, '当前密码错误。')
+            return render(request, 'practice/change_password.html')
     else:
-        return render(request, 'practice/change_password.html', context={})
-    # return render(request, 'practice\change_password.html', {'form': form})
+        return render(request, 'practice/change_password.html', {})

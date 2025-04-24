@@ -1,6 +1,7 @@
 {% load custom_filters %}
 {% load static %}
 {% load elw_custom_filters %}
+{% load stu_practice_custom_filters %}
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -9,20 +10,15 @@
         <title>Practice Page</title>
         <link rel="stylesheet" href="{% static 'css/exampage.css' %}">
         <style>
-            /* 整体容器居中 */
             .main-container {
                 width: 100%;
                 max-width: 1200px;
                 margin: 0 auto;
                 padding: 20px;
             }
-
-            /* 视频和题目容器 */
             .video-question-container {
                 width: 100%;
             }
-
-            /* 使用 flex 布局实现并排显示 */
             .content-wrapper {
                 display: flex;
                 flex-direction: row;
@@ -30,43 +26,30 @@
                 justify-content: center;
                 gap: 20px;
             }
-
-            /* 视频播放器固定宽度 */
             .video-container {
                 flex: 0 0 auto;
                 width: 320px;
             }
-
-            /* 题目内容占用剩余空间并居中 */
             .question-container {
                 flex: 1;
                 max-width: 640px;
                 margin: 0 auto;
             }
-
-            /* 确保题目内容内部元素适应 */
             #exam-content {
                 width: 100%;
             }
-
-            /* 视频播放器内部元素适应 */
             .media-player video {
                 max-width: 100%;
                 height: auto;
             }
-
-            /* 图片宽度适应 */
-            .questionimage img,.option-image img {
+            .questionimage img, .option-image img {
                 height: auto;
-                width:250px;
+                width: 250px;
             }
-
-            .image img{
+            .image img {
                 height: auto;
-                width:500px;
+                width: 500px;
             }
-
-            /* 帖子相关样式 */
             .posts-container {
                 position: relative;
                 margin-top: 10px;
@@ -147,8 +130,23 @@
             .tip-icon:hover .tip-content {
                 display: block;
             }
-
-            /* 响应式布局 */
+            .sub-question, .correction-question {
+                display: block !important; /* 确保题目可见 */
+            }
+            .correction-question {
+                border: 1px solid #ddd; /* 调试：显示改错题边界 */
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            .clickable-word {
+                border-bottom: 1px dotted #000; /* 调试：显示可点击单词 */
+                cursor: pointer;
+                margin-right: 5px;
+            }
+            /* ide报错无需修改 */
+            video::-webkit-media-controls-play-button {
+              display: none !important;
+            }
             @media (max-width: 768px) {
                 .content-wrapper {
                     flex-direction: column;
@@ -227,7 +225,7 @@
                             <div class="media" data-main-question-id="{{ main_question.id }}" data-no-media="{% if not main_question.media_material %}True{% else %}False{% endif %}">
                                 {% if main_question.media_material %}
                                 <div class="media-player">
-                                    <video id="media-video_{{ main_question.id }}" width="320" height="180" controls>
+                                    <video id="media-video_{{ main_question.id }}" width="320" height="180">
                                         <source src="{{ main_question.media_material.media_url }}" type="video/mp4">
                                         Your browser does not support the video tag.
                                     </video>
@@ -235,12 +233,12 @@
                                     {% if main_question.allow_pause %}
                                     <button id="pause-button_{{ main_question.id }}" disabled>Pause</button>
                                     {% endif %}
+                                    <button type="button"  id="fullscreen-button_{{ main_question.id }}">Fullscreen</button>
                                     <p>Maximum plays: <span id="max_play_{{ main_question.id }}">{{ main_question.maximum_play }}</span></p>
                                     <p>Current plays: <span id="play_count_{{ main_question.id }}">{{ play_records|get_item:main_question.id|default:"0" }}</span></p>
                                 </div>
                                 {% endif %}
                             </div>
-                        {% endif %}
                             <script>
                                 document.addEventListener("DOMContentLoaded", function () {
                                     const videoId = "{{ main_question.id }}";
@@ -253,6 +251,7 @@
                                     const video = document.getElementById(`media-video_${videoId}`);
                                     const playButton = document.getElementById(`play-button_${videoId}`);
                                     const pauseButton = document.getElementById(`pause-button_${videoId}`);
+                                    const fullscreenButton = document.getElementById(`fullscreen-button_${videoId}`);
                                     const playCountSpan = document.getElementById(`play_count_${videoId}`);
 
                                     if (!allowPause && pauseButton) {
@@ -291,6 +290,31 @@
                                             }
                                         });
                                     }
+
+                                    // 全屏按钮事件
+                                    fullscreenButton.addEventListener("click", () => {
+                                        if (!video.paused || video.ended) {
+                                            // 确保视频在播放或已结束时可以进入全屏
+                                            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                                                // 退出全屏
+                                                if (document.exitFullscreen) {
+                                                    document.exitFullscreen();
+                                                } else if (document.webkitExitFullscreen) {
+                                                    document.webkitExitFullscreen();
+                                                }
+                                                fullscreenButton.textContent = "Fullscreen";
+                                            } else {
+                                                // 进入全屏
+                                                if (video.requestFullscreen) {
+                                                    video.requestFullscreen();
+                                                } else if (video.webkitRequestFullscreen) {
+                                                    video.webkitRequestFullscreen();
+                                                }
+                                            }
+                                        } else {
+                                            alert("Please play the video before entering fullscreen.");
+                                        }
+                                    });
 
                                     video.addEventListener("ended", () => {
                                         const currentPlayCount = parseInt(playCountSpan.textContent, 10);
@@ -337,6 +361,7 @@
                                 });
                             </script>
                         </div>
+                    {% endif %}
                         <div class="question-container">
                             <div id="exam-content">
                                 <div class="question" data-main-question-id="{{ main_question.id }}">
@@ -371,9 +396,12 @@
                                             </div>
                                             {% endif %}
                                             {% for option in sub_question.shuffled_options %}
+                                                <div>
                                             <label>
-                                                <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.option_label }}" {% if page_submitted %}disabled{% endif %} {% if answers|get_item:sub_question.id == option.option_label %} checked {% endif %}>
-                                                {{ option.option_label }}. {{ option.option_content }}
+                                                <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.option_label }}"
+                                                       {% if page_submitted %}disabled{% endif %}
+                                                       {% if answers|get_item:sub_question.id == option.option_label %}checked{% endif %}>
+                                                {{ forloop.counter0|index_to_letter }}. {{ option.option_content }}
                                                 {% if option.image_url %}
                                                 <div class="option-image">
                                                     {% for image_path in option.image_url|split:"," %}
@@ -382,6 +410,7 @@
                                                 </div>
                                                 {% endif %}
                                             </label>
+                                                </div>
                                             {% endfor %}
                                         </div>
                                         <div class="grade-result" id="grade-result-{{ sub_question.id }}">
@@ -445,8 +474,9 @@
                                     {% endfor %}
                                     {% elif main_question.question_type == 'correction' %}
                                     {% with correction_data|get_item:main_question.id as data %}
-                                    <div class="correction-question">
+                                    <div class="correction-question" data-main-question-id="{{ main_question.id }}">
                                         <div class="full-text">
+                                            {% if data.words %}
                                             <div class="word-container">
                                                 {% for word_info in data.words %}
                                                 <span class="clickable-word"
@@ -466,15 +496,24 @@
                                                 </span>
                                                 {% endfor %}
                                             </div>
+                                            {% else %}
+                                            <p>改错题数据不可用</p>
+                                            {% endif %}
                                         </div>
                                         <div class="correction-controls">
                                             <div id="dynamic-corrections"></div>
                                         </div>
-                                        <div class="grade-result" id="grade-result-{{ sub_question.id }}">
-                                            {% if graded_answers|get_item:sub_question.id %}
-                                            <p>正确答案：{{ graded_answers|get_item:sub_question.id }}</p>
-                                            <p>你的得分：{{ scores|get_item:sub_question.id }}</p>
+                                        <div class="grade-result">
+                                            {% for sub_question in sub_questions %}
+                                            {% if sub_question.main_question == main_question %}
+                                            <div id="grade-result-{{ sub_question.id }}">
+                                                {% if graded_answers|get_item:sub_question.id %}
+                                                <p>正确答案：{{ graded_answers|get_item:sub_question.id }}</p>
+                                                <p>你的得分：{{ scores|get_item:sub_question.id }}</p>
+                                                {% endif %}
+                                            </div>
                                             {% endif %}
+                                            {% endfor %}
                                         </div>
                                     </div>
                                     {% endwith %}
@@ -534,7 +573,7 @@
                         <button type="button" onclick="gotoNextPage()">下一页</button>
                         {% else %}
                         <button type="button" onclick="manualSave()">保存</button>
-                        <button type="button" onclick="manualSubmit()">提交</button>
+                        <button type="button" onclick="manualSubmit()">下一页</button>
                         {% endif %}
                     </div>
                 </div>
@@ -545,7 +584,7 @@
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">确认提交</h5>
+                        <h5 class="modal-title">提示</h5>
                     </div>
                     <div class="modal-body">
                         <p id="unfinishedConfirmationMessage">有未完成的题目，请继续作答</p>
@@ -589,25 +628,168 @@
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const answers = JSON.parse('{{ answers|safe|escapejs }}');
+                console.log('Loaded answers:', answers); // 调试：检查后端传递的 answers 数据
+
+                // 记录渲染的子题目
+                const subQuestions = document.querySelectorAll('.sub-question, .correction-question');
+                console.log('Rendered sub-questions:', Array.from(subQuestions).map(el => ({
+                    id: el.dataset.subQuestionId || el.dataset.mainQuestionId,
+                    type: el.classList.contains('correction-question') ? 'correction' : 'other'
+                })));
+
+                // 记录主题目渲染
+                const mainQuestions = document.querySelectorAll('.question[data-main-question-id]');
+                console.log(`Main questions processed: ${mainQuestions.length}`);
+                mainQuestions.forEach(q => {
+                    console.log(`Rendering main question ${q.dataset.mainQuestionId} (type: ${q.querySelector('.correction-question') ? 'correction' : 'other'})`);
+                });
+
+                // 记录改错题数据
+                {% for main_question in main_questions %}
+                {% if main_question.question_type == 'correction' %}
+                {% with correction_data|get_item:main_question.id as data %}
+                console.log('Correction data for main_question {{ main_question.id }}:', {{ data|safe|escapejs }});
+                {% endwith %}
+                {% endif %}
+                {% endfor %}
+
                 for (const sub_question_id in answers) {
-                    const answer = answers[sub_question_id];
-                    const input = document.querySelector(`input[name="answer_${sub_question_id}"]`);
-                    if (input) {
-                        input.value = answer;
-                    }
+                    const answer = answers[sub_question_id]?.toString().trim();
+                    if (!answer) continue; // 跳过空答案
                     const radioButtons = document.querySelectorAll(`input[name="answer_${sub_question_id}"]`);
-                    if (radioButtons.length > 0) {
-                        radioButtons.forEach(radio => {
-                            if (radio.value === answer) {
-                                radio.checked = true;
-                            }
-                        });
-                    }
+                    radioButtons.forEach(radio => {
+                        if (radio.value.toString().trim() === answer) {
+                            radio.checked = true;
+                            radio.dataset.selected = 'true'; // 标记已选择
+                            console.log(`Set checked for sub_question_id ${sub_question_id}, value: ${answer}`); // 调试
+                        }
+                    });
                 }
+
+                // 为选择题添加 change 事件监听器，确保 checked 状态更新
+                document.querySelectorAll('.choices input[type="radio"]').forEach(radio => {
+                    radio.addEventListener('change', function () {
+                        if (this.checked) {
+                            this.dataset.selected = 'true';
+                            // 清除同组其他选项的 selected 标记
+                            const groupName = this.name;
+                            document.querySelectorAll(`input[name="${groupName}"]`).forEach(r => {
+                                if (r !== this) r.dataset.selected = 'false';
+                            });
+                            console.log(`Radio changed: ${this.name}, value: ${this.value}`); // 调试
+                            // 触发自动保存
+                            autoSaveAnswers();
+                        }
+                    });
+                });
             });
         </script>
 
         <script>
+            // 检查所有题目是否都已作答，并记录未作答题目的 sub_question.id
+            function checkAllQuestionsAnswered() {
+                let allAnswered = true;
+                let unansweredQuestions = [];
+                let unansweredIndices = [];
+
+                // 检查选择题 (choice)
+                document.querySelectorAll('.sub-question').forEach(subQuestion => {
+                    const subQuestionId = subQuestion.dataset.subQuestionId;
+                    const choicesContainer = subQuestion.querySelector('.choices');
+                    if (choicesContainer) {
+                        const selected = choicesContainer.querySelector('input[type="radio"]:checked');
+                        if (!selected) {
+                            allAnswered = false;
+                            unansweredQuestions.push(subQuestionId);
+                            unansweredIndices.push(subQuestionId);
+                            console.log(`Unanswered choice question: ID ${subQuestionId}`); // 调试
+                        }
+                    }
+                });
+
+                // 检查填空题 (blank)
+                document.querySelectorAll('.blank-input').forEach(input => {
+                    const subQuestionId = input.name.split('_')[1];
+                    if (!input.value.trim()) {
+                        allAnswered = false;
+                        unansweredQuestions.push(subQuestionId);
+                        unansweredIndices.push(subQuestionId);
+                        console.log(`Unanswered blank question: ID ${subQuestionId}`); // 调试
+                    }
+                });
+
+                // 检查连线题 (matching)，任意一处有输入即视为作答
+                document.querySelectorAll('.matching').forEach(matchingContainer => {
+                    const subQuestionId = matchingContainer.closest('.sub-question').dataset.subQuestionId;
+                    const inputs = matchingContainer.querySelectorAll('input[type="text"]');
+                    let hasAnyInput = false;
+                    inputs.forEach(input => {
+                        if (input.value.trim()) {
+                            hasAnyInput = true;
+                        }
+                    });
+                    if (!hasAnyInput) {
+                        allAnswered = false;
+                        unansweredQuestions.push(subQuestionId);
+                        unansweredIndices.push(subQuestionId);
+                        console.log(`Unanswered matching question: ID ${subQuestionId}`); // 调试
+                    }
+                });
+
+                // 检查改错题 (correction)，仅检查已选中的子题目
+                document.querySelectorAll('.correction-question').forEach(correctionContainer => {
+                    const mainQuestionId = correctionContainer.dataset.mainQuestionId;
+                    const correctionSelects = correctionContainer.querySelectorAll('select[name^="correction_type_"]');
+                    console.log(`Correction question for main_question ${mainQuestionId}: ${correctionSelects.length} selections found`); // 调试
+                    if (correctionSelects.length === 0) {
+                        console.log(`No corrections selected for main_question ${mainQuestionId}`); // 调试
+                        return; // 未选中任何单词，视为已完成
+                    }
+                    const subQuestionIds = new Set();
+                    correctionSelects.forEach(select => {
+                        try {
+                            // 从 name 属性提取 subQuestionId（格式：correction_type_${subQuestionId}_${localIndex}）
+                            const match = select.name.match(/correction_type_(\d+)_(\d+)/);
+                            if (match) {
+                                const subQuestionId = match[1];
+                                subQuestionIds.add(subQuestionId);
+                                if (select.value === 'none') {
+                                    unansweredQuestions.push(subQuestionId);
+                                    unansweredIndices.push(subQuestionId);
+                                    console.log(`Correction question ID ${subQuestionId}: value=none (unanswered)`); // 调试
+                                } else {
+                                    console.log(`Correction question ID ${subQuestionId}: value=${select.value} (answered)`); // 调试
+                                }
+                            } else {
+                                console.warn(`Invalid select name format: ${select.name}`); // 调试
+                            }
+                        } catch (error) {
+                            console.error(`Error processing correction select: ${select.name}`, error); // 调试
+                        }
+                    });
+                    if (subQuestionIds.size > 0 && unansweredQuestions.some(id => subQuestionIds.has(id))) {
+                        allAnswered = false;
+                    }
+                });
+
+                // 检查阅读理解题 (comprehension)
+                document.querySelectorAll('.comprehension').forEach(comprehensionContainer => {
+                    const subQuestionId = comprehensionContainer.closest('.sub-question').dataset.subQuestionId;
+                    const input = comprehensionContainer.querySelector('input[type="text"]');
+                    if (!input.value.trim()) {
+                        allAnswered = false;
+                        unansweredQuestions.push(subQuestionId);
+                        unansweredIndices.push(subQuestionId);
+                        console.log(`Unanswered comprehension question: ID ${subQuestionId}`); // 调试
+                    }
+                });
+
+                // 去重并按 sub_question.id 排序
+                unansweredIndices = [...new Set(unansweredIndices)].sort((a, b) => a - b);
+
+                return { allAnswered, unansweredQuestions, unansweredIndices };
+            }
+
             function manualSave() {
                 const examForm = document.getElementById('save-answers-form');
                 const formData = new FormData(examForm);
@@ -617,6 +799,19 @@
             }
 
             function manualSubmit() {
+                const { allAnswered, unansweredQuestions, unansweredIndices } = checkAllQuestionsAnswered();
+                const unfinishedConfirmationModal = document.getElementById('unfinishedConfirmationModal');
+                const unfinishedConfirmationMessage = document.getElementById('unfinishedConfirmationMessage');
+
+                if (!allAnswered) {
+                    const indicesText = unansweredIndices.length > 0
+                        ? `第${unansweredIndices.join('、')}题未完成`
+                        : '有未完成的题目';
+                    unfinishedConfirmationMessage.textContent = `请继续作答：${indicesText}`;
+                    unfinishedConfirmationModal.style.display = 'block';
+                    return; // 阻止提交
+                }
+
                 const examForm = document.getElementById('save-answers-form');
                 const formData = new FormData(examForm);
                 formData.set('manual_save', 'false');
@@ -777,106 +972,130 @@
 
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                const clickableWords = document.querySelectorAll('.clickable-word');
-                const dynamicCorrections = document.getElementById('dynamic-corrections');
-                let userCorrections = [];
+                try {
+                    const clickableWords = document.querySelectorAll('.clickable-word');
+                    const dynamicCorrections = document.getElementById('dynamic-corrections');
+                    let userCorrections = [];
+                    console.log(`Clickable words found: ${clickableWords.length}`); // 调试
 
-                function renderDynamicCorrections() {
-                    dynamicCorrections.innerHTML = '';
-                    userCorrections.forEach((correction, index) => {
-                        const correctionDiv = document.createElement('div');
-                        correctionDiv.classList.add('correction-item');
-                        const wordDisplay = document.createElement('span');
-                        wordDisplay.classList.add('word-display');
-                        wordDisplay.textContent = `${correction.wordText}`;
-                        var pageSubmitted = document.querySelector('[data-page-submitted]').getAttribute('data-page-submitted') === 'True';
-                        const typeSelect = document.createElement('select');
-                        typeSelect.name = `correction_type_${correction.subQuestionId}_${correction.localIndex}`;
-                        typeSelect.id = `correction_type_${correction.subQuestionId}_${correction.localIndex}`;
-                        typeSelect.classList.add('error-type-select');
-                        typeSelect.innerHTML = `
-                            <option value="insert" ${correction.type === 'insert' ? 'selected' : ''}>插入</option>
-                            <option value="delete" ${correction.type === 'delete' ? 'selected' : ''}>删除</option>
-                            <option value="revise" ${correction.type === 'revise' ? 'selected' : ''} selected>修改</option>
-                        `;
-                        if (pageSubmitted) {
-                            typeSelect.disabled = true;
-                        }
-
-                        typeSelect.addEventListener('change', function () {
-                            correction.type = this.value;
-                            updateWordStyles(correction);
-                        });
-
-                        const textInput = document.createElement('input');
-                        textInput.type = 'text';
-                        textInput.name = `correction_text_${correction.subQuestionId}_${correction.localIndex}`;
-                        textInput.id = `correction_text_${correction.subQuestionId}_${correction.localIndex}`;
-                        textInput.placeholder = '输入修改内容';
-                        textInput.value = correction.text || '';
-                        if (pageSubmitted) {
-                            textInput.disabled = true;
-                        }
-
-                        textInput.addEventListener('input', function () {
-                            correction.text = this.value;
-                        });
-
-                        const deleteButton = document.createElement('button');
-                        deleteButton.textContent = '删除';
-                        deleteButton.addEventListener('click', function () {
-                            userCorrections = userCorrections.filter(c =>
-                                c.subQuestionId !== correction.subQuestionId || c.localIndex !== correction.localIndex
-                            );
-                            renderDynamicCorrections();
-                            const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
-                            if (wordElement) {
-                                wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
-                            }
-                        });
-
-                        correctionDiv.appendChild(wordDisplay);
-                        correctionDiv.appendChild(typeSelect);
-                        correctionDiv.appendChild(textInput);
-                        correctionDiv.appendChild(deleteButton);
-                        dynamicCorrections.appendChild(correctionDiv);
-                    });
-                }
-
-                function updateWordStyles(correction) {
-                    const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
-                    if (wordElement) {
-                        wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
-                        if (correction.type !== 'none') {
-                            wordElement.classList.add('highlight', correction.type);
-                        }
-                    }
-                }
-
-                clickableWords.forEach(word => {
-                    word.addEventListener('click', function () {
-                        const subQuestionId = word.dataset.subQuestionId;
-                        const localIndex = word.dataset.localIndex;
-                        const wordText = word.dataset.word;
-                        const existingCorrection = userCorrections.find(correction =>
-                            correction.subQuestionId === subQuestionId && correction.localIndex === localIndex);
-                        word.classList.add('highlight');
-                        if (existingCorrection) {
-                            alert("该词已被标记！");
+                    function renderDynamicCorrections() {
+                        if (!dynamicCorrections) {
+                            console.error('dynamic-corrections element not found');
                             return;
                         }
+                        dynamicCorrections.innerHTML = '';
+                        userCorrections.forEach((correction, index) => {
+                            const correctionDiv = document.createElement('div');
+                            correctionDiv.classList.add('correction-item');
+                            const wordDisplay = document.createElement('span');
+                            wordDisplay.classList.add('word-display');
+                            wordDisplay.textContent = `${correction.wordText}`;
+                            var pageSubmitted = document.querySelector('[data-page-submitted]').getAttribute('data-page-submitted') === 'True';
+                            const typeSelect = document.createElement('select');
+                            typeSelect.name = `correction_type_${correction.subQuestionId}_${correction.localIndex}`;
+                            typeSelect.id = `correction_type_${correction.subQuestionId}_${correction.localIndex}`;
+                            typeSelect.classList.add('error-type-select');
+                            typeSelect.innerHTML = `
+                                <option value="none" ${correction.type === 'none' ? 'selected' : ''}>无</option>
+                                <option value="insert" ${correction.type === 'insert' ? 'selected' : ''}>插入</option>
+                                <option value="delete" ${correction.type === 'delete' ? 'selected' : ''}>删除</option>
+                                <option value="revise" ${correction.type === 'revise' ? 'selected' : ''}>修改</option>
+                            `;
+                            if (pageSubmitted) {
+                                typeSelect.disabled = true;
+                            }
 
-                        userCorrections.push({
-                            subQuestionId,
-                            localIndex,
-                            wordText,
-                            type: 'none',
-                            text: ''
+                            typeSelect.addEventListener('change', function () {
+                                correction.type = this.value;
+                                updateWordStyles(correction);
+                                autoSaveAnswers(); // 触发自动保存
+                            });
+
+                            const textInput = document.createElement('input');
+                            textInput.type = 'text';
+                            textInput.name = `correction_text_${correction.subQuestionId}_${correction.localIndex}`;
+                            textInput.id = `correction_text_${correction.subQuestionId}_${correction.localIndex}`;
+                            textInput.placeholder = '输入修改内容';
+                            textInput.value = correction.text || '';
+                            if (pageSubmitted) {
+                                textInput.disabled = true;
+                            }
+
+                            textInput.addEventListener('input', function () {
+                                correction.text = this.value;
+                                autoSaveAnswers(); // 触发自动保存
+                            });
+
+                            const deleteButton = document.createElement('button');
+                            deleteButton.textContent = '删除';
+                            deleteButton.addEventListener('click', function () {
+                                userCorrections = userCorrections.filter(c =>
+                                    c.subQuestionId !== correction.subQuestionId || c.localIndex !== correction.localIndex
+                                );
+                                renderDynamicCorrections();
+                                const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
+                                if (wordElement) {
+                                    wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
+                                }
+                                autoSaveAnswers(); // 触发自动保存
+                            });
+
+                            correctionDiv.appendChild(wordDisplay);
+                            correctionDiv.appendChild(typeSelect);
+                            correctionDiv.appendChild(textInput);
+                            correctionDiv.appendChild(deleteButton);
+                            dynamicCorrections.appendChild(correctionDiv);
                         });
+                        console.log('Rendered userCorrections:', userCorrections); // 调试
+                    }
 
-                        renderDynamicCorrections();
+                    function updateWordStyles(correction) {
+                        const wordElement = document.querySelector(`.clickable-word[data-sub-question-id="${correction.subQuestionId}"][data-local-index="${correction.localIndex}"]`);
+                        if (wordElement) {
+                            wordElement.classList.remove('highlight', 'insert', 'delete', 'revise');
+                            if (correction.type !== 'none') {
+                                wordElement.classList.add('highlight', correction.type);
+                            }
+                        }
+                    }
+
+                    clickableWords.forEach(word => {
+                        word.addEventListener('click', function () {
+                            const subQuestionId = word.dataset.subQuestionId;
+                            const localIndex = word.dataset.localIndex;
+                            const wordText = word.dataset.word;
+                            if (!subQuestionId || !localIndex) {
+                                console.warn('Invalid clickable word data:', { subQuestionId, localIndex, wordText });
+                                return;
+                            }
+                            const existingCorrection = userCorrections.find(correction =>
+                                correction.subQuestionId === subQuestionId && correction.localIndex === localIndex);
+                            word.classList.add('highlight');
+                            if (existingCorrection) {
+                                alert("该词已被标记！");
+                                return;
+                            }
+
+                            userCorrections.push({
+                                subQuestionId,
+                                localIndex,
+                                wordText,
+                                type: 'none',
+                                text: ''
+                            });
+
+                            renderDynamicCorrections();
+                            autoSaveAnswers(); // 触发自动保存
+                        });
                     });
-                });
+
+                    // 记录改错题渲染完成
+                    document.querySelectorAll('.correction-question').forEach(correction => {
+                        console.log(`Correction question rendered for main_question ${correction.dataset.mainQuestionId}`);
+                    });
+                } catch (error) {
+                    console.error('Error in correction question script:', error);
+                }
             });
         </script>
 
@@ -1150,89 +1369,6 @@
                 }
                 return text;
             }
-        </script>
-
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const pageTimerElement = document.getElementById('page-time-remaining');
-                const pageTimerContainer = document.getElementById('page-timer');
-                let remainingTime = parseFloat("{{ remaining_time }}");
-                let pageTimerInterval = null;
-
-                function updatePageTimer() {
-                    remainingTime -= 1;
-                    if (remainingTime <= 0) {
-                        clearInterval(pageTimerInterval);
-                        pageTimerElement.textContent = '00:00:00';
-                        alert("Time is up! Redirecting to the next page...");
-                        window.location.href = "{% url 'stu_practice:save_page' practice.id order|add:1 %}";
-                        return;
-                    }
-
-                    const hours = Math.floor(remainingTime / 3600);
-                    const minutes = Math.floor((remainingTime % 3600) / 60);
-                    const seconds = Math.floor(remainingTime % 60);
-                    pageTimerElement.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-                    if (remainingTime < 50) {
-                        pageTimerContainer.classList.add('warning');
-                    } else {
-                        pageTimerContainer.classList.remove('warning');
-                    }
-                }
-
-                function startPageTimer() {
-                    clearInterval(pageTimerInterval);
-                    pageTimerInterval = setInterval(updatePageTimer, 1000);
-                }
-
-                function pausePageTimer() {
-                    clearInterval(pageTimerInterval);
-                }
-
-                window.onblur = function () {
-                    pausePageTimer();
-                    fetch("{% url 'stu_practice:update_remaining_time' student_page_record.id %}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}',
-                        },
-                        body: JSON.stringify({ remaining_time: remainingTime })
-                    });
-                };
-
-                window.onbeforeunload = function () {
-                    fetch("{% url 'stu_practice:update_remaining_time' student_page_record.id %}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}',
-                        },
-                        body: JSON.stringify({ remaining_time: remainingTime })
-                    });
-                };
-
-                window.onfocus = function () {
-                    startPageTimer();
-                };
-
-                updatePageTimer();
-                startPageTimer();
-            });
-        </script>
-
-        <script>
-            window.onload = function () {
-                if (window.performance && window.performance.navigation.type === 2) {
-                    window.location.reload();
-                }
-            };
-            window.onpageshow = function (event) {
-                if (event.persisted) {
-                    window.location.reload();
-                }
-            };
         </script>
 
         <script>
