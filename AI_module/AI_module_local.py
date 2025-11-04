@@ -1,7 +1,19 @@
 from modelscope import AutoModelForCausalLM, AutoTokenizer
 
+# 使用前下载
+# model_name = "qwen/Qwen2.5-1.5B-Instruct"
+# save_path = "./local_model"  # 指定保存路径
+#
+# # 下载模型
+# model = AutoModelForCausalLM.from_pretrained(model_name)
+# model.save_pretrained(save_path)
+#
+# # 下载分词器
+# tokenizer = AutoTokenizer.from_pretrained(model_name)
+# tokenizer.save_pretrained(save_path)
+
 class AI_module_local:
-    model_name = "qwen/Qwen2.5-1.5B-Instruct"
+    model_name = "./local_model"
 
     def get_answer_once(self, text):
         model = AutoModelForCausalLM.from_pretrained(

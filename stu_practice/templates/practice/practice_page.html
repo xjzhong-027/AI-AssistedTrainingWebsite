@@ -396,26 +396,26 @@
                                             </div>
                                             {% endif %}
                                             {% for option in sub_question.shuffled_options %}
-                                                <div>
-                                            <label>
-                                                <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.option_label }}"
-                                                       {% if page_submitted %}disabled{% endif %}
-                                                       {% if answers|get_item:sub_question.id == option.option_label %}checked{% endif %}>
-                                                {{ forloop.counter0|index_to_letter }}. {{ option.option_content }}
-                                                {% if option.image_url %}
-                                                <div class="option-image">
-                                                    {% for image_path in option.image_url|split:"," %}
-                                                    <img src="{{ image_path }}" alt="Option Image">
-                                                    {% endfor %}
-                                                </div>
-                                                {% endif %}
-                                            </label>
-                                                </div>
+                                            <div>
+                                                <label>
+                                                    <input type="radio" name="answer_{{ sub_question.id }}" value="{{ option.option_label }}"
+                                                           {% if page_submitted %}disabled{% endif %}
+                                                           {% if answers|get_item:sub_question.id == option.option_label %}checked{% endif %}>
+                                                    {{ forloop.counter0|index_to_letter }}. {{ option.option_content }}
+                                                    {% if option.image_url %}
+                                                    <div class="option-image">
+                                                        {% for image_path in option.image_url|split:"," %}
+                                                        <img src="{{ image_path }}" alt="Option Image">
+                                                        {% endfor %}
+                                                    </div>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
                                             {% endfor %}
                                         </div>
                                         <div class="grade-result" id="grade-result-{{ sub_question.id }}">
                                             {% if graded_answers|get_item:sub_question.id %}
-                                            <p>正确答案：{{ graded_answers|get_item:sub_question.id }}</p>
+                                            <p>正确答案：{% for option in sub_question.shuffled_options %}{% if option.option_label == graded_answers|get_item:sub_question.id %}{{ forloop.counter0|index_to_letter }}{% endif %}{% endfor %}</p>
                                             <p>你的得分：{{ scores|get_item:sub_question.id }}</p>
                                             {% endif %}
                                         </div>
@@ -1114,51 +1114,81 @@
             });
 
             document.addEventListener('selectionchange', function () {
-                var selectedText = window.getSelection().toString().trim();
-                var selectedElements = document.querySelectorAll('[data-sub-question-id]');
-                var selectedmainElements = document.querySelectorAll('[data-main-question-id]');
+    var selectedText = window.getSelection().toString().trim();
+    var selectedElements = document.querySelectorAll('[data-sub-question-id]');
+    var selectedmainElements = document.querySelectorAll('[data-main-question-id]');
 
-                for (var i = 0; i < selectedElements.length; i++) {
-                    var element = selectedElements[i];
-                    var range = window.getSelection().getRangeAt(0);
-                    if (range.intersectsNode(element)) {
-                        subQuestionId = element.getAttribute('data-sub-question-id');
-                        break;
-                    }
-                }
+    for (var i = 0; i < selectedElements.length; i++) {
+        var element = selectedElements[i];
+        var range = window.getSelection().getRangeAt(0);
+        if (range.intersectsNode(element)) {
+            subQuestionId = element.getAttribute('data-sub-question-id');
+            break;
+        }
+    }
 
-                for (var i = 0; i < selectedmainElements.length; i++) {
-                    var mainelement = selectedmainElements[i];
-                    var mainrange = window.getSelection().getRangeAt(0);
-                    if (mainrange.intersectsNode(mainelement)) {
-                        mainQuestionId = mainelement.getAttribute('data-main-question-id');
-                        break;
-                    }
-                }
+    for (var i = 0; i < selectedmainElements.length; i++) {
+        var mainelement = selectedmainElements[i];
+        var mainrange = window.getSelection().getRangeAt(0);
+        if (mainrange.intersectsNode(mainelement)) {
+            mainQuestionId = mainelement.getAttribute('data-main-question-id');
+            break;
+        }
+    }
 
-                if (selectedText) {
-                    if (!quoteButton) {
-                        quoteButton = document.createElement('button');
-                        quoteButton.textContent = '发帖询问';
-                        quoteButton.id = 'quoteButton';
-                        quoteButton.style.position = 'absolute';
-                        quoteButton.style.zIndex = '1000';
-                        quoteButton.style.display = 'none';
-                        document.body.appendChild(quoteButton);
-                    }
+    if (selectedText) {
+        if (!quoteButton) {
+            quoteButton = document.createElement('button');
+            quoteButton.textContent = '发帖询问';
+            quoteButton.id = 'quoteButton';
+            quoteButton.style.position = 'absolute';
+            quoteButton.style.zIndex = '1000';
+            quoteButton.style.display = 'none';
+            quoteButton.style.padding = '5px 10px';
+            quoteButton.style.backgroundColor = '#4CAF50';
+            quoteButton.style.color = 'white';
+            quoteButton.style.border = 'none';
+            quoteButton.style.borderRadius = '3px';
+            document.body.appendChild(quoteButton);
+        }
 
-                    var selection = window.getSelection();
-                    var range = selection.getRangeAt(0);
-                    var rect = range.getBoundingClientRect();
-                    quoteButton.style.left = (rect.right + 10) + 'px';
-                    quoteButton.style.top = (rect.bottom + 5) + 'px';
-                    updateQuoteButtonVisibility();
-                } else {
-                    if (quoteButton) {
-                        quoteButton.style.display = 'none';
-                    }
-                }
-            });
+        var selection = window.getSelection();
+        var range = selection.getRangeAt(0);
+        var rect = range.getBoundingClientRect();
+
+        // 检查选中范围是否包含图片
+        var containsImage = false;
+        var images = range.cloneContents().querySelectorAll('img');
+        if (images.length > 0) {
+            containsImage = true;
+        }
+
+        // 计算页面滚动偏移
+        var scrollX = window.scrollX || window.pageXOffset;
+        var scrollY = window.scrollY || window.pageYOffset;
+
+        // 设置按钮位置
+        if (containsImage) {
+            // 如果包含图片，将按钮放在图片下方
+            var lastImage = images[images.length - 1];
+            var imgRange = document.createRange();
+            imgRange.selectNode(lastImage);
+            var imgRect = imgRange.getBoundingClientRect();
+            quoteButton.style.left = (imgRect.left + scrollX) + 'px';
+            quoteButton.style.top = (imgRect.bottom + scrollY + 10) + 'px'; // 图片下方
+        } else {
+            // 如果不包含图片，将按钮放在选中文本的右侧
+            quoteButton.style.left = (rect.right + scrollX + 10) + 'px';
+            quoteButton.style.top = (rect.top + scrollY) + 'px'; // 与文本顶部对齐
+        }
+
+        updateQuoteButtonVisibility();
+    } else {
+        if (quoteButton) {
+            quoteButton.style.display = 'none';
+        }
+    }
+});
 
             function updateQuoteButtonVisibility() {
                 if (quoteButton && pageSubmitted) {

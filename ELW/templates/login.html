@@ -4,8 +4,37 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>英语听力教学网站</title>
-    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+    <!-- 使用JavaScript动态加载CSS作为备用方案，同时保留link标签 -->
+    <link rel="stylesheet" type="text/css" href="{% static 'css/login.css' %}">
+    <script>
+        // 备用方案：如果外部CSS没有加载，动态加载
+        (function() {
+            // 等待DOM加载完成后检查CSS是否生效
+            setTimeout(function() {
+                const testEl = document.createElement('div');
+                testEl.className = 'header';
+                testEl.style.position = 'absolute';
+                testEl.style.visibility = 'hidden';
+                document.body.appendChild(testEl);
+                
+                const computedStyle = window.getComputedStyle(testEl);
+                const fontSize = computedStyle.getPropertyValue('font-size');
+                
+                // 如果CSS没有生效（字体大小不是24px），则动态加载
+                if (!fontSize || fontSize === '16px' || fontSize === '') {
+                    console.warn('External CSS not loaded, using dynamic load');
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.type = 'text/css';
+                    link.href = '{% static "css/login.css" %}?v=' + Date.now();
+                    document.head.appendChild(link);
+                }
+                document.body.removeChild(testEl);
+            }, 100);
+        })();
+    </script>
 </head>
 <body>
 <form method="post" action="/login/">

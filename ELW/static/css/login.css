@@ -1,85 +1,95 @@
+/* 重置和基础样式 */
+* {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
+    font-family: Arial, sans-serif !important;
+    background-color: #f4f4f9 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
  
 form {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    width: 300px;
-    text-align: center;
+    background-color: #fff !important;
+    padding: 20px !important;
+    border-radius: 10px !important;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1) !important;
+    width: 300px !important;
+    text-align: center !important;
+    margin: 0 auto !important;
 }
  
 /* Header Styling */
 .header {
-    font-size: 24px;
-    font-weight: bold;
-    margin-bottom: 30px;
-    margin-top: 10px;
-    color: #333;
+    font-size: 24px !important;
+    font-weight: bold !important;
+    margin-bottom: 30px !important;
+    margin-top: 10px !important;
+    color: #333 !important;
 }
  
 /* Label and Input Styling */
 .username, .password, .role {
-    margin-bottom: 15px;
-    text-align: left;
+    margin-bottom: 15px !important;
+    text-align: left !important;
 }
- 
+
 label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-    color: #555;
+    display: block !important;
+    margin-bottom: 5px !important;
+    font-weight: bold !important;
+    color: #555 !important;
 }
- 
+
 input[type="text"], input[type="password"] {
-    width: calc(100% - 12px);
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 16px;
+    width: calc(100% - 12px) !important;
+    padding: 6px !important;
+    border: 1px solid #ccc !important;
+    border-radius: 5px !important;
+    font-size: 16px !important;
+    display: block !important;
+    margin: 0 !important;
 }
  
 /* Radio Button Styling */
 .role input[type="radio"] {
-    margin-right: 5px;
+    margin-right: 5px !important;
 }
- 
+
 .role label {
-    display: inline-block;
-    margin-right: 5px;
-    font-weight: normal;
+    display: inline-block !important;
+    margin-right: 15px !important;
+    margin-left: 5px !important;
+    font-weight: normal !important;
 }
  
 /* Error Message Styling */
 .error_message {
-    color: red;
-    font-size: 14px;
-    margin-bottom: 10px;
-    text-align: left;
+    color: red !important;
+    font-size: 14px !important;
+    margin-bottom: 10px !important;
+    text-align: left !important;
 }
- 
+
 /* Submit Button Styling */
 .submit {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0 10px 0;
-    background-color: #007bff;
-    border: none;
-    border-radius: 5px;
-    color: #fff;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.3s;
+    width: 100% !important;
+    padding: 10px !important;
+    margin: 10px 0 10px 0 !important;
+    background-color: #007bff !important;
+    border: none !important;
+    border-radius: 5px !important;
+    color: #fff !important;
+    font-size: 16px !important;
+    cursor: pointer !important;
+    transition: background-color 0.3s !important;
 }
- 
+
 .submit:hover {
-    background-color: #0056b3;
+    background-color: #0056b3 !important;
 }

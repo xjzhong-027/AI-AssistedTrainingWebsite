@@ -32,7 +32,7 @@ class Command(BaseCommand):
                 'mysqldump',
                 '-u', 'root',  # MySQL 用户名
                 '-p123456',  # MySQL 密码
-                'elw',  # 要备份的数据库名称
+                'day0425',  # 要备份的数据库名称
                 '--result-file=' + backup_file,  # 备份文件路径
                 '--no-tablespaces',  # 避免备份表空间
                 '--single-transaction',  # 确保备份一致性

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 from pathlib import Path
 import os
+import mimetypes
 import ELW.apps
 import pymysql
 pymysql.install_as_MySQLdb()
@@ -18,6 +19,10 @@ pymysql.install_as_MySQLdb()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Ensure correct MIME types for static files on Windows (avoid application/x-css)
+mimetypes.add_type('text/css', '.css', strict=True)
+mimetypes.add_type('application/javascript', '.js', strict=True)
 
 
 # Quick-start development settings - unsuitable for production
@@ -82,6 +87,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'English_Listening_Website.middleware.SessionTimeoutMiddleware',
+    'English_Listening_Website.middleware.StaticFileContentTypeMiddleware',  # 确保静态文件Content-Type正确
     'Log.middleware.CurrentUserMiddleware',  # Log应用获取当前登录用户的中间件
 ]
 
@@ -121,9 +127,9 @@ WSGI_APPLICATION = 'English_Listening_Website.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'elw',
+        'NAME': 'day0425',
         'USER': 'root',
-        'PASSWORD': '0000',
+        'PASSWORD': '123456',
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -164,7 +170,7 @@ USE_I18N = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

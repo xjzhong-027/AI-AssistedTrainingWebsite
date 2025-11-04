@@ -1,4 +1,5 @@
 from django.contrib.auth import logout
+from django.conf import settings
 from django.utils.timezone import now
 from ELW import models
 import datetime
@@ -28,4 +29,30 @@ class SessionTimeoutMiddleware:
                 # 重定向到登录页面或者提示页面
                 return redirect('login')  # 这里重定向到登录页面
         response = self.get_response(request)
+        return response
+
+
+class StaticFileContentTypeMiddleware:
+    """确保静态文件的Content-Type正确"""
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        # 如果是静态CSS文件，确保Content-Type正确
+        if request.path.endswith('.css'):
+            # 确保Content-Type正确，并设置编码
+            try:
+                response['Content-Type'] = 'text/css; charset=utf-8'
+            except Exception:
+                pass
+
+            # 开发环境避免缓存粘连（曾被错误 MIME 缓存时）
+            try:
+                if getattr(settings, 'DEBUG', False):
+                    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    response['Pragma'] = 'no-cache'
+                    response['Expires'] = '0'
+            except Exception:
+                pass
         return response

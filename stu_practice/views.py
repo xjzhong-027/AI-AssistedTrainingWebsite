@@ -145,29 +145,29 @@ def load_answers(student_page_record):
         for sub_question_id, answer_text in cached_answers.items():
             if answer_text:
                 if isinstance(answer_text, str) and answer_text.startswith('['):
-                    answers_dict[int(sub_question_id)] = json.loads(answer_text)
+                    answers_dict[sub_question_id] = json.loads(answer_text)
                 else:
-                    answers_dict[int(sub_question_id)] = answer_text
+                    answers_dict[sub_question_id] = answer_text
         return answers_dict
 
     answers = StudentAnswer.objects.filter(student_page_record=student_page_record)
     answers_dict = {}
 
     for answer in answers:
-        sub_question_id = int(answer.sub_question_id)
+        sub_question_id = str(answer.sub_question_id)
         if answer.sub_question.main_question.question_type == 'correction':
             if sub_question_id not in answers_dict:
-                answers_dict[sub_question_id] = []
-            answers_dict[sub_question_id].append({
+                answers_dict[int(sub_question_id)] = []
+            answers_dict[int(sub_question_id)].append({
                 'text': answer.text,
                 'index': answer.index,
                 'type': answer.type
             })
         else:
-            answers_dict[sub_question_id] = answer.text
+            answers_dict[int(sub_question_id)] = answer.text
+
 
     cache.set(cache_key, answers_dict, timeout=600)
-    print(answers_dict)
     return answers_dict
 
 def practice_page(request, practice_id, order):
@@ -231,7 +231,6 @@ def practice_page(request, practice_id, order):
 
     random.seed(student_practice_record.user.id)
     answers_dict = load_answers(student_page_record)
-    print(answers_dict)
 
     blank_data = {}
     correction_data = {}
@@ -284,7 +283,6 @@ def practice_page(request, practice_id, order):
     play_records_dict = {record.main_question_id: record.play_count for record in play_records}
 
     is_last_page = not PaperPage.objects.filter(unit=practice, order=page.order + 1).exists()
-
 
     context = {
         'practice': practice,
@@ -515,7 +513,6 @@ def save_page(request, practice_id, order):
         if is_manual_submit:
             return JsonResponse({'message': '是否确认提交？', 'status': 'finished'}, status=200)
         elif force_submit:
-            print("force submit")
             _save_answers_to_cache(request, page_record.id)
             _save_answers_to_database(page_record.id)
             page_record.submitted = True
@@ -663,7 +660,6 @@ def practice_result(request, practice_id):
     return render(request, 'practice/practice_result.html', context)
 
 def grade_page(page_record):
-    print('grade')
     # 获取学生提交的答案
     student_answers = StudentAnswer.objects.filter(student_page_record_id=page_record.id)
 

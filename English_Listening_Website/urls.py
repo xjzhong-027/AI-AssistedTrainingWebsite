@@ -22,16 +22,12 @@ from django.urls import path, include
 from ELW import views, urls
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
-from django.contrib import admin
 from django.core.asgi import get_asgi_application
-from django.urls import include, path
-
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 import announce.routing
-from django.conf import settings
-from django.conf.urls.static import static
 
 
 urlpatterns = [
@@ -55,7 +51,14 @@ path('forum/', include('forum.urls')),
                   path('accessment/', include('accessment.urls')),
 
     path('stu_practice/', include('stu_practice.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)   #添加对媒体文件的访问路由
+]
+
+# 开发环境下提供静态文件和媒体文件服务
+if settings.DEBUG:
+    # 使用Django的staticfiles应用来服务静态文件
+    urlpatterns += staticfiles_urlpatterns()
+    # 添加媒体文件服务
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
 application = ProtocolTypeRouter({

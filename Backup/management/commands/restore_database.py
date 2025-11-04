@@ -19,7 +19,7 @@ class Command(BaseCommand):
 
                 user = 'root'  # MySQL 用户名
                 password = '123456'  # MySQL 密码
-                database_name = 'elw'  # 将备份文件恢复到原来的数据库中
+                database_name = 'day0425'  # 将备份文件恢复到原来的数据库中
 
                 # 恢复操作：使用 mysql 命令恢复数据库
                 restore_cmd = [
