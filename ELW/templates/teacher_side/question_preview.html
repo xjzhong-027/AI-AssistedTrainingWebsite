@@ -92,8 +92,12 @@
 
                         <div class="video-box">
                             <video width="95%" height="auto" controls>
-                                <source src="{{ main_question.media_instance.media_url }}" type="video/mp4">
-                                Your browser does not support the video tag.
+                                <source src="/{{ main_question.media_instance.media_url }}" type="video/mp4">
+                                <source src="/{{ main_question.media_instance.media_url }}" type="video/webm">
+                                <source src="/{{ main_question.media_instance.media_url }}" type="video/ogg">
+                                <source src="/{{ main_question.media_instance.media_url }}" type="audio/mpeg">
+                                <source src="/{{ main_question.media_instance.media_url }}" type="audio/wav">
+                                Your browser does not support the video/audio tag.
                             </video>
                         </div>
 

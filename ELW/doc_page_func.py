@@ -15,7 +15,13 @@ def paging_process(text):
     # 找到所有匹配的分隔符位置
     delimiter_indices = [m.span() for m in re.finditer(pattern, text)]
     if not delimiter_indices:
-        return text
+        # 如果没有分页标记，返回一个包含整个文本的页面
+        pages = [{
+            'limited_time': '00:30:00',  # 默认30分钟
+            'page_content': [],
+        }]
+        page_list = [text]
+        return pages, page_list
     time_list = []
     page_list = []
     prev_end = 0  # 上一个分隔符的结束位置

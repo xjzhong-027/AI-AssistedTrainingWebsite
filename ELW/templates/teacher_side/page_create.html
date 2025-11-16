@@ -26,6 +26,19 @@
                 <input type="text" id="pre_selected_questions" name="pre_selected_questions" hidden>
                 <input type="text" id="pre_page_infos" name="pre_page_infos" hidden>
 
+            {# 显示素材包的视频 #}
+            {% if material.media_url %}
+            <div class="video-box" style="margin: 20px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                <h3 style="margin-top: 0;">素材包视频</h3>
+                <video width="100%" height="auto" controls style="max-width: 600px;">
+                    <source src="/{{ material.media_url }}" type="video/mp4">
+                    <source src="/{{ material.media_url }}" type="video/webm">
+                    <source src="/{{ material.media_url }}" type="video/ogg">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            {% endif %}
+
             <h2>选择题目</h2>
             {% for main_question in main_questions %}
                 <div>
@@ -256,47 +269,99 @@
 </form>
 
 <script>
+    // 初始化变量
+    let pre_selected_questions = [];
+    let pre_page_infos = [];
+    
     {% if pre_selected_questions %}
-        const pre_selected_questions = {{ pre_selected_questions|safe }}
-        const pre_page_infos = {{ pre_page_infos|safe }}
-        console.log('pre_selected_questions: ', pre_selected_questions)
-        console.log('pre_page_infos: ', pre_page_infos)
-
-        document.getElementById('question_form').addEventListener('submit', function (event) {
-            console.log('click "submit". ')
-            try{
-                console.log('json-pre_selected_questions: ', JSON.stringify(pre_selected_questions))
-                console.log('json-pre_page_infos: ', JSON.stringify(pre_page_infos))
-                document.getElementById('pre_selected_questions').value=JSON.stringify(pre_selected_questions);
-                document.getElementById('pre_page_infos').value=JSON.stringify(pre_page_infos);
-                console.log(document.getElementById('pre_selected_questions').value)
-                console.log(document.getElementById('pre_page_infos').value)
-            }catch (error){
-                console.log(error)
-                {#event.preventDefault();#}
-            }
-        });
-        document.getElementById('submit_form').addEventListener('submit', function (event) {
-            console.log('click save.')
-            try{
-                document.getElementById('preview_datas').value=JSON.stringify(pre_selected_questions);
-                document.getElementById('preview_page_infos').value=JSON.stringify(pre_page_infos);
-            }catch(error){
-                console.log(error)
-                event.preventDefault(); //阻止表单提交
-            }
-        });
-        function removeDiv(id){
-            const divToRemove = document.getElementById(id);
-            if (divToRemove){
-                console.log('before: ', pre_selected_questions)
-                pre_selected_questions.splice(parseInt(id), 1)
-                divToRemove.remove()
-                console.log('after: ', pre_selected_questions)
-            }
-        }
+        pre_selected_questions = {{ pre_selected_questions|safe }};
+        pre_page_infos = {{ pre_page_infos|safe }};
+        console.log('pre_selected_questions: ', pre_selected_questions);
+        console.log('pre_page_infos: ', pre_page_infos);
     {% endif %}
 
+    // 表单提交事件处理
+    document.getElementById('question_form').addEventListener('submit', function (event) {
+        console.log('表单提交事件触发');
+        
+        // 检查是否选择了题目
+        const selectedQuestions = document.querySelectorAll('input[name="questions"]:checked');
+        if (selectedQuestions.length === 0) {
+            console.log('未选择任何题目');
+            // 不阻止提交，让后端处理并显示提示
+        }
+        
+        try {
+            // 确保 pre_selected_questions 和 pre_page_infos 是数组
+            if (!Array.isArray(pre_selected_questions)) {
+                pre_selected_questions = [];
+            }
+            if (!Array.isArray(pre_page_infos)) {
+                pre_page_infos = [];
+            }
+            
+            console.log('json-pre_selected_questions: ', JSON.stringify(pre_selected_questions));
+            console.log('json-pre_page_infos: ', JSON.stringify(pre_page_infos));
+            
+            document.getElementById('pre_selected_questions').value = JSON.stringify(pre_selected_questions);
+            document.getElementById('pre_page_infos').value = JSON.stringify(pre_page_infos);
+            
+            console.log('设置后的值:');
+            console.log('pre_selected_questions:', document.getElementById('pre_selected_questions').value);
+            console.log('pre_page_infos:', document.getElementById('pre_page_infos').value);
+        } catch (error) {
+            console.error('设置隐藏字段时出错:', error);
+            // 设置默认值
+            document.getElementById('pre_selected_questions').value = '[]';
+            document.getElementById('pre_page_infos').value = '[]';
+        }
+    });
+    // 确认组卷表单提交事件
+    document.getElementById('submit_form').addEventListener('submit', function (event) {
+        console.log('点击确认组卷');
+        try {
+            // 确保是数组
+            if (!Array.isArray(pre_selected_questions)) {
+                pre_selected_questions = [];
+            }
+            if (!Array.isArray(pre_page_infos)) {
+                pre_page_infos = [];
+            }
+            
+            // 检查是否有页面
+            if (pre_selected_questions.length === 0) {
+                alert('请至少添加一个页面后再确认组卷！');
+                event.preventDefault();
+                return;
+            }
+            
+            document.getElementById('preview_datas').value = JSON.stringify(pre_selected_questions);
+            document.getElementById('preview_page_infos').value = JSON.stringify(pre_page_infos);
+            console.log('确认组卷数据已设置');
+        } catch(error) {
+            console.error('设置确认组卷数据时出错:', error);
+            event.preventDefault(); // 阻止表单提交
+        }
+    });
+    
+    // 删除页面函数
+    function removeDiv(id) {
+        const divToRemove = document.getElementById(id);
+        if (divToRemove) {
+            console.log('删除页面前: ', pre_selected_questions);
+            // 确保是数组
+            if (Array.isArray(pre_selected_questions) && Array.isArray(pre_page_infos)) {
+                pre_selected_questions.splice(parseInt(id), 1);
+                pre_page_infos.splice(parseInt(id), 1);
+                divToRemove.remove();
+                console.log('删除页面后: ', pre_selected_questions);
+                
+                // 更新隐藏字段
+                document.getElementById('pre_selected_questions').value = JSON.stringify(pre_selected_questions);
+                document.getElementById('pre_page_infos').value = JSON.stringify(pre_page_infos);
+            }
+        }
+    }
 </script>
 </body>
 </html>

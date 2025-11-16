@@ -15,6 +15,21 @@
             <p><strong>摘要:</strong> {{ material.abstract }}</p>
             <p><strong>关键词:</strong> {{ material.keywords }}</p>
             <p><strong>文本内容:</strong> {{ material.transcript }}</p>
+            
+            {# 显示素材包的视频 #}
+            {% if material.media_url %}
+            <div class="video-box" style="margin: 20px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                <h3 style="margin-top: 0;">素材包视频/音频</h3>
+                <video width="100%" height="auto" controls style="max-width: 800px;">
+                    <source src="/{{ material.media_url }}" type="video/mp4">
+                    <source src="/{{ material.media_url }}" type="video/webm">
+                    <source src="/{{ material.media_url }}" type="video/ogg">
+                    <source src="/{{ material.media_url }}" type="audio/mpeg">
+                    <source src="/{{ material.media_url }}" type="audio/wav">
+                    Your browser does not support the video/audio tag.
+                </video>
+            </div>
+            {% endif %}
         </div>
 
         <div class="details">

@@ -1,5 +1,6 @@
 #导入要用的模块
 import os,uuid,datetime,json,re
+from io import BytesIO
 
 from django.urls import reverse
 from urllib.parse import urlencode
@@ -292,38 +293,57 @@ def teacher_week_task(request):
 
 def teacher_week_task_package_add(request):
     if request.method == 'POST':
-        # 全球唯一标识符
-        media_uuid = uuid.uuid4().hex
-        # 存储音频/视频
-        media_file = request.FILES.get('media_file')
-        media_file_path = os.path.join(settings.MEDIA_ROOT, 'media\\', media_uuid)
-        media_url = os.path.join('\\media_material\\media\\', media_uuid)
-        print('media_path: ', media_file_path)
-        print('media_url: ', media_url)
-        os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
-        with open(media_file_path, 'wb+') as destination:
-            for chunk in media_file.chunks():
-                destination.write(chunk)
-        # 存储图片
-        image_files = request.FILES.getlist('image_file')
-        if image_files:
+        try:
+            # 检查必填字段
+            media_file = request.FILES.get('media_file')
+            if not media_file:
+                messages.error(request, '请上传媒体文件（音频/视频）')
+                return render(request, 'teacher_side/week_task_package_add.html')
+            
+            # 全球唯一标识符
+            media_uuid = uuid.uuid4().hex
+            # 存储音频/视频
+            media_dir = os.path.join(settings.MEDIA_ROOT, 'media')
+            os.makedirs(media_dir, exist_ok=True)
+            media_file_path = os.path.join(media_dir, media_uuid)
+            # 保存原始文件名扩展名
+            original_filename = media_file.name
+            file_extension = os.path.splitext(original_filename)[1]
+            if file_extension:
+                media_file_path += file_extension
+            
+            media_url = os.path.join('media_material', 'media', os.path.basename(media_file_path)).replace('\\', '/')
+            print('media_path: ', media_file_path)
+            print('media_url: ', media_url)
+            
+            # 保存媒体文件
+            with open(media_file_path, 'wb+') as destination:
+                for chunk in media_file.chunks():
+                    destination.write(chunk)
+            
+            # 存储图片
+            image_files = request.FILES.getlist('image_file')
             image_urls = ''
-            for image_file in image_files:
-                image_file_path = os.path.join(f'{settings.MEDIA_ROOT}\\image\\{media_uuid}\\{image_file.name}')
-                image_url = os.path.join(f'\\media_material\\image\\{media_uuid}\\{image_file.name}')
-                print('image_path: ', image_file_path)
-                print('image_url: ', image_url)
-                image_urls = image_urls + image_url + ','
-                os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
-                with open(image_file_path, 'wb+') as destination:
-                    for chunk in image_file.chunks():
-                        destination.write(chunk)
+            if image_files:
+                image_dir = os.path.join(settings.MEDIA_ROOT, 'image', media_uuid)
+                os.makedirs(image_dir, exist_ok=True)
+                for image_file in image_files:
+                    image_file_path = os.path.join(image_dir, image_file.name)
+                    image_url = os.path.join('media_material', 'image', media_uuid, image_file.name).replace('\\', '/')
+                    print('image_path: ', image_file_path)
+                    print('image_url: ', image_url)
+                    image_urls = image_urls + image_url + ','
+                    with open(image_file_path, 'wb+') as destination:
+                        for chunk in image_file.chunks():
+                            destination.write(chunk)
+            
+            # 创建MediaMaterial对象
             new_task_package = models.MediaMaterial.objects.create(
-                title=request.POST.get('title'),
-                theme=request.POST.get('theme'),
-                abstract=request.POST.get('abstract'),
-                keywords=request.POST.get('keywords'),
-                transcript=request.POST.get('transcript'),
+                title=request.POST.get('title', ''),
+                theme=request.POST.get('theme', ''),
+                abstract=request.POST.get('abstract', ''),
+                keywords=request.POST.get('keywords', ''),
+                transcript=request.POST.get('transcript', ''),
                 media_url=media_url,
                 image_url=image_urls,
             )
@@ -332,7 +352,12 @@ def teacher_week_task_package_add(request):
             params = {'task_package_id': id}
             query_string = urlencode(params)
             url = reverse('teacher_week_file_import')
+            messages.success(request, '素材包添加成功！')
             return HttpResponseRedirect(f"{url}?{query_string}")
+        except Exception as e:
+            print(f'Error in teacher_week_task_package_add: {str(e)}')
+            messages.error(request, f'上传失败：{str(e)}')
+            return render(request, 'teacher_side/week_task_package_add.html')
     return render(request, 'teacher_side/week_task_package_add.html')
 
 def teacher_week_file_import(request):
@@ -342,29 +367,71 @@ def teacher_week_file_import(request):
     overdue_rules = OverdueDeductionRule.objects.all()
     task_package_id = request.GET.get('task_package_id')
     # print(f'task_package_id: {task_package_id}')
-    media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+    if not task_package_id:
+        messages.error(request, '缺少素材包ID')
+        return redirect('teacher_week_task')
+    
+    try:
+        media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+    except MediaMaterial.DoesNotExist:
+        messages.error(request, '素材包不存在')
+        return redirect('teacher_week_task')
+    
     # 获取图片路径根目录
-    first_path = media_material_instance.image_url.split(',')[0]
-    match = re.match(r"(.+\\)[^\\]+$", first_path)
     img_directory = ""
-    if match:
-        img_directory = match.group(1)
+    if media_material_instance.image_url:
+        first_path = media_material_instance.image_url.split(',')[0]
+        # 使用正斜杠或反斜杠匹配
+        match = re.match(r"(.+[/\\])[^/\\]+$", first_path)
+        if match:
+            img_directory = match.group(1)
 
     # word文档导入
     if request.method == 'POST' and request.FILES.get('word_file'):
         def extract_text_from_word(doc_file):
-            # 读取Word文档内容
-            doc = Document(doc_file)
-            text = ''
-            for para in doc.paragraphs:
-                text += para.text
-            return text
+            """
+            从Word文档中提取文本内容
+            使用BytesIO来处理Django上传的文件对象
+            """
+            try:
+                # 将文件内容读取到内存
+                file_content = doc_file.read()
+                # 重置文件指针（如果需要）
+                doc_file.seek(0)
+                
+                # 使用BytesIO创建文件对象供python-docx使用
+                docx_file = BytesIO(file_content)
+                doc = Document(docx_file)
+                
+                text = ''
+                for para in doc.paragraphs:
+                    text += para.text + '\n'
+                return text
+            except Exception as e:
+                print(f'Error reading Word document: {str(e)}')
+                error_msg = str(e)
+                if 'Content_Types' in error_msg or 'not a zip file' in error_msg.lower():
+                    raise ValueError('无法读取Word文档。请确保：1) 文件是有效的.docx格式（不是.doc格式）；2) 文件没有损坏。如果您有.doc格式的文件，请在Word中打开并另存为.docx格式。')
+                else:
+                    raise ValueError(f'无法读取Word文档: {error_msg}')
 
         form = WordUploadForm(request.POST, request.FILES)
         if form.is_valid():
             word_file = request.FILES['word_file']
-            # 提取文本内容
-            text_content = extract_text_from_word(word_file)
+            # 验证文件扩展名（python-docx只支持.docx格式）
+            if not word_file.name.lower().endswith('.docx'):
+                messages.error(request, '请上传有效的Word文档（仅支持.docx格式）。如果您有.doc格式的文件，请在Word中打开并另存为.docx格式。')
+                form = WordUploadForm()
+                return render(request, 'teacher_side/week_file_import.html', {'form': form})
+            
+            try:
+                # 提取文本内容
+                text_content = extract_text_from_word(word_file)
+            except Exception as e:
+                messages.error(request, f'读取Word文档失败: {str(e)}')
+                form = WordUploadForm()
+                return render(request, 'teacher_side/week_file_import.html', {'form': form})
+            
             # print(f'text_content: {text_content}')
             # print(f'word_page_process: {doc_page_func.main_process(text_content)}')
             question_data = doc_page_func.main_process(text_content)
@@ -743,17 +810,24 @@ def teacher_page_create(request, material_id):
 
         # test_selected_questions = ['sub_1', 'sub_2', 'sub_3']
         # 前面已提交的页面信息
-        if request.POST['pre_selected_questions']:
-            pre_selected_questions_json = request.POST.get('pre_selected_questions')
-            pre_page_infos_json = request.POST.get('pre_page_infos')
+        pre_selected_questions_json = request.POST.get('pre_selected_questions', '')
+        pre_page_infos_json = request.POST.get('pre_page_infos', '')
+        
+        # 处理之前已添加的页面数据
+        if pre_selected_questions_json and pre_selected_questions_json.strip():
             try:
                 # 将 JSON 字符串还原为 Python 对象
                 pre_selected_questions = json.loads(pre_selected_questions_json)
                 print('成功还原pre_selected_questions: ', pre_selected_questions)
-                pre_page_infos = json.loads(pre_page_infos_json)
-                print('成功还原pre_page_infos: ', pre_page_infos)
-            except json.JSONDecodeError:
-                print("JSON 解析出错")
+                if pre_page_infos_json and pre_page_infos_json.strip():
+                    pre_page_infos = json.loads(pre_page_infos_json)
+                    print('成功还原pre_page_infos: ', pre_page_infos)
+                else:
+                    pre_page_infos = []
+            except json.JSONDecodeError as e:
+                print(f"JSON 解析出错: {str(e)}")
+                pre_selected_questions = []
+                pre_page_infos = []
         '''
         # if request.POST['pre_selected_questions']:
             # try:
@@ -771,25 +845,44 @@ def teacher_page_create(request, material_id):
         #     print(f'pre_selected_questions: {pre_selected_questions}')
         # pre_selected_questions.append(test_selected_questions)
         '''
-        if 'add_page' in request.POST:      #如果点击的是“添加组卷”按钮
+        if 'add_page' in request.POST:      #如果点击的是"添加组卷"按钮
             print('add_page')
             print('this_selected_questions: ', this_selected_questions)
-            if this_selected_questions:
-                print('列表不为空，增加this_selected_questions至pre_selected_questions.')
-                pre_selected_questions.append(this_selected_questions)
-                print('增加后pre_selected_questions: ', pre_selected_questions)
-                pre_page_infos.append(this_page_info)
-                print('增加后pre_page_infos: ', pre_page_infos)
-            else:
-                print('列表为空')
+            
+            # 检查是否选择了题目
+            if not this_selected_questions:
+                print('列表为空，未选择题目')
+                messages.warning(request, '请至少选择一个题目后再添加页面！')
+                # 生成已添加页面的预览
+                preview_pages = []
+                if pre_selected_questions:
+                    for i, pre_selected_question in enumerate(pre_selected_questions):
+                        if i < len(pre_page_infos):
+                            preview_page = pre_page.preview_page(pre_selected_question, pre_page_infos[i])
+                            preview_pages.append(preview_page)
+                
+                return render(request, 'teacher_side/page_create.html', {
+                    'material': material,
+                    'main_questions': main_questions,
+                    'preview_pages': preview_pages,
+                    'pre_selected_questions': pre_selected_questions,
+                    'pre_page_infos': pre_page_infos,
+                })
+            
+            # 选择了题目，添加到列表
+            print('列表不为空，增加this_selected_questions至pre_selected_questions.')
+            pre_selected_questions.append(this_selected_questions)
+            print('增加后pre_selected_questions: ', pre_selected_questions)
+            pre_page_infos.append(this_page_info)
+            print('增加后pre_page_infos: ', pre_page_infos)
 
+            # 生成所有页面的预览
             preview_pages = []
-            # for i, pre_selected_question in pre_selected_questions:
             for i, pre_selected_question in enumerate(pre_selected_questions):
-                preview_page = pre_page.preview_page(pre_selected_question, pre_page_infos[i])
-                preview_pages.append(preview_page)
+                if i < len(pre_page_infos):
+                    preview_page = pre_page.preview_page(pre_selected_question, pre_page_infos[i])
+                    preview_pages.append(preview_page)
             print('preview_pages: ', preview_pages)
-            # print('receive: ', request.POST['pre_selected_questions'])
 
             print('-'*20)
             print(f'preview_pages: {preview_pages}')
@@ -797,13 +890,13 @@ def teacher_page_create(request, material_id):
             print(f'pre_page_infos: {pre_page_infos}')
             print('-'*20)
 
+            messages.success(request, f'页面添加成功！当前共有 {len(pre_selected_questions)} 个页面。')
             return render(request, 'teacher_side/page_create.html', {
                 'material': material,
                 'main_questions': main_questions,
                 'preview_pages': preview_pages,
                 'pre_selected_questions': pre_selected_questions,
                 'pre_page_infos': pre_page_infos,
-
             })
 
 
@@ -873,11 +966,25 @@ def teacher_page_save(request, material_id):
         overdue_rules = OverdueDeductionRule.objects.all()
         if request.POST.get('selected_class'):
             preview_datas_json = request.POST.get('preview_datas')
-            preview_datas = json.loads(preview_datas_json)
-            print('data: ', request.POST)
-
             preview_page_infos_json = request.POST.get('preview_page_infos')
-            preview_page_infos = json.loads(preview_page_infos_json)
+            
+            # 验证JSON数据是否存在且有效
+            if not preview_datas_json or not preview_page_infos_json:
+                messages.error(request, '缺少必要的组卷数据，请重新选择题目。')
+                return redirect('teacher_page_create', material_id=material_id)
+            
+            try:
+                preview_datas = json.loads(preview_datas_json)
+                preview_page_infos = json.loads(preview_page_infos_json)
+            except json.JSONDecodeError as e:
+                print(f'JSON解析错误: {str(e)}')
+                print(f'preview_datas_json: {preview_datas_json}')
+                print(f'preview_page_infos_json: {preview_page_infos_json}')
+                messages.error(request, f'组卷数据格式错误，请重新选择题目。错误信息: {str(e)}')
+                return redirect('teacher_page_create', material_id=material_id)
+            
+            print('data: ', request.POST)
+            print('preview_datas: ', preview_datas)
             print('preview_page_infos: ', preview_page_infos)
 
             class_id = int(request.POST.get('selected_class'))
@@ -1304,56 +1411,71 @@ def teacher_task_package_add(request):
     '''
 
     if request.method == 'POST':
-        # 全球唯一标识符
-        media_uuid = uuid.uuid4().hex
-        # 存储音频/视频
-        media_file = request.FILES.get('media_file')
-        media_file_path = os.path.join(settings.MEDIA_ROOT, 'media\\', media_uuid)
-        media_url = os.path.join('\\media_material\\media\\', media_uuid)
-        print('media_path: ', media_file_path)
-        print('media_url: ', media_url)
-        os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
-        with open(media_file_path, 'wb+') as destination:
-            for chunk in media_file.chunks():
-                destination.write(chunk)
-        # 存储图片
-        image_files = request.FILES.getlist('image_file')
-        if image_files:
+        try:
+            # 检查必填字段
+            media_file = request.FILES.get('media_file')
+            if not media_file:
+                messages.error(request, '请上传媒体文件（音频/视频）')
+                return render(request, 'teacher_side/task_package_add.html')
+            
+            # 全球唯一标识符
+            media_uuid = uuid.uuid4().hex
+            # 存储音频/视频
+            media_dir = os.path.join(settings.MEDIA_ROOT, 'media')
+            os.makedirs(media_dir, exist_ok=True)
+            media_file_path = os.path.join(media_dir, media_uuid)
+            # 保存原始文件名扩展名
+            original_filename = media_file.name
+            file_extension = os.path.splitext(original_filename)[1]
+            if file_extension:
+                media_file_path += file_extension
+            
+            media_url = os.path.join('media_material', 'media', os.path.basename(media_file_path)).replace('\\', '/')
+            print('media_path: ', media_file_path)
+            print('media_url: ', media_url)
+            
+            # 保存媒体文件
+            with open(media_file_path, 'wb+') as destination:
+                for chunk in media_file.chunks():
+                    destination.write(chunk)
+            
+            # 存储图片
+            image_files = request.FILES.getlist('image_file')
             image_urls = ''
-            for image_file in image_files:
-                image_file_path = os.path.join(f'{settings.MEDIA_ROOT}\\image\\{media_uuid}\\{image_file.name}')
-                image_url = os.path.join(f'\\media_material\\image\\{media_uuid}\\{image_file.name}')
-                print('image_path: ', image_file_path)
-                print('image_url: ', image_url)
-                image_urls = image_urls + image_url + ','
-                os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
-                with open(image_file_path, 'wb+') as destination:
-                    for chunk in image_file.chunks():
-                        destination.write(chunk)
+            if image_files:
+                image_dir = os.path.join(settings.MEDIA_ROOT, 'image', media_uuid)
+                os.makedirs(image_dir, exist_ok=True)
+                for image_file in image_files:
+                    image_file_path = os.path.join(image_dir, image_file.name)
+                    image_url = os.path.join('media_material', 'image', media_uuid, image_file.name).replace('\\', '/')
+                    print('image_path: ', image_file_path)
+                    print('image_url: ', image_url)
+                    image_urls = image_urls + image_url + ','
+                    with open(image_file_path, 'wb+') as destination:
+                        for chunk in image_file.chunks():
+                            destination.write(chunk)
+            
+            # 创建MediaMaterial对象
             new_task_package = models.MediaMaterial.objects.create(
-                title=request.POST.get('title'),
-                theme=request.POST.get('theme'),
-                abstract=request.POST.get('abstract'),
-                keywords=request.POST.get('keywords'),
-                transcript=request.POST.get('transcript'),
+                title=request.POST.get('title', ''),
+                theme=request.POST.get('theme', ''),
+                abstract=request.POST.get('abstract', ''),
+                keywords=request.POST.get('keywords', ''),
+                transcript=request.POST.get('transcript', ''),
                 media_url=media_url,
                 image_url=image_urls,
             )
-        else:
-            new_task_package = models.MediaMaterial.objects.create(
-                title=request.POST.get('title'),
-                theme=request.POST.get('theme'),
-                abstract=request.POST.get('abstract'),
-                keywords=request.POST.get('keywords'),
-                transcript=request.POST.get('transcript'),
-                media_url=media_url,
-            )
-        print('new_task_package', new_task_package)
-        id = new_task_package.id
-        params = {'task_package_id': id}
-        query_string = urlencode(params)
-        url = reverse('question_integration')
-        return HttpResponseRedirect(f"{url}?{query_string}")
+            print('new_task_package', new_task_package)
+            id = new_task_package.id
+            params = {'task_package_id': id}
+            query_string = urlencode(params)
+            url = reverse('question_integration')
+            messages.success(request, '素材包添加成功！')
+            return HttpResponseRedirect(f"{url}?{query_string}")
+        except Exception as e:
+            print(f'Error in teacher_task_package_add: {str(e)}')
+            messages.error(request, f'上传失败：{str(e)}')
+            return render(request, 'teacher_side/task_package_add.html')
     # 表单无数据，为初次跳转网页
     print('first fetch at task_package_add.html')
     # form = UploadMediaForm()
@@ -1787,13 +1909,24 @@ def teacher_matching(request):
 
 def question_integration(request):
     task_package_id = request.GET.get('task_package_id')
-    media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+    if not task_package_id:
+        messages.error(request, '缺少素材包ID')
+        return redirect('teacher_question_bank')
+    
+    try:
+        media_material_instance = MediaMaterial.objects.get(pk=task_package_id)
+    except MediaMaterial.DoesNotExist:
+        messages.error(request, '素材包不存在')
+        return redirect('teacher_question_bank')
+    
     # 获取图片路径根目录
-    first_path = media_material_instance.image_url.split(',')[0]
-    match = re.match(r"(.+\\)[^\\]+$", first_path)
     img_directory = ""
-    if match:
-        img_directory = match.group(1)
+    if media_material_instance.image_url:
+        first_path = media_material_instance.image_url.split(',')[0]
+        # 使用正斜杠或反斜杠匹配
+        match = re.match(r"(.+[/\\])[^/\\]+$", first_path)
+        if match:
+            img_directory = match.group(1)
     '''
     start_time = datetime.time.fromisoformat("00:30:00").isoformat()
     end_time = datetime.time.fromisoformat("14:00:00").isoformat()
@@ -1808,18 +1941,48 @@ def question_integration(request):
     # word文档导入
     if request.method == 'POST' and request.FILES.get('word_file'):
         def extract_text_from_word(doc_file):
-            # 读取Word文档内容
-            doc = Document(doc_file)
-            text = ''
-            for para in doc.paragraphs:
-                text += para.text
-            return text
+            """
+            从Word文档中提取文本内容
+            使用BytesIO来处理Django上传的文件对象
+            """
+            try:
+                # 将文件内容读取到内存
+                file_content = doc_file.read()
+                # 重置文件指针（如果需要）
+                doc_file.seek(0)
+                
+                # 使用BytesIO创建文件对象供python-docx使用
+                docx_file = BytesIO(file_content)
+                doc = Document(docx_file)
+                
+                text = ''
+                for para in doc.paragraphs:
+                    text += para.text + '\n'
+                return text
+            except Exception as e:
+                print(f'Error reading Word document: {str(e)}')
+                error_msg = str(e)
+                if 'Content_Types' in error_msg or 'not a zip file' in error_msg.lower():
+                    raise ValueError('无法读取Word文档。请确保：1) 文件是有效的.docx格式（不是.doc格式）；2) 文件没有损坏。如果您有.doc格式的文件，请在Word中打开并另存为.docx格式。')
+                else:
+                    raise ValueError(f'无法读取Word文档: {error_msg}')
 
         form = WordUploadForm(request.POST, request.FILES)
         if form.is_valid():
             word_file = request.FILES['word_file']
-            # 提取文本内容
-            text_content = extract_text_from_word(word_file)
+            # 验证文件扩展名
+            if not word_file.name.lower().endswith('.docx'):
+                messages.error(request, '请上传有效的Word文档（仅支持.docx格式）。如果您有.doc格式的文件，请在Word中打开并另存为.docx格式。')
+                form = WordUploadForm()
+                return render(request, 'teacher_side/question_integration.html', {'form': form})
+            
+            try:
+                # 提取文本内容
+                text_content = extract_text_from_word(word_file)
+            except Exception as e:
+                messages.error(request, f'读取Word文档失败: {str(e)}')
+                form = WordUploadForm()
+                return render(request, 'teacher_side/question_integration.html', {'form': form})
             # question_data = []
             # questions = doc_func.extract_questions(text_content)
             # for question in questions:
@@ -2854,11 +3017,25 @@ def teacher_exam_edit(request, unit_id, validation):
 def teacher_exam_resave(request, unit_id):
     if request.method == 'POST':
         preview_datas_json = request.POST.get('preview_datas')
-        preview_datas = json.loads(preview_datas_json)
-        print('data: ', request.POST)
-
         preview_page_infos_json = request.POST.get('preview_page_infos')
-        preview_page_infos = json.loads(preview_page_infos_json)
+        
+        # 验证JSON数据是否存在且有效
+        if not preview_datas_json or not preview_page_infos_json:
+            messages.error(request, '缺少必要的组卷数据，请重新选择题目。')
+            return redirect('teacher_exam_detail', unit_id=unit_id)
+        
+        try:
+            preview_datas = json.loads(preview_datas_json)
+            preview_page_infos = json.loads(preview_page_infos_json)
+        except json.JSONDecodeError as e:
+            print(f'JSON解析错误: {str(e)}')
+            print(f'preview_datas_json: {preview_datas_json}')
+            print(f'preview_page_infos_json: {preview_page_infos_json}')
+            messages.error(request, f'组卷数据格式错误，请重新选择题目。错误信息: {str(e)}')
+            return redirect('teacher_exam_detail', unit_id=unit_id)
+        
+        print('data: ', request.POST)
+        print('preview_datas: ', preview_datas)
         print('preview_page_infos: ', preview_page_infos)
 
         unit_instance = Unit.objects.get(id=unit_id)
@@ -2949,19 +3126,50 @@ def teacher_exam_management(request):
     form = WordUploadForm()
     if request.method == 'POST' and request.FILES.get('word_file'):
         def extract_text_from_word(doc_file):
-            # 读取Word文档内容
-            doc = Document(doc_file)
-            text = ''
-            for para in doc.paragraphs:
-                text += para.text
-            return text
+            """
+            从Word文档中提取文本内容
+            使用BytesIO来处理Django上传的文件对象
+            """
+            try:
+                # 将文件内容读取到内存
+                file_content = doc_file.read()
+                # 重置文件指针（如果需要）
+                doc_file.seek(0)
+                
+                # 使用BytesIO创建文件对象供python-docx使用
+                docx_file = BytesIO(file_content)
+                doc = Document(docx_file)
+                
+                text = ''
+                for para in doc.paragraphs:
+                    text += para.text + '\n'
+                return text
+            except Exception as e:
+                print(f'Error reading Word document: {str(e)}')
+                error_msg = str(e)
+                if 'Content_Types' in error_msg or 'not a zip file' in error_msg.lower():
+                    raise ValueError('无法读取Word文档。请确保：1) 文件是有效的.docx格式（不是.doc格式）；2) 文件没有损坏。如果您有.doc格式的文件，请在Word中打开并另存为.docx格式。')
+                else:
+                    raise ValueError(f'无法读取Word文档: {error_msg}')
 
         form = WordUploadForm(request.POST, request.FILES)
         if form.is_valid():
             word_file = request.FILES['word_file']
-            # 提取文本内容
-            text_content = extract_text_from_word(word_file)
-            doc_page_func.main_process(text_content)
+            # 验证文件扩展名
+            if not word_file.name.lower().endswith('.docx'):
+                messages.error(request, '请上传有效的Word文档（仅支持.docx格式）。如果您有.doc格式的文件，请在Word中打开并另存为.docx格式。')
+                form = WordUploadForm()
+                return render(request, 'teacher_side/exam_management.html', {'form': form})
+            
+            try:
+                # 提取文本内容
+                text_content = extract_text_from_word(word_file)
+                doc_page_func.main_process(text_content)
+                messages.success(request, 'Word文档处理成功！')
+            except Exception as e:
+                messages.error(request, f'读取Word文档失败: {str(e)}')
+                form = WordUploadForm()
+                return render(request, 'teacher_side/exam_management.html', {'form': form})
 
     return render(request, 'teacher_side/exam_management.html', {'form': form})
 
