@@ -12,7 +12,8 @@ from datetime import datetime
 
 from AI_module.Get_from_AI import Get_from_AI
 from .models import StudentMediaPlayRecord,StudentPageRecord,StudentExamRecord,StudentAnswer
-from Account.models import Students
+from Account.services.user_service_impl import UserServiceImpl
+from ELW.services.content_service_impl import ContentServiceImpl
 from ELW.models import (TimeManagement,
                         Unit,
                         PaperPage,
@@ -21,6 +22,10 @@ from ELW.models import (TimeManagement,
                         MainQuestion,
                         PageMainQuestion,
                         PageSubQuestion, Correction, )
+# Note: PageMainQuestion, PageSubQuestion, TimeManagement, Correction are not in ContentService interface, keep direct import for now
+# Note: Unit, PaperPage, MainQuestion, SubQuestion, MediaMaterial are used for:
+# 1. QuerySet operations (filter, none, all) - needed for compatibility
+# 2. Reverse relationship queries (paper_pages, sub_questions, etc.) - not in ContentService
 
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib import messages
@@ -29,6 +34,7 @@ from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.http import HttpResponseBadRequest
+from Account.services.auth_service_impl import AuthServiceImpl
 from django.db import models
 from django.db.models import Sum
 from django.utils.cache import patch_response_headers
@@ -38,37 +44,40 @@ def confirm_info(request):
     if request.method == 'POST':
         # 获取学生信息
         username = request.session.get('username')
-        try:
-            student = Students.objects.get(username=username)
-            request.session['info_confirmed'] = True
-            # 确认信息无误后跳转到考试列表页面
-            return redirect('accessment:exam_list')
-        except Students.DoesNotExist:
+        student = UserServiceImpl.get_student_by_username(username)
+        if not student:
             messages.error(request, 'Student information not found.')
             return redirect('login:login_view')
+        request.session['info_confirmed'] = True
+        # 确认信息无误后跳转到考试列表页面
+        return redirect('accessment:exam_list')
     else:
         # GET 请求，显示个人信息确认页面
         username = request.session.get('username')
-        try:
-            student = Students.objects.get(username=username)
-            class_instance = student.class_instance
-            course = class_instance.course
-            teacher = class_instance.teacher
-            context = {
-                'student': student,
-                'class_instance': class_instance,
-                'course': course,
-                'teacher': teacher
-            }
-            return render(request, 'exam/info_confirm.html', context)
-        except Students.DoesNotExist:
+        student = UserServiceImpl.get_student_by_username(username)
+        if not student:
             messages.error(request, 'Student information not found.')
             return redirect('login')
+        class_instance = student.class_instance
+        course = class_instance.course
+        teacher = class_instance.teacher
+        context = {
+            'student': student,
+            'class_instance': class_instance,
+            'course': course,
+            'teacher': teacher
+        }
+        return render(request, 'exam/info_confirm.html', context)
 
+from Account.services.auth_service_impl import AuthServiceImpl
+
+@AuthServiceImpl.require_login
 def exam_list(request):
-    if not request.session.get('is_login', False):
-        return redirect('login')
-
+    """
+    考试列表页面
+    
+    使用 @require_login 装饰器确保用户已登录。
+    """
     if not request.session.get('info_confirmed'):
         return redirect('accessment:confirm_info')
 
@@ -76,13 +85,14 @@ def exam_list(request):
     if not current_username:
         return redirect('login')
 
-    try:
-        student = Students.objects.get(username=current_username)
-    except Students.DoesNotExist:
+    student = UserServiceImpl.get_student_by_username(current_username)
+    if not student:
         return HttpResponse("学生信息不存在，请联系管理员。", status=404)
 
     class_instance = student.class_instance
-    exam_units = Unit.objects.filter(type='exam', class_instance=class_instance)
+    # Use ContentService to get units by class, then filter for exam type
+    all_units = ContentServiceImpl.get_units_by_class(class_instance.id)
+    exam_units = [u for u in all_units if u.type == 'exam']
 
     exams = []
     current_datetime = datetime.now()
@@ -124,8 +134,11 @@ def exam_list(request):
     return render(request, 'exam/exam_list.html', {'exams': exams})
 
 def start_exam(request, exam_id):
-
-    exam = get_object_or_404(Unit, id=exam_id, type='exam')
+    # Use ContentService to get unit by ID
+    exam = ContentServiceImpl.get_unit_by_id(int(exam_id))
+    if not exam or exam.type != 'exam':
+        from django.http import Http404
+        raise Http404("Exam not found")
     time_management = get_object_or_404(TimeManagement, unit=exam)
 
     now = timezone.now()
@@ -148,7 +161,10 @@ def start_exam(request, exam_id):
     if not username:
         return JsonResponse({'status': 'error', 'message': 'You are not logged in.'}, status=403)
 
-    student = get_object_or_404(Students, username=username)
+    # Use UserService to get student by username
+    student = UserServiceImpl.get_student_by_username(username)
+    if not student:
+        return JsonResponse({'status': 'error', 'message': 'Student not found.'}, status=404)
 
     # 创建或获取学生的考试记录
     record, created = StudentExamRecord.objects.get_or_create(user=student, exam=exam)
@@ -210,15 +226,33 @@ def load_answers(student_page_record):
         return answers_dict
 
 def exam_page(request, exam_id, order):
-    exam = get_object_or_404(Unit, id=exam_id, type='exam')
+    # Use ContentService to get unit and page
+    exam = ContentServiceImpl.get_unit_by_id(int(exam_id))
+    if not exam or exam.type != 'exam':
+        from django.http import Http404
+        raise Http404("Exam not found")
     time_management = get_object_or_404(TimeManagement, unit=exam)
-    page = get_object_or_404(PaperPage, unit=exam, order=order)
+    
+    # Get pages for this unit and find the one with matching order
+    pages = ContentServiceImpl.get_pages_by_unit(exam.id)
+    page = None
+    for p in pages:
+        if p.order == order:
+            page = p
+            break
+    if not page:
+        from django.http import Http404
+        raise Http404("Page not found")
     username = request.session.get('username')
     if not username:
         messages.error(request, "You are not logged in.")
         return redirect('login')
 
-    student = get_object_or_404(Students, username=username)
+    # Use UserService to get student by username
+    student = UserServiceImpl.get_student_by_username(username)
+    if not student:
+        messages.error(request, "Student not found.")
+        return redirect('login')
     student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam=exam)
     student_page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
 
@@ -312,7 +346,9 @@ def exam_page(request, exam_id, order):
                                                          main_question__in=main_questions)
     play_records_dict = {record.main_question_id: record.play_count for record in play_records}
 
-    is_last_page = not PaperPage.objects.filter(unit=exam, order=page.order + 1).exists()
+    # Check if this is the last page using ContentService
+    pages = ContentServiceImpl.get_pages_by_unit(exam.id)
+    is_last_page = not any(p.order == page.order + 1 for p in pages)
 
 
     context = {
@@ -368,15 +404,32 @@ def update_remaining_time(request, page_record_id):
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
 def next_page(request, exam_id, order):
-    exam = get_object_or_404(Unit, id=exam_id, type='exam')
-    current_page = get_object_or_404(PaperPage, unit=exam, order=order)
+    # Use ContentService to get unit and page
+    exam = ContentServiceImpl.get_unit_by_id(int(exam_id))
+    if not exam or exam.type != 'exam':
+        from django.http import Http404
+        raise Http404("Exam not found")
+    
+    # Get pages for this unit and find the one with matching order
+    pages = ContentServiceImpl.get_pages_by_unit(exam.id)
+    current_page = None
+    for p in pages:
+        if p.order == order:
+            current_page = p
+            break
+    if not current_page:
+        from django.http import Http404
+        raise Http404("Page not found")
     next_page = exam.paper_pages.filter(order=current_page.order + 1).first()
     username = request.session.get('username')
     if not username:
         messages.error(request, "You are not logged in.")
         return redirect('login')
 
-    student = get_object_or_404(Students, username=username)
+    # Use UserService to get student by username
+    student = UserServiceImpl.get_student_by_username(username)
+    if not student:
+        return JsonResponse({'status': 'error', 'message': 'Student not found.'}, status=404)
 
     page_main_questions = PageMainQuestion.objects.filter(page=current_page)
     main_questions = [pmq.main_question for pmq in page_main_questions]
@@ -618,7 +671,10 @@ def _save_answers_to_database(page_record_id):
 
     for sub_question_id, answer_text in cached_answers.items():
         sub_question_id = int(sub_question_id)
-        sub_question = SubQuestion.objects.get(id=sub_question_id)
+        # Use ContentService to get sub question by ID
+        sub_question = ContentServiceImpl.get_sub_question_by_id(sub_question_id)
+        if not sub_question:
+            return JsonResponse({'message': '小题不存在', 'status': 'error'}, status=404)
 
         if sub_question.main_question.question_type == 'correction':
             if answer_text == 'none':
@@ -657,10 +713,27 @@ def _save_answers_to_database(page_record_id):
 @csrf_exempt
 def save_page(request, exam_id, order):
     if request.method == 'POST':
-        exam = get_object_or_404(Unit, id=exam_id, type='exam')
-        current_page = get_object_or_404(PaperPage, unit=exam, order=order)
+        # Use ContentService to get unit and page
+        exam = ContentServiceImpl.get_unit_by_id(int(exam_id))
+        if not exam or exam.type != 'exam':
+            from django.http import Http404
+            raise Http404("Exam not found")
+        
+        # Get pages for this unit and find the one with matching order
+        pages = ContentServiceImpl.get_pages_by_unit(exam.id)
+        current_page = None
+        for p in pages:
+            if p.order == order:
+                current_page = p
+                break
+        if not current_page:
+            from django.http import Http404
+            raise Http404("Page not found")
         username = request.session.get('username')
-        student = get_object_or_404(Students, username=username)
+        # Use UserService to get student by username
+        student = UserServiceImpl.get_student_by_username(username)
+        if not student:
+            return JsonResponse({'message': '学生信息不存在', 'status': 'error'}, status=404)
         student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam=exam)
         page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=current_page)
 
@@ -851,8 +924,13 @@ def update_play_count(request):
 
         # 获取学生考试记录
         student_exam_record = StudentExamRecord.objects.get(id=student_exam_record_id)
-        main_question = MainQuestion.objects.get(id=main_question_id)
-        media_material = MediaMaterial.objects.get(id=media_material_id)
+        # Use ContentService to get main question and media material by ID
+        main_question = ContentServiceImpl.get_main_question_by_id(int(main_question_id))
+        if not main_question:
+            return JsonResponse({"success": False, "message": "Main question not found."}, status=404)
+        media_material = ContentServiceImpl.get_media_material_by_id(int(media_material_id))
+        if not media_material:
+            return JsonResponse({"success": False, "message": "Media material not found."}, status=404)
 
         # 获取或创建播放记录
         play_record, created = StudentMediaPlayRecord.objects.get_or_create(
@@ -880,7 +958,10 @@ def exam_result(request,exam_id):
     username = request.session.get('username')
     if not username:
         return redirect('login')  # 如果没有登录，重定向到登录页面
-    student = get_object_or_404(Students, username=username)
+    # Use UserService to get student by username
+    student = UserServiceImpl.get_student_by_username(username)
+    if not student:
+        return JsonResponse({'status': 'error', 'message': 'Student not found.'}, status=404)
 
     student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam_id=exam_id,)
     exam = student_exam_record.exam

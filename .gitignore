@@ -51,3 +51,9 @@ desktop.ini
 .env
 .env.local
 
+# 文档文件
+*.md
+docs/
+*.docx
+*.doc
+

@@ -16,6 +16,14 @@ import ELW.apps
 import pymysql
 pymysql.install_as_MySQLdb()
 
+# 尝试导入 decouple，如果没有安装则使用 os.environ
+try:
+    from decouple import config
+except ImportError:
+    # 如果没有安装 decouple，使用 os.environ 作为后备
+    def config(key, default=None):
+        return os.environ.get(key, default)
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,10 +37,10 @@ mimetypes.add_type('application/javascript', '.js', strict=True)
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-k1ofy%53p55+ghbswfn(6c6jjcihx_7#q4e#d7gt&$5)cn$cau'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-k1ofy%53p55+ghbswfn(6c6jjcihx_7#q4e#d7gt&$5)cn$cau')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default='True') == 'True'
 
 ALLOWED_HOSTS = []
 
@@ -54,6 +62,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'django_filters',
+    # Common services module (must be before other apps that use it)
+    'common.apps.CommonConfig',
     # 注册app'ELW'
     'ELW.apps.ElwConfig',
     "forum",
@@ -127,11 +137,11 @@ WSGI_APPLICATION = 'English_Listening_Website.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'day0425',
-        'USER': 'root',
-        'PASSWORD': '123456',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': config('DB_NAME', default='day0425'),
+        'USER': config('DB_USER', default='root'),
+        'PASSWORD': config('DB_PASSWORD', default='123456'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='3306'),
     }
 }
 

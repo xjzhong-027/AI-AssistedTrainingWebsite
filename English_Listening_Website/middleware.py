@@ -1,7 +1,7 @@
 from django.contrib.auth import logout
 from django.conf import settings
 from django.utils.timezone import now
-from ELW import models
+from Account.models import LoginInfo
 import datetime
 from django.shortcuts import redirect
 
@@ -17,11 +17,11 @@ class SessionTimeoutMiddleware:
             if (last_active_time and
                     (datetime.datetime.now() - datetime.datetime.fromisoformat(last_active_time)).total_seconds() > 60 * 30):
                 # 记录强制登出日志
-                models.LoginInfo.objects.create(
+                LoginInfo.objects.create(
                     username=request.session.get('username'),
                     action='forced_logout',
                     action_time=datetime.datetime.now(),
-                    last_active_time=request.session.get('last_active_time'),  # 待修改
+                    last_active_time=request.session.get('last_active_time', ''),
                     device_info=request.META.get('HTTP_USER_AGENT', ''),
                 )
                 # 强制登出

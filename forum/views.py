@@ -7,17 +7,24 @@ from django.http import HttpResponseRedirect
 from django.utils import timezone
 
 from accessment.models import StudentPageRecord
-from .models import Post, Comment,Anonymous
-from .forms import PostForm,CommentForm
-from Account.models import Students, Teachers
-from ELW.models import SubQuestion, MainQuestion, Unit, PaperPage, PageMainQuestion
+from .models import Post, Comment, Anonymous
+from .forms import PostForm, CommentForm
+from Account.services.auth_service_impl import AuthServiceImpl
+from Account.services.user_service_impl import UserServiceImpl
+from ELW.services.content_service_impl import ContentServiceImpl
+from forum.services.communication_service_impl import CommunicationServiceImpl as ForumCommunicationServiceImpl
+from announce.services.communication_service_impl import CommunicationServiceImpl as AnnounceCommunicationServiceImpl
+from announce.services.notification_service_impl import NotificationServiceImpl
+# Note: PageMainQuestion is not in ContentService interface, keep direct import for now
+# Note: Unit, PaperPage, MainQuestion, SubQuestion are used for:
+# 1. QuerySet operations (filter, none, all) - needed for compatibility
+# 2. Reverse relationship queries (selected_main_questions, selected_sub_questions) - not in ContentService
+from ELW.models import PageMainQuestion, Unit, PaperPage, MainQuestion, SubQuestion
 import random
 import string
 from .filters import PostFilter
 from announce.consumers import NotificationConsumer
 from announce.models import Message
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_GET
@@ -118,9 +125,8 @@ def forum(request):
     if role == 'teacher':
         posts = Post.objects.all()  # 教师可以看到所有帖子
     else:
-        try:
-            student = Students.objects.get(username=username)
-        except Students.DoesNotExist:
+        student = UserServiceImpl.get_student_by_username(username)
+        if not student:
             return redirect('login')
 
         # 学生只能看到公开的帖子
@@ -212,9 +218,15 @@ def forum(request):
         'form': form,
     })
 
+from Account.services.auth_service_impl import AuthServiceImpl
+
+@AuthServiceImpl.require_login
 def post_new(request):
-    if not request.session.get('is_login', False):
-        return redirect('login')
+    """
+    创建新帖子
+    
+    使用 @require_login 装饰器确保用户已登录。
+    """
 
     main_question_id = request.GET.get('main_question_id', None)
     sub_question_id = request.GET.get('sub_question_id', None)
@@ -229,41 +241,20 @@ def post_new(request):
             username = request.session.get('username')
             role = request.session.get('role', 'none')
 
-            if role == 'teacher':
-                user = Teachers.objects.get(username=username)
-                post = form.save(commit=False)
-                post.teacher = user
-                post.author = user.username
-                post.name = user.name
-            elif role == 'student':
-                user = Students.objects.get(username=username)
-                post = form.save(commit=False)
-                post.student = user
-                post.author = user.username
-                post.name = user.name
-            else:
-                messages.error(request, 'Invalid role')
+            # Use CommunicationService to create post
+            try:
+                post = ForumCommunicationServiceImpl.create_post(
+                    title=form.cleaned_data['title'],
+                    content=form.cleaned_data['content'],
+                    author_username=username,
+                    author_role=role,
+                    main_question_id=int(main_question_id) if main_question_id else None,
+                    sub_question_id=int(sub_question_id) if sub_question_id else None,
+                    is_anonymous=form.cleaned_data.get('is_anonymous', False)
+                )
+            except ValueError as e:
+                messages.error(request, str(e))
                 return redirect('forum:forum')
-
-            post.created_at = timezone.now()
-            if main_question_id:
-                post.is_question = True
-                post.main_question_id = main_question_id
-            post.save()
-            if sub_question_id:
-                post.is_question= True
-                post.sub_question_id = sub_question_id
-                post.main_question_id = main_question_id
-            post.save()
-
-            if form.cleaned_data['is_anonymous']:
-                anonymous_name = random_generate()
-                while Anonymous.objects.filter(anonymous_name=anonymous_name, post=post).exists():
-                    anonymous_name = random_generate()
-                Anonymous.objects.create(user=user, post=post, anonymous_name=anonymous_name)
-                post.anonymous_name = anonymous_name
-                post.name = anonymous_name
-                post.save()
 
             if return_url and url_has_allowed_host_and_scheme(return_url, allowed_hosts=None):
                 return HttpResponseRedirect(return_url)
@@ -482,9 +473,8 @@ def question_post(request):
     selected_page_id = request.GET.get('page', None)
 
     if role == 'student':
-        try:
-            student = Students.objects.get(username=username)
-        except Students.DoesNotExist:
+        student = UserServiceImpl.get_student_by_username(username)
+        if not student:
             return render(request, 'forum/question_post.html', {
                 'posts': Post.objects.none(),
                 'units': Unit.objects.none(),
@@ -515,8 +505,20 @@ def question_post(request):
         )
 
         class_instance = student.class_instance
-        units = Unit.objects.filter(class_instance=class_instance).exclude(type='exam')
-        pages = PaperPage.objects.filter(unit__in=units)
+        # Use ContentService to get units by class
+        all_units = ContentServiceImpl.get_units_by_class(class_instance.id)
+        units_list = [unit for unit in all_units if unit.type != 'exam']
+        # Convert units list to QuerySet for consistency
+        unit_ids = [unit.id for unit in units_list]
+        units = Unit.objects.filter(id__in=unit_ids)
+        # Use ContentService to get pages by unit
+        all_pages = []
+        for unit in units_list:
+            pages_for_unit = ContentServiceImpl.get_pages_by_unit(unit.id)
+            all_pages.extend(pages_for_unit)
+        # Convert pages list to QuerySet for consistency
+        page_ids = [page.id for page in all_pages]
+        pages = PaperPage.objects.filter(id__in=page_ids)
     elif role == 'teacher':
         posts = Post.objects.filter(is_question=True)
         units = Unit.objects.all()
@@ -527,10 +529,8 @@ def question_post(request):
         pages = PaperPage.objects.none()
 
     if selected_unit_id:
-        try:
-            unit = Unit.objects.get(id=selected_unit_id)
-        except Unit.DoesNotExist:
-            unit = None
+        # Use ContentService to get unit by ID
+        unit = ContentServiceImpl.get_unit_by_id(int(selected_unit_id))
         if unit:
             pages = pages.filter(unit=unit)
             page_main_questions = PageMainQuestion.objects.filter(page__in=pages)
@@ -543,10 +543,8 @@ def question_post(request):
             )
 
     if selected_page_id:
-        try:
-            page = PaperPage.objects.get(id=selected_page_id)
-        except PaperPage.DoesNotExist:
-            page = None
+        # Use ContentService to get page by ID
+        page = ContentServiceImpl.get_paper_page_by_id(int(selected_page_id))
         if page:
             page_main_questions = PageMainQuestion.objects.filter(page=page)
             main_questions = MainQuestion.objects.filter(selected_main_questions__in=page_main_questions)
@@ -581,10 +579,11 @@ def get_posts_by_question(request):
         print('main_question_id is missing')
         return JsonResponse([], safe=False)
 
-    try:
-        main_question = get_object_or_404(MainQuestion, id=main_question_id)
-        posts = Post.objects.filter(main_question=main_question,is_public=True)
-
+    # Use ContentService to get main question by ID
+    main_question = ContentServiceImpl.get_main_question_by_id(int(main_question_id))
+    if main_question:
+        posts = Post.objects.filter(main_question=main_question, is_public=True)
+        
         data = []
         for post in posts:
             data.append({
@@ -595,7 +594,7 @@ def get_posts_by_question(request):
                 'created_at': post.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             })
         return JsonResponse(data, safe=False)
-    except Exception as e:
+    else:
         return JsonResponse([], safe=False)
 
 def my_post(request):
@@ -607,10 +606,16 @@ def my_post(request):
         return redirect('login')
 
     if role == 'teacher':
-        user = Teachers.objects.get(username=username)
+        user = UserServiceImpl.get_teacher_by_username(username)
+        if not user:
+            messages.error(request, 'Teacher not found')
+            return redirect('forum:forum')
         posts = Post.objects.filter(teacher=user)
     elif role == 'student':
-        user = Students.objects.get(username=username)
+        user = UserServiceImpl.get_student_by_username(username)
+        if not user:
+            messages.error(request, 'Student not found')
+            return redirect('forum:forum')
         posts = Post.objects.filter(student=user)
     else:
         messages.error(request, 'Invalid role')
@@ -822,24 +827,29 @@ def add_comment(request, post_id, parent_comment_id=None):
             username = request.session.get('username')
             role = request.session.get('role', 'none')
 
+            # Get user for anonymous handling
             if role == 'teacher':
-                user = Teachers.objects.get(username=username)
-                comment = form.save(commit=False)
-                comment.teacher = user
+                user = UserServiceImpl.get_teacher_by_username(username)
+                if not user:
+                    return JsonResponse({'success': False, 'message': 'Teacher not found'})
             elif role == 'student':
-                user = Students.objects.get(username=username)
-                comment = form.save(commit=False)
-                comment.student = user
+                user = UserServiceImpl.get_student_by_username(username)
+                if not user:
+                    return JsonResponse({'success': False, 'message': 'Student not found'})
             else:
                 return JsonResponse({'success': False, 'message': 'Invalid role'})
 
-            comment = form.save(commit=False)
-            comment.author = user.username
-            comment.post = post
-            if parent_comment_id:
-                comment.parent_comment = get_object_or_404(Comment, pk=parent_comment_id)
-
+            # Handle anonymous comments (not supported by CommunicationService interface yet)
             if form.cleaned_data['is_anonymous']:
+                comment = form.save(commit=False)
+                comment.post = post
+                if role == 'teacher':
+                    comment.teacher = user
+                elif role == 'student':
+                    comment.student = user
+                if parent_comment_id:
+                    comment.parent_comment = get_object_or_404(Comment, pk=parent_comment_id)
+                
                 if Anonymous.objects.filter(user=user, post=post).exists():
                     anonymous_instance = Anonymous.objects.get(user=user, post=post)
                     comment.anonymous_name = anonymous_instance.anonymous_name
@@ -851,44 +861,50 @@ def add_comment(request, post_id, parent_comment_id=None):
                     Anonymous.objects.create(user=user, post=post, anonymous_name=anonymous_name)
                     comment.anonymous_name = anonymous_name
                     comment.name = anonymous_name
+                comment.save()
             else:
-                comment.author = user.username
-                comment.name = user.name
-
-            comment.save()
+                # Use CommunicationService for non-anonymous comments
+                try:
+                    comment = ForumCommunicationServiceImpl.create_comment(
+                        post_id=post.id,
+                        content=form.cleaned_data['content'],
+                        author_username=username,
+                        author_role=role,
+                        parent_comment_id=int(parent_comment_id) if parent_comment_id else None
+                    )
+                except ValueError as e:
+                    return JsonResponse({'success': False, 'message': str(e)})
 
             # 发送消息通知
             if not form.cleaned_data['is_anonymous']:
                 if comment.post.author != comment.author:
-                    Message.objects.create(
-                        sender=user.username,
-                        receiver=comment.post.author,
+                    # Use CommunicationService to send message
+                    AnnounceCommunicationServiceImpl.send_message(
+                        sender_username=user.username,
+                        receiver_username=comment.post.author,
                         content=f"New comment on your post '{comment.post.title}'",
-                        post=post
+                        message_type='private'
                     )
-                    async_to_sync(get_channel_layer().group_send)(
-                        f'user_{comment.post.author}',
-                        {
-                            'type': 'notification_message',
-                            'message': f"You have a new reply on your post '{comment.post.title}'",
-                            'post_id': post.id
-                        }
+                    # Use NotificationService to send forum reply notification
+                    NotificationServiceImpl.send_forum_reply_notification(
+                        post_id=post.id,
+                        comment_id=comment.id,
+                        receiver_username=comment.post.author
                     )
 
                 if comment.parent_comment and comment.parent_comment.author != comment.author:
-                    Message.objects.create(
-                        sender=user.username,
-                        receiver=comment.parent_comment.author,
+                    # Use CommunicationService to send message
+                    AnnounceCommunicationServiceImpl.send_message(
+                        sender_username=user.username,
+                        receiver_username=comment.parent_comment.author,
                         content=f"New reply to your comment on post '{post.title}'",
-                        post=post
+                        message_type='private'
                     )
-                    async_to_sync(get_channel_layer().group_send)(
-                        f'user_{comment.parent_comment.author}',
-                        {
-                            'type': 'notification_message',
-                            'message': f"You have a new reply to your comment on post '{post.title}'",
-                            'post_id': post.id
-                        }
+                    # Use NotificationService to send forum reply notification
+                    NotificationServiceImpl.send_forum_reply_notification(
+                        post_id=post.id,
+                        comment_id=comment.id,
+                        receiver_username=comment.parent_comment.author
                     )
 
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':

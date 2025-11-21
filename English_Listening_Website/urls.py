@@ -20,6 +20,8 @@ from django.urls import path, include
 
 #导入ELW视图
 from ELW import views, urls
+#导入Account视图（用于登录相关功能）
+from Account import views as account_views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
@@ -34,9 +36,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
 
-    path(route='login/', view=views.user_login, name='login'),
-    path(route='logout/', view=views.log_out, name='logout'),
-    path('update_last_activity/', view=views.update_last_activity, name='update_last_activity'),
+    path(route='login/', view=account_views.user_login, name='login'),
+    path(route='logout/', view=account_views.log_out, name='logout'),
+    path('update_last_activity/', view=account_views.update_last_activity, name='update_last_activity'),
     # path('submit_question/', view=views.submit_question, name='submit_question'),
     # 分发路由
     path('teacher/', include('ELW.urls')),

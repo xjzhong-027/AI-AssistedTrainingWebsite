@@ -59,15 +59,7 @@ from Query.models import OverdueDeductionRule
 #     password = models.CharField(max_length=100)
 '''
 
-
-# 用户登录记录（ID，学号，周次，行为，时间，最后活动时间，登录设备信息）
-class LoginInfo(models.Model):
-    username = models.CharField(max_length=20)
-    week = models.IntegerField(default=0)
-    action = models.CharField(max_length=20)
-    action_time = models.DateTimeField()
-    last_active_time = models.CharField(max_length=50)
-    device_info = models.CharField(max_length=500)
+# 注意：LoginInfo 模型已迁移到 Account.models.LoginInfo
 
 # 动态生成文件名并设置上传路径。
 def images_upload_to(instance, filename):

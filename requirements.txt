@@ -1,0 +1,9 @@
+﻿
+openpyxl @ file:///C:/b/abs_764brjadj1/croot/openpyxl_1714158895873/work
+PyMySQL==1.1.1
+python-docx==1.1.2
+requests @ file:///C:/b/abs_9c5n24p1y7/croot/requests_1716902867639/work
+requests-file @ file:///Users/ktietz/demo/mc3/conda-bld/requests-file_1629455781986/work
+requests-toolbelt @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/requests-toolbelt_1699475466775/work
+
+

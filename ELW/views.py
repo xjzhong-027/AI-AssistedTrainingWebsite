@@ -50,7 +50,13 @@ from .forms import (
     MatchingOptionFormset,
     CorrectionFormSet
 )
-from Account.models import Students, Teachers, Class, Attendance, Course
+from Account.services.user_service_impl import UserServiceImpl
+from ELW.services.file_service_impl import FileServiceImpl
+# Note: Attendance and Course are not in UserService interface
+# They are not user information models, but related to attendance and course management
+# We'll keep them as direct imports for now
+from Account.models import Attendance, Course
+from Account.services.auth_service_impl import AuthServiceImpl
 from Query.models import OverdueDeductionRule
 
 # Create your views here.
@@ -83,58 +89,10 @@ def attachment(request):
     return render(request, 'index.html')
 
 
-# 登录板块
-# 更新用户活跃时间
-@csrf_exempt
-def update_last_activity(request):
-    if request.method == 'POST':
-        # 获取请求中的时间
-        # import json
-        # data = json.loads(request.body)
-        # last_active_time = data.get('last_active_time')
-        print('last_active_time updated.')
-        if request.session.get('is_login', False):
-            # 更新数据库中的最后活跃时间
-            request.session['last_active_time'] = datetime.datetime.now().isoformat()
-            # print('last_active_time', request.session['last_active_time'])
-        return JsonResponse({"status": "success"})
-    # 接受心跳机制数据
-    if request.method == 'GET':
-        # 如果用户已登录
-        # print('expired.')
-        # return redirect('logout')
-        if request.session.get('is_login', False):
-            this_datetime = datetime.datetime.now()
-            if request.session.get('last_active_time', None):
-                last_active_time = datetime.datetime.fromisoformat(request.session.get('last_active_time'))
-                print(f'interval: {(this_datetime - last_active_time).total_seconds()}')
-                if (this_datetime-last_active_time).total_seconds() > 60 * 10: #10分钟
-                    # 心跳机制验证失败1，学生异常挂机
-                    username = request.session.get('username')
-                    student_instance = Students.objects.get(username=username)
-                    class_instance = Class.objects.get(id=student_instance.class_instance_id)
-                    start_date = datetime.date.fromisoformat(class_instance.start_date)
-                    this_date = datetime.date.today()
-                    start_datetime = datetime.datetime.combine(this_date, datetime.time.fromisoformat(class_instance.start_time))
-                    end_datetime = datetime.datetime.combine(this_date, datetime.time.fromisoformat(class_instance.end_time))
-                    this_datetime = datetime.datetime.now()
-                    # 判断是否为上课时间
-                    if ((this_date-start_date).days % 7 == 0) and ((this_datetime-start_datetime).total_seconds()>0) and ((end_datetime-this_datetime).total_seconds()>0):
-                        week = (this_date-start_date).days // 7
-                        attendance_instance = Attendance.objects.get(week=week, student_id=student_instance.id)
-                        # 学生活跃异常，更新考勤状态为异常挂机
-                        attendance_instance.status = 'abnormal'
-                        attendance_instance.save()
-                    print(f' 心跳机制验证失败1,超时登出')
-                    return redirect('logout')
-                else:
-                    # 心跳机制验证成功，学生正常活动
-                    print(f' 心跳机制验证成功，正常活动')
-            else:
-                # 心跳机制验证失败2，学生异常挂机
-                print(f'心跳机制验证失败2,超时登出')
-                return redirect('logout')
-    return JsonResponse({"status": "error"}, status=400)
+# 注意：登录相关视图已迁移到 Account.views
+# - user_login -> Account.views.user_login
+# - log_out -> Account.views.log_out
+# - update_last_activity -> Account.views.update_last_activity
 
 # 处理用户题库输入数据
 '''
@@ -146,149 +104,29 @@ def submit_question(request):
     return redirect('teacher_question_bank')
 '''
 
-
-
-# 登录板块
-def user_login(request):
-    if request.method == 'GET':
-        return render(request, 'login.html')
-    if request.method == 'POST':
-        role = request.POST['role']
-        username = request.POST['username']
-        password = request.POST['password']
-        request.session['last_active_time'] = datetime.datetime.now().isoformat()
-        # 验证学生登录
-        if role == 'student':
-            # if models.Students.objects.filter(username=username).exists():
-            if Students.objects.filter(username=username).exists():
-                # 写入session
-                request.session['role'] = 'student'
-                request.session['username'] = username
-                request.session['is_login'] = True
-                print(f'{username}: Login.')
-
-                # 存储学生登录信息
-                time = datetime.datetime.now()
-                user_agent = request.META.get('HTTP_USER_AGENT', '')# 获取用户的 User-Agent 信息，包括浏览器类型和引擎、操作系统信息、设备类型等信息
-                models.LoginInfo.objects.create(
-                    username=username,
-                    action='login',
-                    action_time=time,
-                    last_active_time='',
-                    device_info=user_agent,
-                )
-                '''
-                start_date = datetime.date.fromisoformat('2024-12-22')
-                today = datetime.date.today()
-                between_days = (today - start_date).days
-                start_time = datetime.time.fromisoformat('00:30:00')
-                this_time = datetime.datetime.combine(today, start_time)
-                now = datetime.datetime.now()
-                between = (now - this_time).total_seconds()
-                '''
-                # 修改学生考勤状况
-                student_instance = Students.objects.get(username=username)
-                student_user = student_instance.user
-                if student_user is not None:
-                    login(request, student_user)
-
-                class_instance = Class.objects.get(id=student_instance.class_instance_id)
-                start_date = datetime.date.fromisoformat(class_instance.start_date)
-                this_date = datetime.date.today()
-                if ((this_date - start_date).days) % 7 == 0:
-
-                    week = (this_date - start_date).days // 7
-                    start_time = datetime.time.fromisoformat(class_instance.start_time)
-                    end_time = datetime.time.fromisoformat(class_instance.end_time)
-                    start_datetime = datetime.datetime.combine(this_date, start_time)
-                    end_datetime = datetime.datetime.combine(this_date, end_time)
-                    this_datetime = datetime.datetime.now()
-                    interval = (this_datetime-start_datetime).total_seconds()
-                    print(week)
-                    status = Attendance.objects.get(week=week, student_id=student_instance.id).status
-                    # 对在考勤时间范围内且尚未登记考勤状态的学生进行考勤
-                    if (interval >= -900) and (interval <= 900) and status == 'absent':
-                        print('class time.')
-                        student_id = student_instance.id
-                        attendance_instance = Attendance.objects.get(student=student_id, week=week)
-                        attendance_instance.status = 'normal'
-                        attendance_instance.save()
-                        print(f'normal attendance')
-                    elif (interval > 900) and ((end_datetime-this_datetime).total_seconds() > 0) and status == 'absent':
-                        student_id = student_instance.id
-                        attendance_instance = Attendance.objects.get(student=student_id, week=week)
-                        attendance_instance.status = 'late'
-                        attendance_instance.save()
-                        print(f'week{week}-{username}: late attendance')
-
-                # 【待替换学生端页面】
-                return redirect('student_ELW:student_index')
-        # 验证教师登录
-        if role == 'teacher':
-            # if models.Teachers.objects.filter(username=username,password=password).exists():
-            if Teachers.objects.filter(username=username,password=password).exists():
-                request.session['role'] = 'teacher'
-                request.session['username'] = username
-                request.session['is_login'] = True
-                request.session['teacher_name'] = Teachers.objects.get(username=username).name
-                time = datetime.datetime.now()
-                # 获取用户的 User-Agent 信息，包括浏览器类型和引擎、操作系统信息、设备类型等信息
-                user_agent = request.META.get('HTTP_USER_AGENT', '')
-                models.LoginInfo.objects.create(
-                    username=username,
-                    action='login',
-                    action_time=time,
-                    last_active_time='',
-                    device_info=user_agent,
-                )
-                # print(request.session['teacher_name'])
-                teacher_instance = Teachers.objects.get(username=username)
-                teacher_user = teacher_instance.user
-                if teacher_user is not None:
-                    login(request, teacher_user)
-                return redirect('teacher_index')
-        # 验证管理员登录
-        if role == 'admin':
-            if models.Admins.objects.filter(username=username).exists():
-                request.session['role'] = 'admin'
-                request.session['username'] = username
-                request.session['is_login'] = True
-                #【待替换管理员页面】
-                # return HttpResponse('The main page of admin version should be shown here.')
-                return redirect('/admin/')
-        return render(request, 'login.html',
-                      {
-                          'error_message': 'Invalid username or password！',
-                      })
-
-# 登出板块
-def log_out(request):
-    # 获取用户的 IP 地址
-    # ip_address = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
-    # print('ip_address', ip_address)
-    models.LoginInfo.objects.create(
-        username=request.session.get('username'),
-        action='logout',
-        action_time=datetime.datetime.now(),
-        last_active_time=request.session['last_active_time'],   #待修改
-        device_info=request.META.get('HTTP_USER_AGENT', ''),
-    )
-    logout(request)
-    return redirect('login')
-
 # 教师端主页展示
+@AuthServiceImpl.require_login
 def teacher_index(request):
-    if request.session.get('is_login', None):
-        return render(request, 'teacher_side/index.html', {
-            'teacher_name': request.session['teacher_name'],
-        })
-    return redirect('login')
+    """
+    教师端主页展示
+    
+    使用 @require_login 装饰器确保用户已登录。
+    """
+    return render(request, 'teacher_side/index.html', {
+        'teacher_name': request.session['teacher_name'],
+    })
 
 
 
 
 # 周任务
+@AuthServiceImpl.require_login
 def teacher_week_task(request):
+    """
+    周任务页面
+    
+    使用 @require_login 装饰器确保用户已登录。
+    """
     return render(request, 'teacher_side/week_task.html')
 
 def teacher_week_task_package_add(request):
@@ -300,42 +138,19 @@ def teacher_week_task_package_add(request):
                 messages.error(request, '请上传媒体文件（音频/视频）')
                 return render(request, 'teacher_side/week_task_package_add.html')
             
-            # 全球唯一标识符
-            media_uuid = uuid.uuid4().hex
-            # 存储音频/视频
-            media_dir = os.path.join(settings.MEDIA_ROOT, 'media')
-            os.makedirs(media_dir, exist_ok=True)
-            media_file_path = os.path.join(media_dir, media_uuid)
-            # 保存原始文件名扩展名
-            original_filename = media_file.name
-            file_extension = os.path.splitext(original_filename)[1]
-            if file_extension:
-                media_file_path += file_extension
-            
-            media_url = os.path.join('media_material', 'media', os.path.basename(media_file_path)).replace('\\', '/')
+            # Use FileService to upload media file
+            media_file_path, media_url = FileServiceImpl.upload_media_file(media_file, file_type='media')
             print('media_path: ', media_file_path)
             print('media_url: ', media_url)
             
-            # 保存媒体文件
-            with open(media_file_path, 'wb+') as destination:
-                for chunk in media_file.chunks():
-                    destination.write(chunk)
-            
-            # 存储图片
+            # Use FileService to upload image files
             image_files = request.FILES.getlist('image_file')
             image_urls = ''
             if image_files:
-                image_dir = os.path.join(settings.MEDIA_ROOT, 'image', media_uuid)
-                os.makedirs(image_dir, exist_ok=True)
-                for image_file in image_files:
-                    image_file_path = os.path.join(image_dir, image_file.name)
-                    image_url = os.path.join('media_material', 'image', media_uuid, image_file.name).replace('\\', '/')
-                    print('image_path: ', image_file_path)
-                    print('image_url: ', image_url)
-                    image_urls = image_urls + image_url + ','
-                    with open(image_file_path, 'wb+') as destination:
-                        for chunk in image_file.chunks():
-                            destination.write(chunk)
+                image_url_list = FileServiceImpl.upload_image_files(image_files)
+                image_urls = ','.join(image_url_list)
+                if image_urls:
+                    image_urls += ','
             
             # 创建MediaMaterial对象
             new_task_package = models.MediaMaterial.objects.create(
@@ -362,8 +177,11 @@ def teacher_week_task_package_add(request):
 
 def teacher_week_file_import(request):
     username = request.session.get('username')
-    teacher_instance = Teachers.objects.get(username=username)
-    classes = Class.objects.filter(teacher_id=teacher_instance.id)
+    teacher_instance = UserServiceImpl.get_teacher_by_username(username)
+    if not teacher_instance:
+        messages.error(request, "教师信息不存在，请联系管理员。")
+        return redirect('login')
+    classes = UserServiceImpl.get_teacher_classes(teacher_instance.id)
     overdue_rules = OverdueDeductionRule.objects.all()
     task_package_id = request.GET.get('task_package_id')
     # print(f'task_package_id: {task_package_id}')
@@ -512,7 +330,19 @@ def teacher_week_file_import(request):
                 overdue_rule_instance = None
 
             # 创建试卷
-            class_instance = Class.objects.get(pk=class_id)
+            # Note: Class.objects.get(pk=class_id) is used here
+            # UserService doesn't have get_class_by_id method
+            # We verify the class belongs to the teacher by checking if it's in the classes list
+            from Account.models import Class
+            try:
+                class_instance = Class.objects.get(pk=class_id)
+                # Verify the class belongs to the teacher
+                if class_instance not in classes:
+                    messages.error(request, "无权访问该班级。")
+                    return redirect('teacher_week_task')
+            except Class.DoesNotExist:
+                messages.error(request, "班级不存在。")
+                return redirect('teacher_week_task')
             unit_instance = Unit.objects.create(
                 class_instance=class_instance,
                 order=order,
@@ -710,44 +540,47 @@ def teacher_week_file_import(request):
 
 
 # 题库管理
+@AuthServiceImpl.require_login
 def teacher_question_bank(request):
-    if request.session.get('is_login', None):
+    """
+    题库管理页面
+    
+    使用 @require_login 装饰器确保用户已登录。
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            question_type = data.get('question_type')
+            material_id = int(data.get('material_id'))
+            if question_type == 'sub':
+                id = int(data.get('sub_id'))
+                # 在这里处理接收到的变量
+                print(f"Received: sub_id: {id}\n material_id: {material_id}")
+                redirect_url = reverse('teacher_edit_question', args=[id, material_id, question_type])
 
-        if request.method == 'POST':
-            try:
-                data = json.loads(request.body)
-                question_type = data.get('question_type')
-                material_id = int(data.get('material_id'))
-                if question_type == 'sub':
-                    id = int(data.get('sub_id'))
-                    # 在这里处理接收到的变量
-                    print(f"Received: sub_id: {id}\n material_id: {material_id}")
-                    redirect_url = reverse('teacher_edit_question', args=[id, material_id, question_type])
+            elif question_type == 'main':
+                id = int(data.get('main_id'))
+                print(f'Received: main_id: {id}\n material_id: {material_id}')
+                redirect_url = reverse('teacher_edit_question', args=[id, material_id, question_type])
+            # 返回 JSON 响应，包含重定向 URL
+            return JsonResponse({'status': 'success', 'redirect_url': redirect_url})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
-                elif question_type == 'main':
-                    id = int(data.get('main_id'))
-                    print(f'Received: main_id: {id}\n material_id: {material_id}')
-                    redirect_url = reverse('teacher_edit_question', args=[id, material_id, question_type])
-                # 返回 JSON 响应，包含重定向 URL
-                return JsonResponse({'status': 'success', 'redirect_url': redirect_url})
-            except Exception as e:
-                return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-
-        else:
-            username = request.session.get('username', None)
-            media_materials = MediaMaterial.objects.all()
-            print('media_materials: ', media_materials)
-            paginator = Paginator(media_materials, 15)  # 每页展示 15 条
-            page_number = request.GET.get('page')  # 获取当前页码
-            page_obj = paginator.get_page(page_number)  # 获取当前页对象
-            # print((datetime.datetime.now() - datetime.datetime.fromisoformat(request.session.get('last_active_time'))).total_seconds() > 60)
-            return render(request, 'teacher_side/question_bank.html',
-                          {
-                              'username': username,
-                              'media_materials': media_materials,
-                              'page_obj': page_obj,
-                          })
-    return redirect('login')
+    else:
+        username = request.session.get('username', None)
+        media_materials = MediaMaterial.objects.all()
+        print('media_materials: ', media_materials)
+        paginator = Paginator(media_materials, 15)  # 每页展示 15 条
+        page_number = request.GET.get('page')  # 获取当前页码
+        page_obj = paginator.get_page(page_number)  # 获取当前页对象
+        # print((datetime.datetime.now() - datetime.datetime.fromisoformat(request.session.get('last_active_time'))).total_seconds() > 60)
+        return render(request, 'teacher_side/question_bank.html',
+                      {
+                          'username': username,
+                          'media_materials': media_materials,
+                          'page_obj': page_obj,
+                      })
 
 def teacher_delete_material(request, material_id):
     media_material = MediaMaterial.objects.get(id=material_id)
@@ -961,8 +794,11 @@ def teacher_page_create(request, material_id):
 def teacher_page_save(request, material_id):
     if request.method == 'POST':
         username = request.session.get('username')
-        teacher_instance = Teachers.objects.get(username=username)
-        classes = Class.objects.filter(teacher_id=teacher_instance.id)
+        teacher_instance = UserServiceImpl.get_teacher_by_username(username)
+        if not teacher_instance:
+            messages.error(request, "教师信息不存在，请联系管理员。")
+            return redirect('login')
+        classes = UserServiceImpl.get_teacher_classes(teacher_instance.id)
         overdue_rules = OverdueDeductionRule.objects.all()
         if request.POST.get('selected_class'):
             preview_datas_json = request.POST.get('preview_datas')
@@ -1005,7 +841,19 @@ def teacher_page_save(request, material_id):
 
 
             # 创建试卷
-            class_instance = Class.objects.get(pk=class_id)
+            # Note: Class.objects.get(pk=class_id) is used here
+            # UserService doesn't have get_class_by_id method
+            # We verify the class belongs to the teacher by checking if it's in the classes list
+            from Account.models import Class
+            try:
+                class_instance = Class.objects.get(pk=class_id)
+                # Verify the class belongs to the teacher
+                if class_instance not in classes:
+                    messages.error(request, "无权访问该班级。")
+                    return redirect('teacher_page_create', material_id=material_id)
+            except Class.DoesNotExist:
+                messages.error(request, "班级不存在。")
+                return redirect('teacher_page_create', material_id=material_id)
             unit_instance = Unit.objects.create(
                 class_instance=class_instance,
                 order=order,
@@ -1418,42 +1266,19 @@ def teacher_task_package_add(request):
                 messages.error(request, '请上传媒体文件（音频/视频）')
                 return render(request, 'teacher_side/task_package_add.html')
             
-            # 全球唯一标识符
-            media_uuid = uuid.uuid4().hex
-            # 存储音频/视频
-            media_dir = os.path.join(settings.MEDIA_ROOT, 'media')
-            os.makedirs(media_dir, exist_ok=True)
-            media_file_path = os.path.join(media_dir, media_uuid)
-            # 保存原始文件名扩展名
-            original_filename = media_file.name
-            file_extension = os.path.splitext(original_filename)[1]
-            if file_extension:
-                media_file_path += file_extension
-            
-            media_url = os.path.join('media_material', 'media', os.path.basename(media_file_path)).replace('\\', '/')
+            # Use FileService to upload media file
+            media_file_path, media_url = FileServiceImpl.upload_media_file(media_file, file_type='media')
             print('media_path: ', media_file_path)
             print('media_url: ', media_url)
             
-            # 保存媒体文件
-            with open(media_file_path, 'wb+') as destination:
-                for chunk in media_file.chunks():
-                    destination.write(chunk)
-            
-            # 存储图片
+            # Use FileService to upload image files
             image_files = request.FILES.getlist('image_file')
             image_urls = ''
             if image_files:
-                image_dir = os.path.join(settings.MEDIA_ROOT, 'image', media_uuid)
-                os.makedirs(image_dir, exist_ok=True)
-                for image_file in image_files:
-                    image_file_path = os.path.join(image_dir, image_file.name)
-                    image_url = os.path.join('media_material', 'image', media_uuid, image_file.name).replace('\\', '/')
-                    print('image_path: ', image_file_path)
-                    print('image_url: ', image_url)
-                    image_urls = image_urls + image_url + ','
-                    with open(image_file_path, 'wb+') as destination:
-                        for chunk in image_file.chunks():
-                            destination.write(chunk)
+                image_url_list = FileServiceImpl.upload_image_files(image_files)
+                image_urls = ','.join(image_url_list)
+                if image_urls:
+                    image_urls += ','
             
             # 创建MediaMaterial对象
             new_task_package = models.MediaMaterial.objects.create(
@@ -2774,38 +2599,57 @@ def teacher_class(request):
 
 
 # 试卷管理
+@AuthServiceImpl.require_login
 def teacher_exam_bank(request):
-    if request.session.get('is_login', None):
-        year = datetime.datetime.now().year
-        month = int(datetime.datetime.now().month)
-        if 1<=month<=8:
-            semester = 1
-        else:
-            semester = 2
+    """
+    试卷管理页面
+    
+    使用 @require_login 装饰器确保用户已登录。
+    """
+    year = datetime.datetime.now().year
+    month = int(datetime.datetime.now().month)
+    if 1<=month<=8:
+        semester = 1
+    else:
+        semester = 2
 
-        username = request.session.get('username', None)
-        teacher_instance = Teachers.objects.get(username=username)
-        classes = Class.objects.filter(teacher=teacher_instance)
-        units = Unit.objects.all()
+    username = request.session.get('username', None)
+    teacher_instance = UserServiceImpl.get_teacher_by_username(username)
+    if not teacher_instance:
+        messages.error(request, "教师信息不存在，请联系管理员。")
+        return redirect('login')
+    classes = UserServiceImpl.get_teacher_classes(teacher_instance.id)
+    units = Unit.objects.all()
 
-        # 处理筛选查询
-        class_id = request.GET.get('class_id', '')
-        if class_id:
+    # 处理筛选查询
+    class_id = request.GET.get('class_id', '')
+    if class_id:
+        # Note: Class.objects.get(id=int(class_id)) is used here
+        # UserService doesn't have get_class_by_id method
+        # We need to check if the class belongs to the teacher
+        # For now, we'll keep direct access but add validation
+        from Account.models import Class
+        try:
             class_instance = Class.objects.get(id=int(class_id))
-            units = Unit.objects.filter(class_instance=class_instance)
+            # Verify the class belongs to the teacher
+            if class_instance not in classes:
+                messages.error(request, "无权访问该班级。")
+                return redirect('teacher_exam_bank')
+        except Class.DoesNotExist:
+            messages.error(request, "班级不存在。")
+            return redirect('teacher_exam_bank')
+        units = Unit.objects.filter(class_instance=class_instance)
 
-
-        paginator = Paginator(units, 15)  # 每页展示 15 条
-        page_number = request.GET.get('page')  # 获取当前页码
-        page_obj = paginator.get_page(page_number)  # 获取当前页对象
-        return render(request, 'teacher_side/exam_bank.html',
-                      {
-                          'username': username,
-                          'classes': classes,
-                          'units': units,
-                          'page_obj': page_obj,
-                      })
-    return render(request, 'teacher_side/exam_bank.html')
+    paginator = Paginator(units, 15)  # 每页展示 15 条
+    page_number = request.GET.get('page')  # 获取当前页码
+    page_obj = paginator.get_page(page_number)  # 获取当前页对象
+    return render(request, 'teacher_side/exam_bank.html',
+                  {
+                      'username': username,
+                      'classes': classes,
+                      'units': units,
+                      'page_obj': page_obj,
+                  })
 
 def teacher_exam_detail(request, unit_id):
     # 根据 unit_id 获取对应的 Unit 实例，并预取关联的 PaperPage、PageMainQuestion 和 PageSubQuestion 信息

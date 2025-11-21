@@ -32,7 +32,17 @@ from ELW.models import (
     PageSubQuestion,
     Correction, ChoiceOption, MatchingOption,
 )
-from Account.models import Students, ClassScheduleAddition, ClassScheduleAdjustment, Class
+from Account.services.user_service_impl import UserServiceImpl
+# Note: ClassScheduleAddition and ClassScheduleAdjustment are not in UserService interface
+# They are schedule-related models, not user information models
+# We'll keep them as direct imports for now
+from Account.models import ClassScheduleAddition, ClassScheduleAdjustment, Class
+from ELW.services.content_service_impl import ContentServiceImpl
+# Note: PageMainQuestion, PageSubQuestion, TimeManagement, Correction, ChoiceOption, MatchingOption 
+# are not in ContentService interface, keep direct import for now
+# Note: Unit, PaperPage, MainQuestion, SubQuestion, MediaMaterial are used for:
+# 1. QuerySet operations (filter, none, all) - needed for compatibility
+# 2. Reverse relationship queries (paper_pages, sub_questions, etc.) - not in ContentService
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib import messages
 from django.db import transaction
@@ -40,18 +50,22 @@ from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.http import HttpResponseBadRequest
+from Account.services.auth_service_impl import AuthServiceImpl
 
+@AuthServiceImpl.require_login
 def practice_list(request):
-    if not request.session.get('is_login', False):
-        return redirect('login')
+    """
+    练习列表页面
+    
+    使用 @require_login 装饰器确保用户已登录。
+    """
 
     current_username = request.session.get('username')
     if not current_username:
         return redirect('login')
 
-    try:
-        student = Students.objects.get(username=current_username)
-    except Students.DoesNotExist:
+    student = UserServiceImpl.get_student_by_username(current_username)
+    if not student:
         return HttpResponse("学生信息不存在，请联系管理员。", status=404)
 
     class_instance = student.class_instance
@@ -59,7 +73,9 @@ def practice_list(request):
     current_date = current_datetime.date()
 
     # 获取当前班级的所有练习单元，排除考试类型
-    practices = Unit.objects.filter(class_instance=class_instance).exclude(type='exam')
+    # Use ContentService to get units by class
+    all_units = ContentServiceImpl.get_units_by_class(class_instance.id)
+    practices = [u for u in all_units if u.type != 'exam']
 
     practice_data_list = {'practice': [], 'quiz': [], 'task': []}
     for practice in practices:
@@ -116,13 +132,19 @@ def practice_list(request):
     return render(request, 'practice/practice_list.html', {'practices': practice_data_list})
 
 def start_practice(request, practice_id):
-    practice = get_object_or_404(Unit, id=practice_id, type__in=['practice', 'quiz', 'task'])
+    # Use ContentService to get unit by ID
+    practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
+    if not practice or practice.type not in ['practice', 'quiz', 'task']:
+        from django.http import Http404
+        raise Http404("Practice not found")
 
     username = request.session.get('username')
     if not username:
         return JsonResponse({'status': 'error', 'message': 'You are not logged in.'}, status=403)
 
-    student = get_object_or_404(Students, username=username)
+    student = UserServiceImpl.get_student_by_username(username)
+    if not student:
+        return JsonResponse({'status': 'error', 'message': 'Student not found.'}, status=404)
 
     record, created = StudentExamRecord.objects.get_or_create(user=student, exam=practice)
 
@@ -171,14 +193,31 @@ def load_answers(student_page_record):
     return answers_dict
 
 def practice_page(request, practice_id, order):
-    practice = get_object_or_404(Unit, id=practice_id, type__in=['practice', 'quiz', 'task'])
-    page = get_object_or_404(PaperPage, unit=practice, order=order)
+    # Use ContentService to get unit and page
+    practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
+    if not practice or practice.type not in ['practice', 'quiz', 'task']:
+        from django.http import Http404
+        raise Http404("Practice not found")
+    
+    # Get pages for this unit and find the one with matching order
+    pages = ContentServiceImpl.get_pages_by_unit(practice.id)
+    page = None
+    for p in pages:
+        if p.order == order:
+            page = p
+            break
+    if not page:
+        from django.http import Http404
+        raise Http404("Page not found")
     username = request.session.get('username')
     if not username:
         messages.error(request, "You are not logged in.")
         return redirect('login')
 
-    student = get_object_or_404(Students, username=username)
+    student = UserServiceImpl.get_student_by_username(username)
+    if not student:
+        messages.error(request, "Student not found.")
+        return redirect('login')
     student_practice_record = get_object_or_404(StudentExamRecord, user=student, exam=practice)
     student_page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_practice_record, page=page)
 
@@ -282,7 +321,9 @@ def practice_page(request, practice_id, order):
                                                          main_question__in=main_questions)
     play_records_dict = {record.main_question_id: record.play_count for record in play_records}
 
-    is_last_page = not PaperPage.objects.filter(unit=practice, order=page.order + 1).exists()
+    # Check if this is the last page using ContentService
+    pages = ContentServiceImpl.get_pages_by_unit(practice.id)
+    is_last_page = not any(p.order == page.order + 1 for p in pages)
 
     context = {
         'practice': practice,
@@ -327,15 +368,32 @@ def update_remaining_time(request, page_record_id):
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
 def next_page(request, practice_id, order):
-    practice = get_object_or_404(Unit, id=practice_id, type__in=['practice', 'quiz', 'task'])
-    current_page = get_object_or_404(PaperPage, unit=practice, order=order)
+    # Use ContentService to get unit and page
+    practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
+    if not practice or practice.type not in ['practice', 'quiz', 'task']:
+        from django.http import Http404
+        raise Http404("Practice not found")
+    
+    # Get pages for this unit and find the one with matching order
+    pages = ContentServiceImpl.get_pages_by_unit(practice.id)
+    current_page = None
+    for p in pages:
+        if p.order == order:
+            current_page = p
+            break
+    if not current_page:
+        from django.http import Http404
+        raise Http404("Page not found")
     next_page = practice.paper_pages.filter(order=current_page.order + 1).first()
     username = request.session.get('username')
     if not username:
         messages.error(request, "You are not logged in.")
         return redirect('login')
 
-    student = get_object_or_404(Students, username=username)
+    student = UserServiceImpl.get_student_by_username(username)
+    if not student:
+        messages.error(request, "Student not found.")
+        return redirect('login')
 
     page_main_questions = PageMainQuestion.objects.filter(page=current_page)
     main_questions = [pmq.main_question for pmq in page_main_questions]
@@ -449,7 +507,10 @@ def _save_answers_to_database(page_record_id):
 
     for sub_question_id, answer_text in cached_answers.items():
         sub_question_id = int(sub_question_id)
-        sub_question = SubQuestion.objects.get(id=sub_question_id)
+        # Use ContentService to get sub question by ID
+        sub_question = ContentServiceImpl.get_sub_question_by_id(sub_question_id)
+        if not sub_question:
+            return JsonResponse({'message': '小题不存在', 'status': 'error'}, status=404)
 
         if sub_question.main_question.question_type == 'correction':
             if answer_text == 'none':
@@ -486,10 +547,26 @@ def _save_answers_to_database(page_record_id):
 @csrf_exempt
 def save_page(request, practice_id, order):
     if request.method == 'POST':
-        practice = get_object_or_404(Unit, id=practice_id, type__in=['practice', 'quiz', 'task'])
-        current_page = get_object_or_404(PaperPage, unit=practice, order=order)
+        # Use ContentService to get unit and page
+        practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
+        if not practice or practice.type not in ['practice', 'quiz', 'task']:
+            from django.http import Http404
+            raise Http404("Practice not found")
+        
+        # Get pages for this unit and find the one with matching order
+        pages = ContentServiceImpl.get_pages_by_unit(practice.id)
+        current_page = None
+        for p in pages:
+            if p.order == order:
+                current_page = p
+                break
+        if not current_page:
+            from django.http import Http404
+            raise Http404("Page not found")
         username = request.session.get('username')
-        student = get_object_or_404(Students, username=username)
+        student = UserServiceImpl.get_student_by_username(username)
+        if not student:
+            return JsonResponse({'message': '学生信息不存在', 'status': 'error'}, status=404)
         student_practice_record = get_object_or_404(StudentExamRecord, user=student, exam=practice)
         page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_practice_record, page=current_page)
         can_modify = page_record.submitted
@@ -518,7 +595,9 @@ def save_page(request, practice_id, order):
             page_record.submitted = True
             page_record.submitted_at = timezone.now()
 
-            is_last_page = not PaperPage.objects.filter(unit=practice, order=order + 1).exists()
+            # Check if this is the last page using ContentService
+            pages = ContentServiceImpl.get_pages_by_unit(practice.id)
+            is_last_page = not any(p.order == order + 1 for p in pages)
 
             if is_last_page:
                 student_practice_record.submitted = True
@@ -620,7 +699,11 @@ def submit_practice(request):
         return JsonResponse({'message': '请求方法错误', 'status': 'error'}, status=400)
 
 def practice_result(request, practice_id):
-    practice = get_object_or_404(Unit, id=practice_id)
+    # Use ContentService to get unit by ID
+    practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
+    if not practice:
+        from django.http import Http404
+        raise Http404("Practice not found")
     student_practice_record = get_object_or_404(StudentExamRecord, exam=practice)
     page_records = StudentPageRecord.objects.filter(student_exam_record_id=student_practice_record.id)
 
@@ -761,8 +844,13 @@ def update_play_count(request):
             return JsonResponse({"success": False, "message": "Invalid request data."}, status=400)
 
         student_practice_record = StudentExamRecord.objects.get(id=student_practice_record_id)
-        main_question = MainQuestion.objects.get(id=main_question_id)
-        media_material = MediaMaterial.objects.get(id=media_material_id)
+        # Use ContentService to get main question and media material by ID
+        main_question = ContentServiceImpl.get_main_question_by_id(int(main_question_id))
+        if not main_question:
+            return JsonResponse({"success": False, "message": "Main question not found."}, status=404)
+        media_material = ContentServiceImpl.get_media_material_by_id(int(media_material_id))
+        if not media_material:
+            return JsonResponse({"success": False, "message": "Media material not found."}, status=404)
 
         play_record, created = StudentMediaPlayRecord.objects.get_or_create(
             student_exam_record=student_practice_record,
@@ -827,7 +915,13 @@ def background_grade_comprehension(sub_question, student_answer):
 
 @login_required
 def student_dashboard(request):
-    student = Students.objects.get(user=request.user)
+    # Note: This view uses Django User object, not username
+    # UserService doesn't have get_student_by_user method yet
+    # For now, we'll get username from session or user object
+    username = request.session.get('username') or request.user.username
+    student = UserServiceImpl.get_student_by_username(username)
+    if not student:
+        return HttpResponse("学生信息不存在，请联系管理员。", status=404)
 
     # 获取学生的练习记录
     practice_records = StudentExamRecord.objects.filter(user=student).order_by('-started_at')
@@ -863,9 +957,13 @@ def change_password(request):
         old = request.POST['old_password']
         new = request.POST['new_password']
         confirm = request.POST['confirm_password']
-        try:
-            student = Students.objects.filter(user=request.user, password=old)[0]
-        except:
+        # Note: This view uses Django User object and password
+        # UserService doesn't have get_student_by_user method yet
+        # For now, we'll get username from session or user object
+        username = request.session.get('username') or request.user.username
+        student = UserServiceImpl.get_student_by_username(username)
+        # Check password separately since UserService doesn't handle password verification
+        if student and student.password != old:
             student = None
 
         if student and (new == confirm):

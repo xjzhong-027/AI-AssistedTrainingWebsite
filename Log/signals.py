@@ -1,6 +1,5 @@
 from django.db.models.signals import post_save, post_delete
 
-from English_Listening_Website.middleware import SessionTimeoutMiddleware
 # from Account.models import Students, Teachers
 from .models import LogEntry
 from ELW.models import Unit, MediaMaterial
@@ -18,7 +17,8 @@ def log_create_or_update(sender, instance, created, **kwargs):
         action = 'Created' if created else 'Updated'
         user = get_current_user()  # 获取当前登录用户
         if not user:
-            raise SessionTimeoutMiddleware
+            # 如果没有用户（测试环境或后台任务），跳过日志记录
+            return
 
         message = f"{action} {str(instance)}"
 
@@ -41,7 +41,8 @@ def log_delete(sender, instance, **kwargs):
     if isinstance(instance, sender):
         user = get_current_user()  # 获取当前登录用户
         if not user:
-            raise SessionTimeoutMiddleware
+            # 如果没有用户（测试环境或后台任务），跳过日志记录
+            return
         message = f"Deleted {str(instance)}"
 
 

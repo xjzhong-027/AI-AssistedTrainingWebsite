@@ -13,10 +13,10 @@ from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse, HttpResponse
 from ELW.models import Class, Course
-from Account.models import Teachers,Students
+from Account.services.user_service_impl import UserServiceImpl
 from forum.models import Post
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
+from announce.services.communication_service_impl import CommunicationServiceImpl
+from announce.services.notification_service_impl import NotificationServiceImpl
 from django.utils import timezone
 from datetime import timedelta
 from English_Listening_Website.scheduler import scheduler
@@ -153,11 +153,12 @@ def message_view(request):
             receiver = form.cleaned_data['receiver']
             content = form.cleaned_data['content']
             print(request.user)
-            # 保存到数据库
-            Message.objects.create(
-                sender=sender,
-                receiver=receiver,
-                content=content
+            # Use CommunicationService to send message
+            CommunicationServiceImpl.send_message(
+                sender_username=sender,
+                receiver_username=receiver,
+                content=content,
+                message_type='private'
             )
             # 显示发送成功页面
             return render(request,'announce/message_success.html', {'content': content})
@@ -251,30 +252,49 @@ def announcements(request):
 
                 a_title = form.cleaned_data['a_title']
                 a_content = form.cleaned_data['a_content']
-                announcement = form.save(commit=False)
-                announcement.teachers = Teachers.objects.get(username=username)
-                announcement.save()
+                teacher = UserServiceImpl.get_teacher_by_username(username)
+                if not teacher:
+                    return JsonResponse({'error': '教师不存在'}, status=400)
 
                 if select_all:
+                    # 获取所有学生：需要遍历所有班级，然后获取每个班级的学生
+                    # 由于 UserService 没有 get_all_students 方法，暂时保留直接查询
+                    # TODO: 考虑扩展 UserService 接口添加 get_all_students 方法
+                    from Account.models import Students
                     receivers = Students.objects.all()
-                announcement.receivers.set(receivers)
+                    receiver_student_ids = [r.id for r in receivers]
+                else:
+                    receiver_student_ids = [r.id for r in receivers]
 
-                for receiver in receivers:
-                    Message.objects.create(
-                        sender=username,
-                        receiver=receiver.username,
+                # Use CommunicationService to create announcement
+                try:
+                    announcement = CommunicationServiceImpl.create_announcement(
+                        title=a_title,
                         content=a_content,
-                        is_announcement=True,
-                        announcement_id=announcement.id
+                        teacher_id=teacher.id,
+                        receiver_student_ids=receiver_student_ids
                     )
-                    async_to_sync(get_channel_layer().group_send)(
-                        f'user_{receiver.username}',
-                        {
-                            'type': 'notification_message',
-                            'message': f"New announcement: {a_title}",
-                            'announcement_id': announcement.id
-                        }
+                except ValueError as e:
+                    return JsonResponse({'error': str(e)}, status=400)
+
+                # Send messages to receivers
+                receiver_usernames = []
+                for receiver in receivers:
+                    CommunicationServiceImpl.send_message(
+                        sender_username=username,
+                        receiver_username=receiver.username,
+                        content=a_content,
+                        message_type='announcement'
                     )
+                    receiver_usernames.append(receiver.username)
+                
+                # Use NotificationService to send announcement notifications
+                if receiver_usernames:
+                    NotificationServiceImpl.send_announcement_notification(
+                        announcement_id=announcement.id,
+                        receiver_usernames=receiver_usernames
+                    )
+                
                 return JsonResponse({'success': '公告已发布'}, status=200)
             else:
                 # 返回具体的表单错误信息
@@ -288,6 +308,9 @@ def announcements(request):
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
         # 按班级分组学生
+        # 由于需要获取所有学生并按班级分组，暂时保留直接查询
+        # TODO: 考虑扩展 UserService 接口添加 get_all_students 方法
+        from Account.models import Students
         students_by_class = defaultdict(list)
         for student in Students.objects.all().order_by('class_instance', 'id'):
             students_by_class[student.class_instance].append(student)
@@ -336,7 +359,10 @@ def load_receivers(request):
     if class_id:
         try:
             class_id = int(class_id)  # 确保 class_id 是整数
-            students = Students.objects.filter(class_instance_id=class_id).order_by('name')
+            # 使用 UserService 获取班级学生
+            students = UserServiceImpl.get_class_students(class_id)
+            # 按名称排序
+            students = sorted(students, key=lambda s: s.name)
             receivers_html = render_to_string('announce/receivers.html', {'receivers': students})
             return JsonResponse({'receiversHtml': receivers_html})
         except ValueError:
@@ -430,7 +456,9 @@ def student_announcements(request):
     if not username:
         # 如果用户未登录，重定向到登录页面
         return redirect('logintest:login')
-    student = Students.objects.get(username=username)
+    student = UserServiceImpl.get_student_by_username(username)
+    if not student:
+        return redirect('logintest:login')
     announcements = student.announcements.all().order_by('-created_at')
 
     # 设置每页显示的公告数量
@@ -466,7 +494,9 @@ def announcement_detail(request, announcement_id):
     if not username:
         # 如果用户未登录，重定向到登录页面
         return redirect('logintest:login')
-    student = Students.objects.get(username=username)
+    student = UserServiceImpl.get_student_by_username(username)
+    if not student:
+        return redirect('logintest:login')
     announcement = get_object_or_404(Announcement, pk=announcement_id)
     if student in announcement.receivers.all():
         messages = Message.objects.filter(
@@ -541,7 +571,9 @@ def announcement_detail(request, announcement_id):
 def reminder(request, announcement_id):
     if request.method == 'POST':
         username = request.session.get('username')
-        student = Students.objects.get(username=username)
+        student = UserServiceImpl.get_student_by_username(username)
+        if not student:
+            return JsonResponse({'error': '学生不存在'}, status=400)
 
         reminder_minutes = int(request.POST.get('reminder_minutes', 10))  # 默认为10分钟
         announcement = get_object_or_404(Announcement, pk=announcement_id)
@@ -557,17 +589,14 @@ def reminder(request, announcement_id):
 
 
 def send_notification(student_id, message, announcement_id):
-    channel_layer = get_channel_layer()
     # 获取学生对象
-    student = Students.objects.get(id=student_id)
-    # 使用学生的 username 作为 WebSocket 组名
-    async_to_sync(channel_layer.group_send)(
-        f'user_{student.username}',
-        {
-            'type': 'notification_message',
-            'message': message,
-            'announcement_id': announcement_id,
-        }
+    student = UserServiceImpl.get_student_by_id(student_id)
+    if not student:
+        return JsonResponse({'error': '学生不存在'}, status=400)
+    # Use NotificationService to send announcement notification
+    NotificationServiceImpl.send_announcement_notification(
+        announcement_id=announcement_id,
+        receiver_usernames=[student.username]
     )
 
 def schedule_notification(student_id, minutes, message, announcement_id):

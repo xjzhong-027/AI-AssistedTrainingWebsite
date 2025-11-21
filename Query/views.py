@@ -18,9 +18,19 @@ from django.views.generic import ListView
 from announce.forms import AnnouncementForm
 from announce.models import Announcement, Message
 from .models import ClassroomLayout, OverdueDeductionRule, OverduePeriod
-from Account.models import Class, Students, Teachers, Attendance, ClassScheduleAdjustment, ClassScheduleAddition
+from Account.services.user_service_impl import UserServiceImpl
+# Note: Attendance, ClassScheduleAdjustment, ClassScheduleAddition are not in UserService interface
+# They are not user information models, but related to attendance and schedule management
+# We'll keep them as direct imports for now
+from Account.models import Attendance, ClassScheduleAdjustment, ClassScheduleAddition
+from ELW.services.content_service_impl import ContentServiceImpl
 from ELW.models import Unit, TimeManagement, PaperPage, PageMainQuestion, PageSubQuestion, Correction, ChoiceOption, \
     MatchingOption, Blank
+# Note: PageMainQuestion, PageSubQuestion, TimeManagement, Correction, ChoiceOption, MatchingOption, Blank
+# are not in ContentService interface, keep direct import for now
+# Note: Unit, PaperPage are used for:
+# 1. QuerySet operations (filter, none, all) - needed for compatibility
+# 2. Reverse relationship queries (paper_pages, etc.) - not in ContentService
 from accessment.models import StudentExamRecord, StudentPageRecord, StudentAnswer, StudentMediaPlayRecord
 from .forms import AttendanceQueryForm, ClassScheduleAdjustmentForm, ClassScheduleAdditionForm, \
     ClassroomLayoutForm, OverdueRuleForm, OverduePeriodFormSet, OverduePeriodForm
@@ -48,8 +58,11 @@ def attendance_query(request):
     status_choices = dict(Attendance._meta.get_field('status').choices)
 
     username = request.session.get('username', None)
-    teacher_instance = Teachers.objects.get(username=username)
-    classes = Class.objects.filter(teacher=teacher_instance)
+    teacher_instance = UserServiceImpl.get_teacher_by_username(username)
+    if not teacher_instance:
+        messages.error(request, "教师信息不存在，请联系管理员。")
+        return redirect('login')
+    classes = UserServiceImpl.get_teacher_classes(teacher_instance.id)
     class_choices = [(cls.id, cls.class_name) for cls in classes]
 
     # 动态设置班级选择项
@@ -60,10 +73,22 @@ def attendance_query(request):
         class_id = form.cleaned_data['class_field']
 
         # 查询班级记录
-        class_info = Class.objects.get(id=class_id)
+        # Note: Class.objects.get(id=class_id) is used here
+        # UserService doesn't have get_class_by_id method
+        # We verify the class belongs to the teacher by checking if it's in the classes list
+        from Account.models import Class
+        try:
+            class_info = Class.objects.get(id=class_id)
+            # Verify the class belongs to the teacher
+            if class_info not in classes:
+                messages.error(request, "无权访问该班级。")
+                return redirect('attendance_query')
+        except Class.DoesNotExist:
+            messages.error(request, "班级不存在。")
+            return redirect('attendance_query')
         class_time.append(f"周{ class_info.week } — { class_info.start_time } - { class_info.end_time }")
         # 获取该班级所有学生
-        students = Students.objects.filter(class_instance=class_info)
+        students = UserServiceImpl.get_class_students(class_info.id)
         adjustment = ClassScheduleAdjustment.objects.filter(class_instance=class_info, week=week).first()
         additions = ClassScheduleAddition.objects.filter(class_instance=class_info, week=week)
         if adjustment:
@@ -229,8 +254,11 @@ def adjust_class_schedule(request):
     """ 调课+补课 """
     if request.session.get('is_login', None):
         username = request.session.get('username', None)
-        teacher_instance = Teachers.objects.get(username=username)
-        class_choices = Class.objects.filter(teacher=teacher_instance)
+        teacher_instance = UserServiceImpl.get_teacher_by_username(username)
+        if not teacher_instance:
+            messages.error(request, "教师信息不存在，请联系管理员。")
+            return redirect('login')
+        class_choices = UserServiceImpl.get_teacher_classes(teacher_instance.id)
 
         if request.method == 'POST':
             # 分别处理调课和补课表单
@@ -245,7 +273,7 @@ def adjust_class_schedule(request):
 
                 # 更新学生考勤记录表中的 adjusted_class_time 字段
                 class_instance = adjustment.class_instance
-                students = Students.objects.filter(class_instance=class_instance)
+                students = UserServiceImpl.get_class_students(class_instance.id)
                 for student in students:
                     attendance, created = Attendance.objects.get_or_create(
                         student=student,
@@ -266,7 +294,7 @@ def adjust_class_schedule(request):
 
                 # 为每个学生添加考勤记录
                 class_instance = addition.class_instance
-                students = Students.objects.filter(class_instance=class_instance)
+                students = UserServiceImpl.get_class_students(class_instance.id)
                 for student in students:
                     Attendance.objects.update_or_create(
                         student=student,
@@ -370,7 +398,7 @@ def class_seat_plan(request, class_id):
     class_obj = get_object_or_404(Class, id=class_id)
 
     # 获取该班级的所有学生及其座位号
-    students = Students.objects.filter(class_instance=class_obj)
+    students = UserServiceImpl.get_class_students(class_obj.id)
 
     if request.method == 'POST':
         form = ClassroomLayoutForm(request.POST, class_obj=class_obj)
@@ -435,7 +463,9 @@ def update_seat_number(request):
 
         # 查找相应的学生记录并更新
         try:
-            student = Students.objects.get(id=student_id)
+            student = UserServiceImpl.get_student_by_id(student_id)
+            if not student:
+                return JsonResponse({'success': False, 'message': '学生信息不存在'}, status=404)
             student.seat_number = seat_number
             student.save()
             return JsonResponse({"success": True})
@@ -455,9 +485,15 @@ def student_learning_search(request):
         return redirect('login')  # 如果用户未登录，重定向到登录页面
 
     username = request.session.get('username', None)
-    teacher_instance = Teachers.objects.get(username=username)
-    class_instances = Class.objects.filter(teacher=teacher_instance)
-    students = Students.objects.filter(class_instance__in=class_instances)
+    teacher_instance = UserServiceImpl.get_teacher_by_username(username)
+    if not teacher_instance:
+        messages.error(request, "教师信息不存在，请联系管理员。")
+        return redirect('login')
+    class_instances = UserServiceImpl.get_teacher_classes(teacher_instance.id)
+    # Get all students from teacher's classes
+    students = []
+    for class_instance in class_instances:
+        students.extend(UserServiceImpl.get_class_students(class_instance.id))
 
     # 获取学生学号，如果有输入则进行过滤
     search_username = request.GET.get('username', '')
@@ -484,9 +520,13 @@ def student_learning_search(request):
 
 def assignment_unit(request, student_id):
     """ 学生学习总体情况 """
-    student = Students.objects.get(id=student_id)
+    student = UserServiceImpl.get_student_by_id(student_id)
+    if not student:
+        messages.error(request, "学生信息不存在。")
+        return redirect('student_learning_search')
     class_instance = student.class_instance
-    units = Unit.objects.filter(class_instance=class_instance)
+    # Use ContentService to get units by class
+    units = ContentServiceImpl.get_units_by_class(class_instance.id)
     assignments_data = []
     categories = dict(Unit.TYPES)
     now = datetime.now(pytz.utc)
@@ -576,11 +616,17 @@ def assignment_unit(request, student_id):
 
 def unit_detail(request, unit_id, student_id, unit_time_data):
     """ 学生各单元答题情况 """
-    # 获取学生
-    student = get_object_or_404(Students, id=student_id)
+    # 获取学生 - Use UserService to get student by ID
+    student = UserServiceImpl.get_student_by_id(student_id)
+    if not student:
+        from django.http import Http404
+        raise Http404("Student not found")
 
-    # 获取指定的单元信息
-    unit = get_object_or_404(Unit, id=unit_id)
+    # 获取指定的单元信息 - Use ContentService to get unit by ID
+    unit = ContentServiceImpl.get_unit_by_id(int(unit_id))
+    if not unit:
+        from django.http import Http404
+        raise Http404("Unit not found")
     unit_time_data = unit_time_data
     unit_time_data_obj = datetime.strptime(unit_time_data, '%Y-%m-%d %H:%M:%S')
 
@@ -599,7 +645,10 @@ def unit_detail(request, unit_id, student_id, unit_time_data):
 
     # 获取该单元的所有页面、题目、答案等
     question_data = []
-    pages = PaperPage.objects.filter(unit=unit)  # 获取该单元的所有页面
+    # Use ContentService to get pages by unit
+    pages_list = ContentServiceImpl.get_pages_by_unit(unit.id)  # 获取该单元的所有页面
+    # Convert to QuerySet for compatibility with filter operations
+    pages = PaperPage.objects.filter(id__in=[p.id for p in pages_list])
 
     for page in pages:
         # 获取当前页面的所有大题
@@ -757,9 +806,19 @@ def batch_update_late_scores(request):
             late_score = data.get('late_score')
             class_id = data.get('class_id')
 
-            unit = Unit.objects.get(id=unit_id)
-            class_instance = Class.objects.get(id=class_id)
-            students = Students.objects.filter(class_instance=class_instance)
+            # Use ContentService to get unit by ID
+            unit = ContentServiceImpl.get_unit_by_id(int(unit_id))
+            if not unit:
+                return JsonResponse({'status': 'error', 'message': 'Unit not found.'}, status=404)
+            # Note: Class.objects.get(id=class_id) is used here
+            # UserService doesn't have get_class_by_id method
+            # We'll keep direct access but add error handling
+            from Account.models import Class
+            try:
+                class_instance = Class.objects.get(id=class_id)
+            except Class.DoesNotExist:
+                return JsonResponse({'success': False, 'message': '班级不存在'}, status=404)
+            students = UserServiceImpl.get_class_students(class_instance.id)
             exam_records = StudentExamRecord.objects.filter(exam=unit, user__in=students)
 
             page_records = StudentPageRecord.objects.filter(
@@ -859,8 +918,11 @@ def class_statistic_search(request):
         return redirect('login')  # 如果用户未登录，重定向到登录页面
 
     username = request.session.get('username', None)
-    teacher_instance = Teachers.objects.get(username=username)
-    class_instances = Class.objects.filter(teacher=teacher_instance)
+    teacher_instance = UserServiceImpl.get_teacher_by_username(username)
+    if not teacher_instance:
+        messages.error(request, "教师信息不存在，请联系管理员。")
+        return redirect('login')
+    class_instances = UserServiceImpl.get_teacher_classes(teacher_instance.id)
 
     # 获取班号，如果有输入则进行过滤
     class_name = request.GET.get('class_name', '')
@@ -886,9 +948,18 @@ def class_statistic_search(request):
 
 
 def class_unit(request, class_id):
-    class_instance = Class.objects.get(id=class_id)
-    students = Students.objects.filter(class_instance=class_instance)
-    units = Unit.objects.filter(class_instance=class_instance)
+    # Note: Class.objects.get(id=class_id) is used here
+    # UserService doesn't have get_class_by_id method
+    # We'll keep direct access but add error handling
+    from Account.models import Class
+    try:
+        class_instance = Class.objects.get(id=class_id)
+    except Class.DoesNotExist:
+        messages.error(request, "班级不存在。")
+        return redirect('class_statistic_search')
+    students = UserServiceImpl.get_class_students(class_instance.id)
+    # Use ContentService to get units by class
+    units = ContentServiceImpl.get_units_by_class(class_instance.id)
     units_data = []
     categories = dict(Unit.TYPES)
 
@@ -926,8 +997,10 @@ def class_unit(request, class_id):
 
             # 获取当前单元的成绩记录
             unit_records = StudentExamRecord.objects.filter(user__in=students, exam=unit)
-            # 获取该单元的所有页面
-            pages = PaperPage.objects.filter(unit=unit)
+            # 获取该单元的所有页面 - Use ContentService to get pages by unit
+            pages_list = ContentServiceImpl.get_pages_by_unit(unit.id)
+            # Convert to QuerySet for compatibility with filter operations
+            pages = PaperPage.objects.filter(id__in=[p.id for p in pages_list])
 
             score_statistic = []
 
@@ -1029,7 +1102,15 @@ def class_unit(request, class_id):
 
 
 def statistic_announce(request, class_id):
-    class_instance = Class.objects.get(id=class_id)
+    # Note: Class.objects.get(id=class_id) is used here
+    # UserService doesn't have get_class_by_id method
+    # We'll keep direct access but add error handling
+    from Account.models import Class
+    try:
+        class_instance = Class.objects.get(id=class_id)
+    except Class.DoesNotExist:
+        messages.error(request, "班级不存在。")
+        return redirect('class_statistic_search')
     students_data = request.GET.get('students')
     if students_data:
         try:
@@ -1037,7 +1118,9 @@ def statistic_announce(request, class_id):
             students = []
 
             for student_data in students_list:
-                student_instance = Students.objects.get(pk=student_data['pk'])
+                student_instance = UserServiceImpl.get_student_by_id(student_data['pk'])
+                if not student_instance:
+                    return HttpResponseBadRequest(f"Student with id {student_data['pk']} not found")
                 students.append(student_instance)
 
         except json.JSONDecodeError:
@@ -1071,10 +1154,18 @@ def statistic_announce(request, class_id):
                 a_title = form.cleaned_data['a_title']
                 a_content = form.cleaned_data['a_content']
                 announcement = form.save(commit=False)
-                announcement.teachers = Teachers.objects.get(username=username)
+                teacher_instance = UserServiceImpl.get_teacher_by_username(username)
+                if not teacher_instance:
+                    messages.error(request, "教师信息不存在，请联系管理员。")
+                    return redirect('statistic_announce', class_id=class_id)
+                announcement.teachers = teacher_instance
                 announcement.save()
 
                 if select_all:
+                    # Note: Students.objects.all() is used here for selecting all students
+                    # This is a special case for announcement receivers
+                    # We'll keep direct access for this specific case
+                    from Account.models import Students
                     receivers = Students.objects.all()
                 announcement.receivers.set(receivers)
 
@@ -1180,15 +1271,29 @@ def statistic_apply_blanks(sub_question, blanks, correct_rate_percentage, idx):
 
 def unit_statistic(request, unit_id, class_id):
     # 获取班级和学生
-    class_instance = get_object_or_404(Class, id=class_id)
-    students = Students.objects.filter(class_instance=class_instance)
-    # 获取指定的单元信息
-    unit = get_object_or_404(Unit, id=unit_id)
+    # Note: get_object_or_404(Class, id=class_id) is used here
+    # UserService doesn't have get_class_by_id method
+    # We'll keep direct access but add error handling
+    from Account.models import Class
+    try:
+        class_instance = Class.objects.get(id=class_id)
+    except Class.DoesNotExist:
+        messages.error(request, "班级不存在。")
+        return redirect('class_statistic_search')
+    students = UserServiceImpl.get_class_students(class_instance.id)
+    # 获取指定的单元信息 - Use ContentService to get unit by ID
+    unit = ContentServiceImpl.get_unit_by_id(int(unit_id))
+    if not unit:
+        from django.http import Http404
+        raise Http404("Unit not found")
 
 
     # 获取该单元的所有页面、题目、答案等
     question_data = []
-    pages = PaperPage.objects.filter(unit=unit)  # 获取该单元的所有页面
+    # Use ContentService to get pages by unit
+    pages_list = ContentServiceImpl.get_pages_by_unit(unit.id)  # 获取该单元的所有页面
+    # Convert to QuerySet for compatibility with filter operations
+    pages = PaperPage.objects.filter(id__in=[p.id for p in pages_list])
 
     for page in pages:
         # 获取当前页面的所有大题

@@ -132,3 +132,19 @@ class Attendance(models.Model):
     def __str__(self):
         return f"{self.student.name} - Week {self.week} - {self.status}"
 
+
+class LoginInfo(models.Model):
+    """用户登录记录"""
+    username = models.CharField(max_length=20, verbose_name='用户名')
+    week = models.IntegerField(default=0, verbose_name='周次')
+    action = models.CharField(max_length=20, verbose_name='操作类型')
+    action_time = models.DateTimeField(verbose_name='操作时间')
+    last_active_time = models.CharField(max_length=50, verbose_name='最后活跃时间')
+    device_info = models.CharField(max_length=500, verbose_name='设备信息', blank=True, default='')
+
+    class Meta:
+        verbose_name_plural = '登录记录'
+        ordering = ['-action_time']  # 按时间倒序排列
+
+    def __str__(self):
+        return f"{self.username} - {self.action} - {self.action_time}"
