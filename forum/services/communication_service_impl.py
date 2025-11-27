@@ -200,3 +200,6 @@ class CommunicationServiceImpl(CommunicationService):
         """发送消息 - 此方法应在 announce 模块中实现"""
         raise NotImplementedError("send_message should be implemented in announce module")
 
+
+
+

@@ -34,9 +34,10 @@ class Admin_list(admin.ModelAdmin):
                     if User.objects.filter(username=obj.username).exists():
                         raise ValueError("Username already exists. Please choose a different username.")
                     user.username = obj.username
-                # 确保密码更新时加密处理
-                if user.password != obj.password:
-                    user.password = make_password(obj.password)
+                # 确保密码更新时加密处理（User 使用加密密码）
+                # 注意：obj.password 是明文，需要检查是否需要更新
+                if obj.password and not user.check_password(obj.password):
+                    user.set_password(obj.password)  # 使用 set_password 会自动加密
                 user.save()
             except User.DoesNotExist:
                 pass  # 如果没有找到对应的 User，则不做任何操作
@@ -46,14 +47,14 @@ class Admin_list(admin.ModelAdmin):
         else:
             user = User.objects.create_user(
                 username=obj.username,
-                password=obj.password,
+                password=obj.password,  # create_user 会自动加密密码
             )
             # 确保 User 被添加到 '管理员' 组
             group, created = Group.objects.get_or_create(name='管理员')
             user.groups.add(group)
             user.save()
             obj.user = user  # 将创建的 User 关联到 Admin 对象
-        # 保存 Admin 模型实例
+        # 保存 Admin 模型实例（obj.password 是明文，会保存到 Admins.password 字段）
         super().save_model(request, obj, form, change)
 
 

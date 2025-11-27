@@ -86,7 +86,7 @@ class AuthServiceImpl(AuthService):
             
             return {
                 'admin': admin,
-                'user': None  # Admins 可能没有关联的 User 对象
+                'user': admin.user  # 返回关联的 User 对象（如果存在）
             }
         except Admins.DoesNotExist:
             return None
