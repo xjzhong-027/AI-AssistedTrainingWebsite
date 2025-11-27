@@ -928,7 +928,11 @@ def class_statistic_search(request):
     class_name = request.GET.get('class_name', '')
 
     if class_name:
-        class_instances = class_instances.filter(class_name__icontains=class_name)
+        keyword = class_name.strip().lower()
+        class_instances = [
+            class_instance for class_instance in class_instances
+            if class_instance.class_name and keyword in class_instance.class_name.lower()
+        ]
 
     # 分页，设置每页显示5条记录
     paginator = Paginator(class_instances, 10)
