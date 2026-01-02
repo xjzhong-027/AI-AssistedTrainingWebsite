@@ -15,8 +15,8 @@
         }
 
         body {
-            background-color: #f5f7fa;
-            color: #333;
+            background-color: #F9F8F3;
+            color: #1A1A1A;
             line-height: 1.6;
         }
 
@@ -27,11 +27,23 @@
         }
 
         .header {
-            background-color: #4a6bdf;
-            color: white;
+            background-color: #FFFFFF;
+            color: #1A1A1A;
             padding: 20px 0;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
         }
 
         .header-content {
@@ -49,11 +61,35 @@
         }
 
         .student-profile {
-            background-color: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            background-color: #FFFFFF;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .student-profile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
         }
 
         .profile-header {
@@ -68,7 +104,7 @@
         .profile-title {
             font-size: 18px;
             font-weight: 600;
-            color: #333;
+            color: #1A1A1A;
         }
 
         .profile-actions {
@@ -95,15 +131,37 @@
         .info-value {
             font-size: 16px;
             font-weight: 500;
-            color: #333;
+            color: #1A1A1A;
         }
 
         .dashboard-section {
-            background-color: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            background-color: #FFFFFF;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.5s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .dashboard-section:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+
+        .dashboard-section:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .dashboard-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
         }
 
         .section-header {
@@ -118,7 +176,7 @@
         .section-title {
             font-size: 18px;
             font-weight: 600;
-            color: #333;
+            color: #1A1A1A;
         }
 
         .score-chart-container {
@@ -140,19 +198,29 @@
 
         .practice-records th {
             font-weight: 500;
-            color: #666;
-            background-color: #f9fafb;
+            color: #1A1A1A;
+            background-color: rgba(186, 207, 206, 0.2);
         }
 
         .practice-records tr:hover {
-            background-color: #f5f7fa;
+            background-color: rgba(186, 207, 206, 0.1);
+        }
+
+        /* 选中状态的表格行 - 深色背景 */
+        .practice-records tr.selected {
+            background-color: #1A1A1A;
+            color: #FFFFFF;
+        }
+
+        .practice-records tr.selected td {
+            color: #FFFFFF;
         }
 
         .score-badge {
-            background-color: #e8f5e9;
-            color: #388e3c;
+            background-color: rgba(153, 182, 180, 0.2);
+            color: #1A1A1A;
             padding: 4px 8px;
-            border-radius: 4px;
+            border-radius: 6px;
             font-weight: 500;
             display: inline-block;
         }
@@ -166,13 +234,13 @@
         }
 
         .status-completed {
-            background-color: #e3f2fd;
-            color: #1976d2;
+            background-color: rgba(153, 182, 180, 0.2);
+            color: #1A1A1A;
         }
 
         .status-in-progress {
-            background-color: #fff8e1;
-            color: #f57c00;
+            background-color: rgba(223, 177, 153, 0.2);
+            color: #1A1A1A;
         }
 
         .date-time {
@@ -192,10 +260,10 @@
             align-items: center;
             justify-content: center;
             padding: 8px 16px;
-            background-color: #ffffff;
-            color: #4a6bdf;
-            border: 1px solid #4a6bdf;
-            border-radius: 4px;
+            background-color: #FFFFFF;
+            color: #1A1A1A;
+            border: 1px solid #BACFCE;
+            border-radius: 6px;
             font-size: 14px;
             font-weight: 500;
             text-decoration: none;
@@ -204,7 +272,7 @@
         }
 
         .back-button:hover {
-            background-color: #f0f4ff;
+            background-color: rgba(186, 207, 206, 0.2);
         }
 
         .back-button svg {
@@ -217,10 +285,10 @@
             align-items: center;
             justify-content: center;
             padding: 8px 16px;
-            background-color: #4a6bdf;
-            color: #ffffff;
+            background-color: #D48982;
+            color: #FFFFFF;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 14px;
             font-weight: 500;
             text-decoration: none;
@@ -229,7 +297,9 @@
         }
 
         .change-password-button:hover {
-            background-color: #3a5bbf;
+            background-color: #c07770;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .change-password-button svg {
@@ -457,10 +527,10 @@
                             datasets: [{
                                 label: '练习分数',
                                 data: scores,
-                                backgroundColor: 'rgba(74, 107, 223, 0.2)',
-                                borderColor: 'rgba(74, 107, 223, 1)',
+                                backgroundColor: 'rgba(153, 182, 180, 0.2)',
+                                borderColor: '#99B6B4',
                                 borderWidth: 2,
-                                pointBackgroundColor: 'rgba(74, 107, 223, 1)',
+                                pointBackgroundColor: '#99B6B4',
                                 pointRadius: 4,
                                 tension: 0.3
                             }]

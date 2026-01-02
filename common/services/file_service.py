@@ -58,4 +58,32 @@ class FileService(ABC):
     def get_file_size(file_path: str) -> int:
         """获取文件大小（字节）"""
         pass
+    
+    @staticmethod
+    @abstractmethod
+    def upload_word_document(file: UploadedFile) -> Tuple[str, str, str]:
+        """
+        上传并解析 Word 文档
+        
+        Args:
+            file: Word 文档文件
+            
+        Returns:
+            (file_path, file_url, extracted_text) 元组
+        """
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def extract_text_from_word(file_path: str) -> str:
+        """
+        从 Word 文档中提取文本内容
+        
+        Args:
+            file_path: Word 文档文件路径
+            
+        Returns:
+            提取的文本内容
+        """
+        pass
 

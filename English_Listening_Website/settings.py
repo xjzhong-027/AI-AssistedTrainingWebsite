@@ -62,6 +62,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'django_filters',
+    # Django REST Framework
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',  # Token blacklist for logout
+    'corsheaders',
     # Common services module (must be before other apps that use it)
     'common.apps.CommonConfig',
     # 注册app'ELW'
@@ -200,3 +205,105 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SIMPLEUI_HOME_INFO=False
 SIMPLEUI_ANALYSIS=False
 SIMPLEUI_INDEX = 'http://localhost:8000/login'
+
+# ============================================
+# Django REST Framework Configuration
+# ============================================
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',  # Keep for backward compatibility
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
+    'DEFAULT_PARSER_CLASSES': (
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    ),
+    'EXCEPTION_HANDLER': 'common.api.exceptions.custom_exception_handler',
+}
+
+# ============================================
+# JWT Configuration
+# ============================================
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Access token 有效期：1小时
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Refresh token 有效期：7天
+    'ROTATE_REFRESH_TOKENS': True,  # 刷新时生成新的 refresh token
+    'BLACKLIST_AFTER_ROTATION': True,  # 刷新后将旧 token 加入黑名单
+    'UPDATE_LAST_LOGIN': True,  # 更新最后登录时间
+    
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    
+    'JTI_CLAIM': 'jti',
+}
+
+# ============================================
+# CORS Configuration
+# ============================================
+
+# CORS settings for frontend-backend separation
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React development server
+    "http://localhost:5173",  # Vite development server
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
+# Allow credentials (cookies, authorization headers)
+CORS_ALLOW_CREDENTIALS = True
+
+# Allowed HTTP methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Allowed headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# For development only - allow all origins (remove in production)
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True

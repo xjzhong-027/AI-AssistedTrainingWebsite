@@ -16,8 +16,10 @@ def log_create_or_update(sender, instance, created, **kwargs):
         log_type = 'CREATE' if created else 'UPDATE'
         action = 'Created' if created else 'Updated'
         user = get_current_user()  # 获取当前登录用户
-        if not user:
-            # 如果没有用户（测试环境或后台任务），跳过日志记录
+        
+        # 检查用户是否存在且不是匿名用户
+        if not user or not user.is_authenticated:
+            # 如果没有用户或用户未认证（测试环境、后台任务或 API 请求），跳过日志记录
             return
 
         message = f"{action} {str(instance)}"
@@ -40,11 +42,13 @@ def log_delete(sender, instance, **kwargs):
     """
     if isinstance(instance, sender):
         user = get_current_user()  # 获取当前登录用户
-        if not user:
-            # 如果没有用户（测试环境或后台任务），跳过日志记录
+        
+        # 检查用户是否存在且不是匿名用户
+        if not user or not user.is_authenticated:
+            # 如果没有用户或用户未认证（测试环境、后台任务或 API 请求），跳过日志记录
             return
+            
         message = f"Deleted {str(instance)}"
-
 
         # 使用模型的 verbose_name_plural 作为模块名
         module = instance._meta.verbose_name_plural

@@ -26,12 +26,12 @@
 }
 
 .notification {
-    background-color: #fff;
-    border: 1px solid #ccc;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background-color: #FFFFFF;
+    border: 1px solid #BACFCE;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     margin-bottom: 10px;
     padding: 15px;
-    border-radius: 5px;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -39,16 +39,20 @@
 
 .notification button {
     margin-right: 5px;
-    padding: 5px 10px;
+    padding: 6px 12px;
     cursor: pointer;
     border: none;
-    background-color: #007bff;
-    color: #fff;
-    border-radius: 3px;
+    background-color: #D48982;
+    color: #FFFFFF;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s ease;
 }
 
 .notification button:hover {
-    background-color: #0056b3;
+    background-color: #c07770;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 /*h2 {*/
 /*    color: #333;*/
@@ -93,69 +97,104 @@
 /*    background-color: #45a049;*/
 /*}*/
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            color: #333;
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #F9F8F3;
+            color: #1A1A1A;
         }
 
         .breadcrumb {
-            background-color: #fff;
+            background-color: #FFFFFF;
             margin-bottom: 20px;
-            padding: 10px 15px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            list-style: none;
+        }
+
+        .breadcrumb-item {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .breadcrumb-item a {
+            color: #99B6B4;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            padding: 4px 8px;
             border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .breadcrumb-item a:hover {
+            color: #1A1A1A;
+            background-color: rgba(153, 182, 180, 0.1);
         }
 
         .breadcrumb-item.active {
-            color: #6c757d;
+            color: #1A1A1A;
+            font-weight: 600;
         }
 
         .breadcrumb-item + .breadcrumb-item::before {
-            color: #6c757d;
+            content: "/";
+            color: #BACFCE;
+            padding: 0 10px;
+            font-weight: 300;
         }
 
         .welcome-text {
             margin-bottom: 15px;
-            color: #6c757d;
+            color: #1A1A1A;
         }
 
         .nav-pills .nav-link {
-            color: #6c757d;
+            color: #1A1A1A;
             font-weight: 500;
-            border-radius: 4px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
         }
 
+        /* 选中状态的导航标签 - 深色背景 */
         .nav-pills .nav-link.active {
-            color: #4CAF50;
-            background-color: transparent;
+            color: #FFFFFF;
+            background-color: #1A1A1A;
+        }
+
+        .nav-pills .nav-link:hover:not(.active) {
+            background-color: rgba(186, 207, 206, 0.2);
         }
 
 
         form {
-            background-color: #fff;
+            background-color: #FFFFFF;
             padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             margin-bottom: 25px;
         }
 
         .form-label {
             font-weight: 600;
-            color: #555;
+            color: #1A1A1A;
             margin-bottom: 8px;
         }
 
         .form-control {
             padding: 12px 15px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
+            border: 1px solid #BACFCE;
+            border-radius: 6px;
             font-size: 16px;
-            transition: border-color 0.3s;
+            transition: all 0.3s ease;
+            background-color: #FFFFFF;
+            color: #1A1A1A;
         }
 
         .form-control:focus {
-            border-color: #4CAF50;
-            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.25);
+            border-color: #99B6B4;
+            box-shadow: 0 0 0 3px rgba(153, 182, 180, 0.2);
+            outline: none;
         }
 .btn {
             padding: 8px 16px;
@@ -164,24 +203,26 @@
             transition: all 0.3s;
         }
         .btn-primary {
-           background-color: #4CAF50;
-            border-color: #4CAF50;
-            color: white;
+           background-color: #D48982;
+            border-color: #D48982;
+            color: #FFFFFF;
         }
 
         .btn-primary:hover {
-            background-color: #45a049;
-            border-color: #45a049;
+            background-color: #c07770;
+            border-color: #c07770;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .btn-success {
-            background: #4CAF50;
-    color: white;
+            background: #D48982;
+    color: #FFFFFF;
     padding: 10px 20px;
     font-size: 16px;
     font-weight: 500;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -190,7 +231,7 @@
         }
 
         .btn-success:hover {
-            background: linear-gradient(to right, #45a049, #66BB6A);
+            background: #c07770;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
@@ -198,26 +239,62 @@
 .btn-success:active {
     transform: translateY(0);
 }
+        /* 统一卡片样式 - 有设计感 */
         .card {
             border: none;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: all 0.3s ease;
+            background-color: #FFFFFF;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
         }
 
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-body {
+            padding: 25px;
+            position: relative;
+            z-index: 1;
         }
 
         .card-title {
             font-weight: 600;
-            color: #333;
+            color: #1A1A1A;
+            font-size: 20px;
+            margin-bottom: 12px;
         }
 
         .card-text {
-            color: #6c757d;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 8px;
         }
 
         .pagination {
@@ -225,18 +302,26 @@
             margin-top: 30px;
         }
 
+        /* 选中状态的分页 - 深色背景 */
         .page-item.active .page-link {
-            background-color: #4CAF50;
-            border-color: #4CAF50;
+            background-color: #1A1A1A;
+            border-color: #1A1A1A;
+            color: #FFFFFF;
         }
 
         .page-link {
-            color: #4CAF50;
-            border-radius: 4px;
+            color: #1A1A1A;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .page-link:hover {
+            background-color: rgba(186, 207, 206, 0.2);
+            color: #1A1A1A;
         }
 h2 {
-    background: linear-gradient(to right, rgba(76, 175, 80, 0.56),transparent);
-    color: #757575;
+    background: linear-gradient(to right, rgba(153, 182, 180, 0.3),transparent);
+    color: #1A1A1A;
     padding: 8px 15px;
     font-weight: bold;
     margin-bottom: 20px;
@@ -252,5 +337,5 @@ h2 {
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(to right, rgba(76, 175, 80, 0.54),transparent);
+    background: linear-gradient(to right, rgba(153, 182, 180, 0.4),transparent);
 }

@@ -4,7 +4,7 @@ CommunicationService implementation for announcement functionality.
 This module provides the concrete implementation of CommunicationService
 for announcement-related operations (Announcement, Message).
 """
-from typing import Optional, List
+from typing import Optional, List, Dict
 from common.services.communication_service import CommunicationService
 from announce.models import Announcement, Message
 from Account.services.user_service_impl import UserServiceImpl
@@ -109,6 +109,54 @@ class CommunicationServiceImpl(CommunicationService):
             is_announcement=(message_type == 'announcement')
         )
         return message
+    
+    @staticmethod
+    def update_announcement(announcement_id: int, data: Dict) -> Optional[Announcement]:
+        """更新公告"""
+        try:
+            announcement = Announcement.objects.get(id=announcement_id)
+            for key, value in data.items():
+                if hasattr(announcement, key):
+                    setattr(announcement, key, value)
+            announcement.save()
+            return announcement
+        except Announcement.DoesNotExist:
+            return None
+    
+    @staticmethod
+    def delete_announcement(announcement_id: int) -> bool:
+        """删除公告"""
+        try:
+            announcement = Announcement.objects.get(id=announcement_id)
+            announcement.delete()
+            return True
+        except Announcement.DoesNotExist:
+            return False
+    
+    @staticmethod
+    def update_post(post_id: int, data: Dict) -> Optional['Post']:
+        """更新帖子 - 此方法应在 forum 模块中实现"""
+        raise NotImplementedError("update_post should be implemented in forum module")
+    
+    @staticmethod
+    def delete_post(post_id: int) -> bool:
+        """删除帖子 - 此方法应在 forum 模块中实现"""
+        raise NotImplementedError("delete_post should be implemented in forum module")
+    
+    @staticmethod
+    def update_comment(comment_id: int, data: Dict) -> Optional['Comment']:
+        """更新评论 - 此方法应在 forum 模块中实现"""
+        raise NotImplementedError("update_comment should be implemented in forum module")
+    
+    @staticmethod
+    def delete_comment(comment_id: int) -> bool:
+        """删除评论 - 此方法应在 forum 模块中实现"""
+        raise NotImplementedError("delete_comment should be implemented in forum module")
+    
+    @staticmethod
+    def get_comments_by_post(post_id: int) -> List['Comment']:
+        """获取帖子的所有评论 - 此方法应在 forum 模块中实现"""
+        raise NotImplementedError("get_comments_by_post should be implemented in forum module")
 
 
 

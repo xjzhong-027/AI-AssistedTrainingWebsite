@@ -6,46 +6,117 @@
     <title>Available Exams</title>
     <style>
         body {
-            background-color: #f8f9fa;
-            font-family: 'Arial', sans-serif;
+            background-color: #F9F8F3;
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Arial', sans-serif;
+            color: #1A1A1A;
         }
         .container {
             max-width: 800px;
             margin-top: 50px;
-            margin-left: auto; /* 水平居中 */
-    margin-right: auto; /* 水平居中 */
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-left: auto;
+            margin-right: auto;
+            padding: 40px;
+            background-color: #FFFFFF;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease-out;
         }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
+        }
+
+        .container::after {
+            content: '';
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(153, 182, 180, 0.08), transparent);
+            border-radius: 50%;
+        }
+
         h1 {
             text-align: center;
-            color: #343a40;
+            color: #1A1A1A;
             margin-bottom: 30px;
+            font-size: 36px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
         }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, #99B6B4, #D48982);
+            border-radius: 2px;
+        }
+
         .exam-list {
-            list-style-type: none; /* 去掉默认的列表样式 */
+            list-style-type: none;
             padding: 0;
+            position: relative;
+            z-index: 1;
         }
         .exam-list li {
-            background-color: #e9ecef; /* 浅灰色背景 */
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            border: 1px solid #dee2e6; /* 边框 */
+            background-color: rgba(186, 207, 206, 0.1);
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            border: 1px solid #BACFCE;
+            border-left: 4px solid #99B6B4;
+            transition: all 0.3s ease;
+        }
+        .exam-list li:hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+            transform: translateY(-3px);
+            background-color: rgba(186, 207, 206, 0.15);
+            border-left-color: #D48982;
         }
         .exam-list a {
-            color: #457345; /* 链接颜色 */
-            text-decoration: none; /* 去掉下划线 */
-            font-weight: bold;
+            color: #1A1A1A;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
         }
         .exam-list a:hover {
-            text-decoration: underline; /* 鼠标悬停时显示下划线 */
+            color: #99B6B4;
         }
         .exam-time {
-            color: #6c757d; /* 时间文字颜色 */
+            color: #666;
             font-size: 0.9em;
+            margin-left: 8px;
+        }
+        .exam-time-remaining-js {
+            color: #D48982;
+            font-weight: 500;
+            margin-left: 8px;
         }
     </style>
 </head>

@@ -79,4 +79,105 @@ class CommunicationService(ABC):
     ) -> 'Message':
         """发送消息"""
         pass
+    
+    @staticmethod
+    @abstractmethod
+    def update_post(post_id: int, data: Dict) -> Optional['Post']:
+        """
+        更新帖子
+        
+        Args:
+            post_id: 帖子ID
+            data: 更新的数据字典
+            
+        Returns:
+            Post 对象或 None（如果不存在）
+        """
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def delete_post(post_id: int) -> bool:
+        """
+        删除帖子
+        
+        Args:
+            post_id: 帖子ID
+            
+        Returns:
+            是否删除成功
+        """
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def update_comment(comment_id: int, data: Dict) -> Optional['Comment']:
+        """
+        更新评论
+        
+        Args:
+            comment_id: 评论ID
+            data: 更新的数据字典
+            
+        Returns:
+            Comment 对象或 None（如果不存在）
+        """
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def delete_comment(comment_id: int) -> bool:
+        """
+        删除评论
+        
+        Args:
+            comment_id: 评论ID
+            
+        Returns:
+            是否删除成功
+        """
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def get_comments_by_post(post_id: int) -> List['Comment']:
+        """
+        获取帖子的所有评论
+        
+        Args:
+            post_id: 帖子ID
+            
+        Returns:
+            Comment 对象列表（可能为空）
+        """
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def update_announcement(announcement_id: int, data: Dict) -> Optional['Announcement']:
+        """
+        更新公告
+        
+        Args:
+            announcement_id: 公告ID
+            data: 更新的数据字典
+            
+        Returns:
+            Announcement 对象或 None（如果不存在）
+        """
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def delete_announcement(announcement_id: int) -> bool:
+        """
+        删除公告
+        
+        Args:
+            announcement_id: 公告ID
+            
+        Returns:
+            是否删除成功
+        """
+        pass
 

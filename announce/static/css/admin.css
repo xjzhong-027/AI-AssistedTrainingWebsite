@@ -1,0 +1,208 @@
+body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+    background-color: #F9F8F3;
+    color: #1A1A1A;
+    padding: 20px;
+}
+
+.container {
+    background-color: #FFFFFF;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
+    z-index: 1;
+}
+
+.table th, .table td {
+    vertical-align: middle;
+}
+
+.table {
+    background-color: #FFFFFF;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+}
+
+.table th {
+    background-color: rgba(186, 207, 206, 0.2);
+    color: #1A1A1A;
+    font-weight: 600;
+    border-bottom: 2px solid #BACFCE;
+}
+
+.table tr:hover {
+    background-color: rgba(186, 207, 206, 0.1);
+}
+
+/* 选中状态的表格行 - 深色背景 */
+.table tr.selected {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.table tr.selected td {
+    color: #FFFFFF;
+}
+
+.action-buttons button {
+    margin: 2px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.action-buttons .btn-primary {
+    background-color: #D48982;
+    border-color: #D48982;
+    color: #FFFFFF;
+}
+
+.action-buttons .btn-primary:hover {
+    background-color: #c07770;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pagination {
+    margin-top: 20px;
+}
+
+/* 选中状态的分页 - 深色背景 */
+.pagination .page-item.active .page-link {
+    background-color: #1A1A1A;
+    border-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.pagination .page-link {
+    color: #1A1A1A;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.pagination .page-link:hover {
+    background-color: rgba(186, 207, 206, 0.2);
+    color: #1A1A1A;
+}
+
+.breadcrumb {
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    list-style: none;
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.breadcrumb::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
+}
+
+.breadcrumb > li {
+    display: inline-flex;
+    align-items: center;
+}
+
+.breadcrumb > li a {
+    color: #99B6B4;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.breadcrumb > li a:hover {
+    color: #1A1A1A;
+    background-color: rgba(153, 182, 180, 0.1);
+}
+
+.breadcrumb > li + li:before {
+    content: "/";
+    padding: 0 10px;
+    color: #BACFCE;
+    font-weight: 300;
+}
+
+.breadcrumb > .active {
+    color: #1A1A1A;
+    font-weight: 600;
+}
+
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    z-index: 1000;
+}
+
+.notification {
+    background-color: #FFFFFF;
+    border: 1px solid #BACFCE;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 10px;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.notification p {
+    margin: 0 0 10px;
+}
+
+.notification button {
+    margin-right: 5px;
+    padding: 6px 12px;
+    cursor: pointer;
+    border: none;
+    background-color: #D48982;
+    color: #FFFFFF;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.notification button:hover {
+    background-color: #c07770;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+

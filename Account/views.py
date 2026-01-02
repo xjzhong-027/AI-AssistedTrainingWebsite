@@ -8,6 +8,7 @@ from django.contrib.auth import login, logout
 from django.views.decorators.csrf import csrf_exempt
 from Account.models import Students, Teachers, Class, Attendance, LoginInfo, Admins
 from Account.services.auth_service_impl import AuthServiceImpl
+from Account.services.user_service_impl import UserServiceImpl
 
 
 # 登录板块
@@ -43,7 +44,11 @@ def user_login(request):
                 if student_user is not None:
                     login(request, student_user)
 
-                class_instance = Class.objects.get(id=student_instance.class_instance_id)
+                class_instance = UserServiceImpl.get_class_by_id(student_instance.class_instance_id)
+                if not class_instance:
+                    return render(request, 'login.html', {
+                        'error_message': 'Class not found！',
+                    })
                 start_date = datetime.date.fromisoformat(class_instance.start_date)
                 this_date = datetime.date.today()
                 if ((this_date - start_date).days) % 7 == 0:
@@ -169,8 +174,12 @@ def update_last_activity(request):
                     # 心跳机制验证失败1，学生异常挂机
                     username = request.session.get('username')
                     try:
-                        student_instance = Students.objects.get(username=username)
-                        class_instance = Class.objects.get(id=student_instance.class_instance_id)
+                        student_instance = UserServiceImpl.get_student_by_username(username)
+                        if not student_instance:
+                            return redirect('logout')
+                        class_instance = UserServiceImpl.get_class_by_id(student_instance.class_instance_id)
+                        if not class_instance:
+                            return redirect('logout')
                         start_date = datetime.date.fromisoformat(class_instance.start_date)
                         this_date = datetime.date.today()
                         start_datetime = datetime.datetime.combine(this_date, datetime.time.fromisoformat(class_instance.start_time))

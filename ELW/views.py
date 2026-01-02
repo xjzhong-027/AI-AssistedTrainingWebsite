@@ -52,10 +52,14 @@ from .forms import (
 )
 from Account.services.user_service_impl import UserServiceImpl
 from ELW.services.file_service_impl import FileServiceImpl
+from ELW.services.content_service_impl import ContentServiceImpl
 # Note: Attendance and Course are not in UserService interface
 # They are not user information models, but related to attendance and course management
 # We'll keep them as direct imports for now
 from Account.models import Attendance, Course
+# Note: Attendance and Course are not in UserService interface
+# They are not user information models, but related to attendance and course management
+# We'll keep them as direct imports for now
 from Account.services.auth_service_impl import AuthServiceImpl
 from Query.models import OverdueDeductionRule
 
@@ -330,18 +334,14 @@ def teacher_week_file_import(request):
                 overdue_rule_instance = None
 
             # 创建试卷
-            # Note: Class.objects.get(pk=class_id) is used here
-            # UserService doesn't have get_class_by_id method
-            # We verify the class belongs to the teacher by checking if it's in the classes list
-            from Account.models import Class
-            try:
-                class_instance = Class.objects.get(pk=class_id)
-                # Verify the class belongs to the teacher
-                if class_instance not in classes:
-                    messages.error(request, "无权访问该班级。")
-                    return redirect('teacher_week_task')
-            except Class.DoesNotExist:
+            # Use UserService to get class by ID
+            class_instance = UserServiceImpl.get_class_by_id(class_id)
+            if not class_instance:
                 messages.error(request, "班级不存在。")
+                return redirect('teacher_week_task')
+            # Verify the class belongs to the teacher
+            if class_instance not in classes:
+                messages.error(request, "无权访问该班级。")
                 return redirect('teacher_week_task')
             unit_instance = Unit.objects.create(
                 class_instance=class_instance,
@@ -841,27 +841,22 @@ def teacher_page_save(request, material_id):
 
 
             # 创建试卷
-            # Note: Class.objects.get(pk=class_id) is used here
-            # UserService doesn't have get_class_by_id method
-            # We verify the class belongs to the teacher by checking if it's in the classes list
-            from Account.models import Class
-            try:
-                class_instance = Class.objects.get(pk=class_id)
-                # Verify the class belongs to the teacher
-                if class_instance not in classes:
-                    messages.error(request, "无权访问该班级。")
-                    return redirect('teacher_page_create', material_id=material_id)
-            except Class.DoesNotExist:
+            # Use UserService to get class by ID
+            class_instance = UserServiceImpl.get_class_by_id(class_id)
+            if not class_instance:
                 messages.error(request, "班级不存在。")
                 return redirect('teacher_page_create', material_id=material_id)
-            unit_instance = Unit.objects.create(
-                class_instance=class_instance,
-                order=order,
-                title=title,
-                type=type,
-                overdue_rule=overdue_rule_instance
-            )
-            unit_instance.save()
+            # Verify the class belongs to the teacher
+            if class_instance not in classes:
+                messages.error(request, "无权访问该班级。")
+                return redirect('teacher_page_create', material_id=material_id)
+            unit_data = {
+                'order': order,
+                'title': title,
+                'type': type,
+                'overdue_rule_id': overdue_rule_instance.id if overdue_rule_instance else None
+            }
+            unit_instance = ContentServiceImpl.create_unit(class_instance.id, unit_data)
             print('unit_instance: ', unit_instance)
             # 如果为考试，则创建时间管理表
             if type == 'exam':
@@ -947,11 +942,38 @@ def teacher_page_save(request, material_id):
         else:
             preview_datas_json = request.POST.get('preview_datas')
             preview_page_infos_json = request.POST.get('preview_page_infos')
+            
+            print('='*50)
+            print('teacher_page_save - else分支')
+            print(f'preview_datas_json: {preview_datas_json}')
+            print(f'preview_page_infos_json: {preview_page_infos_json}')
+            print(f'classes数量: {len(classes) if classes else 0}')
+            print('='*50)
+            
+            # 验证数据是否存在
+            if not preview_datas_json or preview_datas_json == 'test' or preview_datas_json == '[]':
+                messages.error(request, '缺少组卷数据，请返回重新选择题目。')
+                return redirect('teacher_page_create', material_id=material_id)
+            
+            if not preview_page_infos_json or preview_page_infos_json == 'test' or preview_page_infos_json == '[]':
+                messages.error(request, '缺少页面信息，请返回重新选择题目。')
+                return redirect('teacher_page_create', material_id=material_id)
+            
+            # 验证JSON格式
+            try:
+                json.loads(preview_datas_json)
+                json.loads(preview_page_infos_json)
+            except json.JSONDecodeError as e:
+                print(f'JSON解析错误: {str(e)}')
+                messages.error(request, f'数据格式错误，请返回重新选择题目。错误: {str(e)}')
+                return redirect('teacher_page_create', material_id=material_id)
+            
             return render(request, 'teacher_side/unit_create.html', {
                 'preview_datas_json': preview_datas_json,
                 'preview_page_infos_json': preview_page_infos_json,
                 'classes': classes,
-                'overdue_rules': overdue_rules
+                'overdue_rules': overdue_rules,
+                'material_id': material_id
             })
 
 '''
@@ -959,7 +981,10 @@ def teacher_page_save(request, material_id):
         print('teacher_page_save receive selected_questions.')
         print('selected_questions: ', selected_questions)
         # 创建试卷
-        class_instance = Class.objects.get(pk=1)
+        class_instance = UserServiceImpl.get_class_by_id(1)
+        if not class_instance:
+            messages.error(request, 'Class not found.')
+            return redirect('teacher_index')
         unit_instance = Unit.objects.create(
             class_instance=class_instance,
             order = 1,
@@ -975,12 +1000,10 @@ def teacher_page_save(request, material_id):
             print('question_id: ', question_id)
             if question_id.startswith('main_'):  # 大题,则为改错题
                 # 为大题创建页面
-                page_instance = PaperPage.objects.create(
-                    unit=unit_instance,
-                    order=order,
-                    text=f'第{order}个页面',
-                )
-                page_instance.save()
+                page_data = {
+                    'order': order
+                }
+                page_instance = ContentServiceImpl.create_paper_page(unit_instance.id, page_data)
                 # 保存大题信息
                 main_id = int(question_id.split('_')[1])
                 main_instance = MainQuestion.objects.get(id=main_id)
@@ -1201,11 +1224,9 @@ def teacher_task_package_add(request):
             # 【处理文件保存逻辑（【待替换】需要保存到数据库，在这里创建 UploadedMedia 实例）】
             media_file = request.FILES.get('media_file')
             media_uuid =uuid.uuid4().hex
-            media_file_path = os.path.join(settings.MEDIA_ROOT, 'media_material/', media_uuid)
-            os.makedirs(os.path.dirname(media_file_path), exist_ok=True)
-            with open(media_file_path, 'wb+') as destination:
-                for chunk in media_file.chunks():
-                    destination.write(chunk)
+            # Use FileService to upload media file
+            media_file_path, media_url = FileServiceImpl.upload_media_file(media_file, file_type='media')
+            media_uuid = os.path.basename(media_file_path).split('.')[0] if '.' in os.path.basename(media_file_path) else os.path.basename(media_file_path)
 
             # 处理多张图片
             # image_files = request.FILES.getlist('image_file')
@@ -1214,34 +1235,33 @@ def teacher_task_package_add(request):
 
             image_file = request.FILES.get('image_file')
             if image_file:
-                image_uuid = uuid.uuid4().hex
-                image_file_path = os.path.join(settings.MEDIA_ROOT, 'image/', image_uuid)
-                os.makedirs(os.path.dirname(image_file_path), exist_ok=True)
-                with open(image_file_path, 'wb+') as destination:
-                    for chunk in image_file.chunks():
-                        destination.write(chunk)
-                new_task_package = models.MediaMaterial.objects.create(
-                    title = request.POST.get('title'),
-                    theme = request.POST.get('theme'),
-                    abstract = request.POST.get('abstract'),
-                    keywords = request.POST.get('keywords'),
-                    transcript = request.POST.get('transcript'),
-                    media_url = 'media_material/' + media_uuid,
-                    image_url = 'image/' + image_uuid,
-                )
+                # Use FileService to upload image file
+                image_file_path, image_url = FileServiceImpl.upload_media_file(image_file, file_type='image')
+                image_uuid = os.path.basename(image_file_path).split('.')[0] if '.' in os.path.basename(image_file_path) else os.path.basename(image_file_path)
+                material_data = {
+                    'title': request.POST.get('title'),
+                    'theme': request.POST.get('theme'),
+                    'abstract': request.POST.get('abstract'),
+                    'keywords': request.POST.get('keywords'),
+                    'transcript': request.POST.get('transcript'),
+                    'media_url': media_url,
+                    'image_url': image_url,
+                }
+                new_task_package = ContentServiceImpl.create_media_material(material_data)
                 id = new_task_package.id
                 params = {'task_package_id': id}
                 query_string = urlencode(params)
                 url = reverse('question_integration')
                 return HttpResponseRedirect(f"{url}?{query_string}")
-            new_task_package = models.MediaMaterial.objects.create(
-                title=request.POST.get('title'),
-                theme=request.POST.get('theme'),
-                abstract=request.POST.get('abstract'),
-                keywords=request.POST.get('keywords'),
-                transcript=request.POST.get('transcript'),
-                media_url='media_material/' + media_uuid,
-            )
+            material_data = {
+                'title': request.POST.get('title'),
+                'theme': request.POST.get('theme'),
+                'abstract': request.POST.get('abstract'),
+                'keywords': request.POST.get('keywords'),
+                'transcript': request.POST.get('transcript'),
+                'media_url': media_url,
+            }
+            new_task_package = ContentServiceImpl.create_media_material(material_data)
             id = new_task_package.id
             print('Received all task_package_info successfully.')
             # return render(request, 'teacher_side/question_add.html')    #替换为待跳转页面
@@ -1765,45 +1785,19 @@ def question_integration(request):
     '''
     # word文档导入
     if request.method == 'POST' and request.FILES.get('word_file'):
-        def extract_text_from_word(doc_file):
-            """
-            从Word文档中提取文本内容
-            使用BytesIO来处理Django上传的文件对象
-            """
-            try:
-                # 将文件内容读取到内存
-                file_content = doc_file.read()
-                # 重置文件指针（如果需要）
-                doc_file.seek(0)
-                
-                # 使用BytesIO创建文件对象供python-docx使用
-                docx_file = BytesIO(file_content)
-                doc = Document(docx_file)
-                
-                text = ''
-                for para in doc.paragraphs:
-                    text += para.text + '\n'
-                return text
-            except Exception as e:
-                print(f'Error reading Word document: {str(e)}')
-                error_msg = str(e)
-                if 'Content_Types' in error_msg or 'not a zip file' in error_msg.lower():
-                    raise ValueError('无法读取Word文档。请确保：1) 文件是有效的.docx格式（不是.doc格式）；2) 文件没有损坏。如果您有.doc格式的文件，请在Word中打开并另存为.docx格式。')
-                else:
-                    raise ValueError(f'无法读取Word文档: {error_msg}')
-
         form = WordUploadForm(request.POST, request.FILES)
         if form.is_valid():
             word_file = request.FILES['word_file']
             # 验证文件扩展名
-            if not word_file.name.lower().endswith('.docx'):
-                messages.error(request, '请上传有效的Word文档（仅支持.docx格式）。如果您有.doc格式的文件，请在Word中打开并另存为.docx格式。')
+            is_valid, error_msg = FileServiceImpl.validate_file_type(word_file, ['.docx'])
+            if not is_valid:
+                messages.error(request, f'请上传有效的Word文档（仅支持.docx格式）: {error_msg}')
                 form = WordUploadForm()
                 return render(request, 'teacher_side/question_integration.html', {'form': form})
             
             try:
-                # 提取文本内容
-                text_content = extract_text_from_word(word_file)
+                # Use FileService to upload and extract text from Word document
+                file_path, file_url, text_content = FileServiceImpl.upload_word_document(word_file)
             except Exception as e:
                 messages.error(request, f'读取Word文档失败: {str(e)}')
                 form = WordUploadForm()
@@ -2624,19 +2618,14 @@ def teacher_exam_bank(request):
     # 处理筛选查询
     class_id = request.GET.get('class_id', '')
     if class_id:
-        # Note: Class.objects.get(id=int(class_id)) is used here
-        # UserService doesn't have get_class_by_id method
-        # We need to check if the class belongs to the teacher
-        # For now, we'll keep direct access but add validation
-        from Account.models import Class
-        try:
-            class_instance = Class.objects.get(id=int(class_id))
-            # Verify the class belongs to the teacher
-            if class_instance not in classes:
-                messages.error(request, "无权访问该班级。")
-                return redirect('teacher_exam_bank')
-        except Class.DoesNotExist:
+        # Use UserService to get class by ID
+        class_instance = UserServiceImpl.get_class_by_id(int(class_id))
+        if not class_instance:
             messages.error(request, "班级不存在。")
+            return redirect('teacher_exam_bank')
+        # Verify the class belongs to the teacher
+        if class_instance not in classes:
+            messages.error(request, "无权访问该班级。")
             return redirect('teacher_exam_bank')
         units = Unit.objects.filter(class_instance=class_instance)
 

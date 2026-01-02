@@ -2,8 +2,125 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #fff;
+    background-color: #FFFFFF;
+    padding: 15px 25px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
+}
+
+h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #1A1A1A;
+    font-weight: 600;
+}
+
+button {
+    background-color: #D48982;
+    border: none;
+    color: #FFFFFF;
     padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+button:hover {
+    background-color: #c07770;
+    transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px; /* Space between header and content */
+}
+
+a {
+    text-decoration: none;
+    color: #99B6B4;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #1A1A1A;
+}
+
+table {
+    width: 80%;
+    margin: 20px auto;
+    border-collapse: collapse;
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+th, td {
+    border: 1px solid #eee;
+    padding: 14px;
+    text-align: center;
+}
+
+th {
+    background-color: rgba(186, 207, 206, 0.2);
+    color: #1A1A1A;
+    font-weight: 600;
+}
+
+tr:nth-child(even) {
+    background-color: rgba(186, 207, 206, 0.05);
+}
+
+tr:hover {
+    background-color: rgba(186, 207, 206, 0.1);
+}
+
+/* 选中状态的表格行 - 深色背景 */
+tr.selected {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+tr.selected td {
+    color: #FFFFFF;
+}
+
+.pagination {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.pagination a, .pagination span {
+    margin: 0 5px;
+    padding: 8px 12px;
+    text-decoration: none;
+    border: 1px solid #BACFCE;
+    color: #1A1A1A;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.pagination a:hover {
+    background-color: rgba(186, 207, 206, 0.2);
+    color: #1A1A1A;
+}
+
+.pagination .active {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+    font-weight: 600;
+    border-color: #1A1A1A;
 }

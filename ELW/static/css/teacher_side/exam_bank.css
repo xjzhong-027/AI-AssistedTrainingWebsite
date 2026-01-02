@@ -2,9 +2,9 @@
 
 /* 全局样式 */
 body {
-    font-family: 'Arial', sans-serif;
-    background-color: #f5f5f5;
-    color: #333;
+    font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+    background-color: #F9F8F3;
+    color: #1A1A1A;
     margin: 0;
     padding: 0;
 }
@@ -14,60 +14,104 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #fff;
-    padding: 10px 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px; /* 头部与内容之间的间距 */
+    background-color: #FFFFFF;
+    padding: 15px 25px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
 }
 
 .header button {
-    background-color: #4CAF50; /* 绿色 */
+    background-color: #D48982;
     border: none;
-    color: white;
+    color: #FFFFFF;
     padding: 10px 20px;
     text-align: center;
     text-decoration: none;
     font-size: 16px;
     cursor: pointer;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    font-weight: 500;
 }
 
 .header button:hover {
-    background-color: #45a049; /* 深绿色 */
+    background-color: #c07770;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .header select {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 8px 12px;
+    border: 1px solid #BACFCE;
+    border-radius: 6px;
     font-size: 14px;
-    background-color: #fafafa;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+    transition: all 0.3s ease;
 }
 
 .header select:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+    border-color: #99B6B4;
+    box-shadow: 0 0 0 3px rgba(153, 182, 180, 0.2);
     outline: none;
 }
 
 /* 主体样式 */
 .main {
-    background-color: #ffffff;
-    padding: 20px;
-    border-radius: 8px;
-    /*box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);*/
+    background-color: #FFFFFF;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     max-width: 1500px;
     margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
+    z-index: 1;
 }
 
 .main h1 {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 700;
-    color: #333;
+    color: #1A1A1A;
     margin-bottom: 20px;
     text-align: center;
+    position: relative;
+    z-index: 1;
 }
 
 /* 表格样式 */
@@ -75,37 +119,50 @@ body {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 #unit_table th,
 #unit_table td {
-    border: 1px solid #ddd;
+    border: 1px solid #eee;
     padding: 12px;
     text-align: center;
 }
 
 #unit_table th {
-    background-color: #f4f4f4;
+    background-color: rgba(186, 207, 206, 0.2);
     font-weight: 600;
-    color: #555;
+    color: #1A1A1A;
 }
 
 #unit_table tr:nth-child(even) {
-    background-color: #f9f9f9;
+    background-color: rgba(186, 207, 206, 0.05);
 }
 
 #unit_table tr:hover {
-    background-color: #f1f1f1;
+    background-color: rgba(186, 207, 206, 0.1);
+}
+
+/* 选中状态的表格行 - 深色背景 */
+#unit_table tr.selected {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+#unit_table tr.selected td {
+    color: #FFFFFF;
 }
 
 #unit_table a {
-    color: #007BFF;
+    color: #99B6B4;
     text-decoration: none;
     transition: color 0.3s ease;
 }
 
 #unit_table a:hover {
-    color: #0056b3;
+    color: #1A1A1A;
 }
 
 /* 分页控件样式 */
@@ -117,21 +174,24 @@ body {
 .pagination a,
 .pagination span {
     margin: 0 5px;
-    padding: 5px 10px;
+    padding: 8px 12px;
     text-decoration: none;
-    border: 1px solid #ddd;
-    color: #333;
-    border-radius: 4px;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    border: 1px solid #BACFCE;
+    color: #1A1A1A;
+    border-radius: 6px;
+    transition: all 0.3s ease;
 }
 
 .pagination a:hover {
-    background-color: #f4f4f4;
+    background-color: rgba(186, 207, 206, 0.2);
+    color: #1A1A1A;
 }
 
 .pagination .active {
-    background-color: #ddd;
-    font-weight: bold;
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+    font-weight: 600;
+    border-color: #1A1A1A;
 }
 
 

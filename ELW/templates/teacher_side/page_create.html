@@ -44,91 +44,104 @@
                 <div>
 {#如果是改错题，只允许选择一整道大题#}
                     {% if main_question.question_type == 'correction' %}
-                        <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
-                        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
-                        <label for="main_{{ main_question.id }}">
-                            {% for sub_question in main_question.sub_questions.all %}
-                                {% for correction in sub_question.corrections.all %}
-                                    {% if correction %}
-                                        <span>{{ sub_question.question_text }} </span>
-                                    {% endif %}
+                        <div style="margin: 10px 0;">
+                            <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}" style="margin-right: 8px; width: 18px; height: 18px; vertical-align: middle;">
+                            <label for="main_{{ main_question.id }}" style="display: inline-block; vertical-align: middle; cursor: pointer;">
+                                <span style="font-weight: bold;">{{ forloop.counter }}. {{ main_question.question_text }}</span>
+                                {% for sub_question in main_question.sub_questions.all %}
+                                    {% for correction in sub_question.corrections.all %}
+                                        {% if correction %}
+                                            <span>{{ sub_question.question_text }} </span>
+                                        {% endif %}
+                                    {% endfor %}
                                 {% endfor %}
-                            {% endfor %}
-                        </label>
+                            </label>
+                        </div>
 {#如果是填空题，只允许选择一整道大题#}
                     {% elif main_question.question_type == 'blank' %}
-                        <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
-                        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
-                        <label for="main_{{ main_question.id }}">
-                            {% for sub_question in main_question.sub_questions.all %}
-                                {% for blank in sub_question.blanks.all %}
-                                    {% if blank %}
-                                        {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
-                                            {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
-                                                {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
-                                                    {% with before=words|custom_before:index after=words|custom_after:index %}
-                                                        {{ before|join:" " }} ___ {{ after|join:" " }}
-                                                    {% endwith %}
-                                                {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
-                                                    {{ words|join:" " }} ___
-                                                {% endif %}
+                        <div style="margin: 10px 0;">
+                            <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}" style="margin-right: 8px; width: 18px; height: 18px; vertical-align: middle;">
+                            <label for="main_{{ main_question.id }}" style="display: inline-block; vertical-align: middle; cursor: pointer;">
+                                <span style="font-weight: bold;">{{ forloop.counter }}. {{ main_question.question_text }}</span>
+                                {% for sub_question in main_question.sub_questions.all %}
+                                    {% for blank in sub_question.blanks.all %}
+                                        {% if blank %}
+                                            {% with words=sub_question.question_text.split %}   {# 将问题文本按空格分割成单词列表 #}
+                                                {% with index=blank.index|add_one %}  {# 使用自定义过滤器计算 index+1 #}
+                                                    {% if index < words|length %}  {# 如果 index 在范围内，正常截取 before 和 after #}
+                                                        {% with before=words|custom_before:index after=words|custom_after:index %}
+                                                            {{ before|join:" " }} ___ {{ after|join:" " }}
+                                                        {% endwith %}
+                                                    {% else %}  {# 如果 index 超出范围，直接将答案插入到末尾 #}
+                                                        {{ words|join:" " }} ___
+                                                    {% endif %}
+                                                {% endwith %}
                                             {% endwith %}
-                                        {% endwith %}
-                                    {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
                                 {% endfor %}
-                            {% endfor %}
-                        </label>
+                            </label>
+                        </div>
                     {% elif main_question.question_type == 'text' %}
-
-                        <p>{{ forloop.counter }}. </p>
-                        <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}">
-                        <div id="text">
-                            <label for="main_{{ main_question.id }}"><p>{{ main_question.question_text }}</p></label>
+                        <div style="margin: 10px 0;">
+                            <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}" style="margin-right: 8px; width: 18px; height: 18px; vertical-align: middle;">
+                            <label for="main_{{ main_question.id }}" style="display: inline-block; vertical-align: middle; cursor: pointer;">
+                                <span style="font-weight: bold;">{{ forloop.counter }}. </span>
+                                <span id="text">{{ main_question.question_text }}</span>
+                            </label>
                         </div>
 
 
 {#选择题/连线题/主观题#}
                     {% else %}
-
-                        <p>{{ forloop.counter }}. {{ main_question.question_text }}</p>
-                        {% for sub_question in main_question.sub_questions.all %}
-                            {% if sub_question %}
-                                <div class="subQuestion">
-                                    <input type="checkbox" id="sub_{{ sub_question.id }}" name="questions" value='sub_{{ sub_question.id }}'>
-                                    <label for="sub_{{ sub_question.id }}">
-                                        ({{ forloop.counter }}) {{ sub_question.question_text }} ({{ sub_question.score }})
-
-                                        {#选择题#}
-                                        {% if main_question.question_type == 'choice' %}
-                                            <div class="choice">
-                                                {% for choice in sub_question.options.all %}
-                                                   {% if choice %}
-                                                       <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
-                                                    {% endif %}
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
-
-                                    {#连线题#}
-                                        {% if main_question.question_type == 'matching' %}
-                                            <div class="matching">
-                                                {% for matchingOption in sub_question.matchingOptions.all %}
-                                                    {% if matchingOption %}
-                                                        <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
-
-                                                    {% endif %}
-                                                {% endfor %}
-                                            </div>
-
-                                        {% endif %}
-
-                                    </label>
-
-                                </div>
+                        <div style="margin: 10px 0;">
+                            {# 如果没有小题，显示大题checkbox #}
+                            {% if not main_question.sub_questions.all %}
+                                <input type="checkbox" id="main_{{ main_question.id }}" name="questions" value="main_{{ main_question.id }}" style="margin-right: 8px; width: 18px; height: 18px; vertical-align: middle;">
+                                <label for="main_{{ main_question.id }}" style="display: inline-block; vertical-align: middle; cursor: pointer;">
+                                    <span style="font-weight: bold;">{{ forloop.counter }}. {{ main_question.question_text }}</span>
+                                </label>
                             {% else %}
-                                <p>No sub_questions.</p>
+                                <p style="font-weight: bold; margin-bottom: 5px;">{{ forloop.counter }}. {{ main_question.question_text }}</p>
+                                {% for sub_question in main_question.sub_questions.all %}
+                                    {% if sub_question %}
+                                        <div class="subQuestion" style="margin: 8px 0 8px 20px;">
+                                            <input type="checkbox" id="sub_{{ sub_question.id }}" name="questions" value='sub_{{ sub_question.id }}' style="margin-right: 8px; width: 18px; height: 18px; vertical-align: middle;">
+                                            <label for="sub_{{ sub_question.id }}" style="display: inline-block; vertical-align: middle; cursor: pointer;">
+                                                ({{ forloop.counter }}) {{ sub_question.question_text }} ({{ sub_question.score }})
+
+                                            {#选择题#}
+                                            {% if main_question.question_type == 'choice' %}
+                                                <div class="choice">
+                                                    {% for choice in sub_question.options.all %}
+                                                       {% if choice %}
+                                                           <p>{{ choice.option_label }}. {{ choice.option_content }}</p>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+
+                                        {#连线题#}
+                                            {% if main_question.question_type == 'matching' %}
+                                                <div class="matching">
+                                                    {% for matchingOption in sub_question.matchingOptions.all %}
+                                                        {% if matchingOption %}
+                                                            <p>{{ matchingOption.option_label }}. {{ matchingOption.option_content }}</p>
+
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+
+                                            {% endif %}
+
+                                            </label>
+                                        </div>
+                                    {% else %}
+                                        <p>No sub_questions.</p>
+                                    {% endif %}
+                                {% endfor %}
                             {% endif %}
-                        {% endfor %}
+                        </div>
                     {% endif %}
                 </div>
             {% endfor %}
@@ -319,6 +332,9 @@
     // 确认组卷表单提交事件
     document.getElementById('submit_form').addEventListener('submit', function (event) {
         console.log('点击确认组卷');
+        console.log('当前pre_selected_questions:', pre_selected_questions);
+        console.log('当前pre_page_infos:', pre_page_infos);
+        
         try {
             // 确保是数组
             if (!Array.isArray(pre_selected_questions)) {
@@ -332,15 +348,44 @@
             if (pre_selected_questions.length === 0) {
                 alert('请至少添加一个页面后再确认组卷！');
                 event.preventDefault();
-                return;
+                return false;
             }
             
-            document.getElementById('preview_datas').value = JSON.stringify(pre_selected_questions);
-            document.getElementById('preview_page_infos').value = JSON.stringify(pre_page_infos);
-            console.log('确认组卷数据已设置');
+            // 设置隐藏字段的值
+            const previewDatasValue = JSON.stringify(pre_selected_questions);
+            const previewPageInfosValue = JSON.stringify(pre_page_infos);
+            
+            document.getElementById('preview_datas').value = previewDatasValue;
+            document.getElementById('preview_page_infos').value = previewPageInfosValue;
+            
+            console.log('确认组卷数据已设置:');
+            console.log('preview_datas:', previewDatasValue);
+            console.log('preview_page_infos:', previewPageInfosValue);
+            
+            // 验证字段是否设置成功
+            const datasField = document.getElementById('preview_datas');
+            const infosField = document.getElementById('preview_page_infos');
+            if (!datasField.value || datasField.value === 'test' || datasField.value === '[]') {
+                console.error('preview_datas字段未正确设置:', datasField.value);
+                alert('数据设置失败，请刷新页面后重试！');
+                event.preventDefault();
+                return false;
+            }
+            if (!infosField.value || infosField.value === 'test' || infosField.value === '[]') {
+                console.error('preview_page_infos字段未正确设置:', infosField.value);
+                alert('页面信息设置失败，请刷新页面后重试！');
+                event.preventDefault();
+                return false;
+            }
+            
+            console.log('表单提交准备完成，允许提交');
+            // 允许表单提交
+            return true;
         } catch(error) {
             console.error('设置确认组卷数据时出错:', error);
+            alert('提交数据时发生错误：' + error.message);
             event.preventDefault(); // 阻止表单提交
+            return false;
         }
     });
     

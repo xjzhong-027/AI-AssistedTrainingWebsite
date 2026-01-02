@@ -111,4 +111,43 @@ class UserService(ABC):
             Students 对象列表（可能为空）
         """
         pass
+    
+    @staticmethod
+    @abstractmethod
+    def get_class_by_id(class_id: int) -> Optional['Class']:
+        """
+        根据ID获取班级对象
+        
+        Args:
+            class_id: 班级ID
+            
+        Returns:
+            Class 对象或 None（如果不存在）
+        """
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def get_all_students() -> List['Students']:
+        """
+        获取所有学生
+        
+        Returns:
+            Students 对象列表
+        """
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def get_students_by_class(class_instance: 'Class') -> List['Students']:
+        """
+        根据班级实例获取学生列表
+        
+        Args:
+            class_instance: Class 对象
+            
+        Returns:
+            Students 对象列表（可能为空）
+        """
+        pass
 

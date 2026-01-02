@@ -73,18 +73,15 @@ def attendance_query(request):
         class_id = form.cleaned_data['class_field']
 
         # 查询班级记录
-        # Note: Class.objects.get(id=class_id) is used here
-        # UserService doesn't have get_class_by_id method
-        # We verify the class belongs to the teacher by checking if it's in the classes list
-        from Account.models import Class
-        try:
-            class_info = Class.objects.get(id=class_id)
-            # Verify the class belongs to the teacher
-            if class_info not in classes:
-                messages.error(request, "无权访问该班级。")
-                return redirect('attendance_query')
-        except Class.DoesNotExist:
+        # Use UserService to get class by ID
+        from Account.services.user_service_impl import UserServiceImpl
+        class_info = UserServiceImpl.get_class_by_id(class_id)
+        if not class_info:
             messages.error(request, "班级不存在。")
+            return redirect('attendance_query')
+        # Verify the class belongs to the teacher
+        if class_info not in classes:
+            messages.error(request, "无权访问该班级。")
             return redirect('attendance_query')
         class_time.append(f"周{ class_info.week } — { class_info.start_time } - { class_info.end_time }")
         # 获取该班级所有学生
@@ -810,13 +807,10 @@ def batch_update_late_scores(request):
             unit = ContentServiceImpl.get_unit_by_id(int(unit_id))
             if not unit:
                 return JsonResponse({'status': 'error', 'message': 'Unit not found.'}, status=404)
-            # Note: Class.objects.get(id=class_id) is used here
-            # UserService doesn't have get_class_by_id method
-            # We'll keep direct access but add error handling
-            from Account.models import Class
-            try:
-                class_instance = Class.objects.get(id=class_id)
-            except Class.DoesNotExist:
+            # Use UserService to get class by ID
+            from Account.services.user_service_impl import UserServiceImpl
+            class_instance = UserServiceImpl.get_class_by_id(class_id)
+            if not class_instance:
                 return JsonResponse({'success': False, 'message': '班级不存在'}, status=404)
             students = UserServiceImpl.get_class_students(class_instance.id)
             exam_records = StudentExamRecord.objects.filter(exam=unit, user__in=students)
@@ -952,13 +946,10 @@ def class_statistic_search(request):
 
 
 def class_unit(request, class_id):
-    # Note: Class.objects.get(id=class_id) is used here
-    # UserService doesn't have get_class_by_id method
-    # We'll keep direct access but add error handling
-    from Account.models import Class
-    try:
-        class_instance = Class.objects.get(id=class_id)
-    except Class.DoesNotExist:
+    # Use UserService to get class by ID
+    from Account.services.user_service_impl import UserServiceImpl
+    class_instance = UserServiceImpl.get_class_by_id(class_id)
+    if not class_instance:
         messages.error(request, "班级不存在。")
         return redirect('class_statistic_search')
     students = UserServiceImpl.get_class_students(class_instance.id)
@@ -1069,7 +1060,9 @@ def class_unit(request, class_id):
             uncompleted_students = total_students - completed_students
 
             # 获取未完成作业的学生信息
-            uncompleted_students_info = Students.objects.filter(id__in=uncompleted_students)
+            from Account.services.user_service_impl import UserServiceImpl
+            all_students = UserServiceImpl.get_all_students()
+            uncompleted_students_info = [s for s in all_students if s.id in uncompleted_students]
             uncompleted_students_json = serializers.serialize('json', uncompleted_students_info)
 
 
@@ -1106,13 +1099,10 @@ def class_unit(request, class_id):
 
 
 def statistic_announce(request, class_id):
-    # Note: Class.objects.get(id=class_id) is used here
-    # UserService doesn't have get_class_by_id method
-    # We'll keep direct access but add error handling
-    from Account.models import Class
-    try:
-        class_instance = Class.objects.get(id=class_id)
-    except Class.DoesNotExist:
+    # Use UserService to get class by ID
+    from Account.services.user_service_impl import UserServiceImpl
+    class_instance = UserServiceImpl.get_class_by_id(class_id)
+    if not class_instance:
         messages.error(request, "班级不存在。")
         return redirect('class_statistic_search')
     students_data = request.GET.get('students')
@@ -1166,11 +1156,9 @@ def statistic_announce(request, class_id):
                 announcement.save()
 
                 if select_all:
-                    # Note: Students.objects.all() is used here for selecting all students
-                    # This is a special case for announcement receivers
-                    # We'll keep direct access for this specific case
-                    from Account.models import Students
-                    receivers = Students.objects.all()
+                    # Use UserService to get all students
+                    from Account.services.user_service_impl import UserServiceImpl
+                    receivers = UserServiceImpl.get_all_students()
                 announcement.receivers.set(receivers)
 
                 for receiver in receivers:
@@ -1278,10 +1266,9 @@ def unit_statistic(request, unit_id, class_id):
     # Note: get_object_or_404(Class, id=class_id) is used here
     # UserService doesn't have get_class_by_id method
     # We'll keep direct access but add error handling
-    from Account.models import Class
-    try:
-        class_instance = Class.objects.get(id=class_id)
-    except Class.DoesNotExist:
+    from Account.services.user_service_impl import UserServiceImpl
+    class_instance = UserServiceImpl.get_class_by_id(class_id)
+    if not class_instance:
         messages.error(request, "班级不存在。")
         return redirect('class_statistic_search')
     students = UserServiceImpl.get_class_students(class_instance.id)

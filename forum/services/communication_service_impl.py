@@ -4,7 +4,7 @@ CommunicationService implementation for forum functionality.
 This module provides the concrete implementation of CommunicationService
 for forum-related operations (Post, Comment).
 """
-from typing import Optional, List
+from typing import Optional, List, Dict
 from common.services.communication_service import CommunicationService
 from forum.models import Post, Comment, Anonymous
 from Account.services.user_service_impl import UserServiceImpl
@@ -199,6 +199,61 @@ class CommunicationServiceImpl(CommunicationService):
     ) -> 'Message':
         """发送消息 - 此方法应在 announce 模块中实现"""
         raise NotImplementedError("send_message should be implemented in announce module")
+    
+    @staticmethod
+    def update_post(post_id: int, data: Dict) -> Optional[Post]:
+        """更新帖子"""
+        try:
+            post = Post.objects.get(id=post_id)
+            for key, value in data.items():
+                if hasattr(post, key):
+                    setattr(post, key, value)
+            post.save()
+            return post
+        except Post.DoesNotExist:
+            return None
+    
+    @staticmethod
+    def delete_post(post_id: int) -> bool:
+        """删除帖子"""
+        try:
+            post = Post.objects.get(id=post_id)
+            post.delete()
+            return True
+        except Post.DoesNotExist:
+            return False
+    
+    @staticmethod
+    def update_comment(comment_id: int, data: Dict) -> Optional[Comment]:
+        """更新评论"""
+        try:
+            comment = Comment.objects.get(id=comment_id)
+            for key, value in data.items():
+                if hasattr(comment, key):
+                    setattr(comment, key, value)
+            comment.save()
+            return comment
+        except Comment.DoesNotExist:
+            return None
+    
+    @staticmethod
+    def delete_comment(comment_id: int) -> bool:
+        """删除评论"""
+        try:
+            comment = Comment.objects.get(id=comment_id)
+            comment.delete()
+            return True
+        except Comment.DoesNotExist:
+            return False
+    
+    @staticmethod
+    def get_comments_by_post(post_id: int) -> List[Comment]:
+        """获取帖子的所有评论"""
+        try:
+            post = Post.objects.get(id=post_id)
+            return list(Comment.objects.filter(post=post).order_by('created_at'))
+        except Post.DoesNotExist:
+            return []
 
 
 

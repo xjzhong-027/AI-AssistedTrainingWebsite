@@ -8,6 +8,8 @@ from typing import Optional, List, Tuple
 from common.services.file_service import FileService
 from django.core.files.uploadedfile import UploadedFile
 from django.conf import settings
+from io import BytesIO
+from docx import Document
 import os
 import uuid
 
@@ -184,6 +186,61 @@ class FileServiceImpl(FileService):
             return os.path.getsize(file_path)
         except OSError:
             return 0
+    
+    @staticmethod
+    def upload_word_document(file: UploadedFile) -> Tuple[str, str, str]:
+        """
+        上传并解析 Word 文档
+        
+        Args:
+            file: Word 文档文件
+            
+        Returns:
+            (file_path, file_url, extracted_text) 元组
+        """
+        # Upload the file first
+        file_path, file_url = FileServiceImpl.upload_media_file(file, file_type='document')
+        
+        # Extract text from the uploaded file
+        try:
+            extracted_text = FileServiceImpl.extract_text_from_word(file_path)
+        except Exception as e:
+            # If extraction fails, delete the uploaded file and raise error
+            FileServiceImpl.delete_file(file_path)
+            raise ValueError(f'无法读取Word文档: {str(e)}')
+        
+        return file_path, file_url, extracted_text
+    
+    @staticmethod
+    def extract_text_from_word(file_path: str) -> str:
+        """
+        从 Word 文档中提取文本内容
+        
+        Args:
+            file_path: Word 文档文件路径
+            
+        Returns:
+            提取的文本内容
+        """
+        try:
+            with open(file_path, 'rb') as f:
+                file_content = f.read()
+            
+            # Use BytesIO to create file object for python-docx
+            docx_file = BytesIO(file_content)
+            doc = Document(docx_file)
+            
+            text = ''
+            for para in doc.paragraphs:
+                text += para.text + '\n'
+            
+            return text
+        except Exception as e:
+            error_msg = str(e)
+            if 'Content_Types' in error_msg or 'not a zip file' in error_msg.lower():
+                raise ValueError('无法读取Word文档。请确保：1) 文件是有效的.docx格式（不是.doc格式）；2) 文件没有损坏。如果您有.doc格式的文件，请在Word中打开并另存为.docx格式。')
+            else:
+                raise ValueError(f'无法读取Word文档: {error_msg}')
 
 
 

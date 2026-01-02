@@ -239,7 +239,7 @@ def announcements(request):
         p_type = request.POST.get('type')
         if p_type == 'delete':
             a_id = request.POST.get('a_id')
-            Announcement.objects.filter(id=a_id).delete()
+            CommunicationServiceImpl.delete_announcement(int(a_id))
             return JsonResponse({'success': '公告已删除'}, status=200)
         elif p_type == 'create':
             form = AnnouncementForm(request.POST)
@@ -260,8 +260,8 @@ def announcements(request):
                     # 获取所有学生：需要遍历所有班级，然后获取每个班级的学生
                     # 由于 UserService 没有 get_all_students 方法，暂时保留直接查询
                     # TODO: 考虑扩展 UserService 接口添加 get_all_students 方法
-                    from Account.models import Students
-                    receivers = Students.objects.all()
+                    from Account.services.user_service_impl import UserServiceImpl
+                    receivers = UserServiceImpl.get_all_students()
                     receiver_student_ids = [r.id for r in receivers]
                 else:
                     receiver_student_ids = [r.id for r in receivers]
@@ -303,16 +303,16 @@ def announcements(request):
 
     elif request.method == 'GET':
         form = AnnouncementForm()
+        # Note: CommunicationService doesn't have get_all_announcements method
+        # We'll keep direct query for now, but this should be added to the interface
         announcements = Announcement.objects.all().order_by('-created_at').prefetch_related('receivers')
         paginator = Paginator(announcements, 3)
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
         # 按班级分组学生
-        # 由于需要获取所有学生并按班级分组，暂时保留直接查询
-        # TODO: 考虑扩展 UserService 接口添加 get_all_students 方法
-        from Account.models import Students
+        from Account.services.user_service_impl import UserServiceImpl
         students_by_class = defaultdict(list)
-        for student in Students.objects.all().order_by('class_instance', 'id'):
+        for student in UserServiceImpl.get_all_students():
             students_by_class[student.class_instance].append(student)
 
         return render(request, 'announce/announcements.html', {

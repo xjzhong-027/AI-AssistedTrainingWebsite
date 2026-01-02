@@ -14,6 +14,7 @@ from AI_module.Get_from_AI import Get_from_AI
 from .models import StudentMediaPlayRecord,StudentPageRecord,StudentExamRecord,StudentAnswer
 from Account.services.user_service_impl import UserServiceImpl
 from ELW.services.content_service_impl import ContentServiceImpl
+from accessment.services.exam_service_impl import ExamServiceImpl
 from ELW.models import (TimeManagement,
                         Unit,
                         PaperPage,
@@ -167,7 +168,12 @@ def start_exam(request, exam_id):
         return JsonResponse({'status': 'error', 'message': 'Student not found.'}, status=404)
 
     # 创建或获取学生的考试记录
-    record, created = StudentExamRecord.objects.get_or_create(user=student, exam=exam)
+    record = ExamServiceImpl.get_exam_record(student.id, exam.id)
+    if not record:
+        record = ExamServiceImpl.create_exam_record(student.id, exam.id)
+        created = True
+    else:
+        created = False
 
     if created:
         # 设置考试记录的开始时间和结束时间
@@ -187,43 +193,9 @@ def start_exam(request, exam_id):
     return redirect('accessment:exam_page', exam_id=exam.id, order=first_page.order)
 
 
-#加载答案
+# 使用 ExamService 加载答案
 def load_answers(student_page_record):
-    cache_key = f"answers_{student_page_record.id}"
-    cached_answers = cache.get(cache_key)
-
-    if cached_answers is not None:
-        # 如果缓存存在，直接使用缓存中的答案
-        answers_dict = {}
-        for sub_question_id, answer_text in cached_answers.items():
-            if answer_text:
-                if isinstance(answer_text, str) and answer_text.startswith('['):
-                    answers_dict[int(sub_question_id)] = json.loads(answer_text)
-                else:
-                    answers_dict[int(sub_question_id)] = answer_text
-        return answers_dict
-
-    else:
-        # 如果没有缓存，从数据库中加载答案
-        answers = StudentAnswer.objects.filter(student_page_record=student_page_record)
-        answers_dict = {}
-        for answer in answers:
-            sub_question_id = int(answer.sub_question_id)
-            if answer.sub_question.main_question.question_type == 'correction':
-                if sub_question_id not in answers_dict:
-                    answers_dict[sub_question_id] = []
-                answers_dict[sub_question_id].append({
-                    'text': answer.text,
-                    'index': answer.index,
-                    'type': answer.type
-                })
-            else:
-                answers_dict[sub_question_id] = answer.text
-
-        # 更新缓存
-        cache.set(cache_key, answers_dict, timeout=600)
-
-        return answers_dict
+    return ExamServiceImpl.load_answers(student_page_record.id)
 
 def exam_page(request, exam_id, order):
     # Use ContentService to get unit and page
@@ -253,8 +225,10 @@ def exam_page(request, exam_id, order):
     if not student:
         messages.error(request, "Student not found.")
         return redirect('login')
-    student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam=exam)
-    student_page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
+    student_exam_record = ExamServiceImpl.get_exam_record(student.id, exam.id)
+    if not student_exam_record:
+        student_exam_record = ExamServiceImpl.create_exam_record(student.id, exam.id)
+    student_page_record = ExamServiceImpl.get_or_create_page_record(student_exam_record.id, page.id)
 
     if student_page_record.submitted and not page.can_modify:
         messages.error(request, "页面已提交，无法继续答题。")
@@ -559,48 +533,42 @@ def next_page(request, exam_id, order):
 #     else:
 #         return JsonResponse({'message': '请求方法错误'}, status=400)
 
-#暂时缓存
-def _save_answers_to_cache(request, page_record_id):
-    page_record = get_object_or_404(StudentPageRecord, id=page_record_id)
-
+# 辅助函数：从 request.POST 提取答案数据
+def _extract_answers_from_request(request, page_record_id):
+    """从 request.POST 提取答案数据"""
+    page_record = ExamServiceImpl.get_page_record_by_id(page_record_id)
+    if not page_record:
+        return {}
+    
     page_main_questions = PageMainQuestion.objects.filter(page=page_record.page)
-    main_questions = [pmq.main_question for pmq in page_main_questions]
-
     page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
     sub_questions = [psq.sub_question for psq in page_sub_questions]
-
-    # 构造缓存键
-    cache_key = f"answers_{page_record_id}"
-
-    # 获取当前缓存中的答案，如果没有则初始化为空字典
-    cached_answers = cache.get(cache_key, {})
-
-    # 更新缓存中的答案
+    
+    cached_answers = cache.get(f"answers_{page_record_id}", {})
+    
     for sub_question in sub_questions:
         sub_question_id = sub_question.id
         main_question = sub_question.main_question
         question_type = main_question.question_type
         answer_text = ""
-
+        
         if question_type == 'choice':
-            # 选择题
             selected_option = request.POST.get(f'answer_{sub_question_id}')
             answer_text = selected_option
         elif question_type == 'matching':
-            # 连线题
             answers = request.POST.getlist(f'answer_{sub_question_id}')
             answer_text = ','.join(answers)
-        elif question_type == 'correction': # 改错题
+        elif question_type == 'correction':
             correction_types = []
             correction_texts = []
             correction_indices = []
-
+            
             for key, value in request.POST.items():
                 if key.startswith(f'correction_type_{sub_question_id}_'):
                     local_index = key.split('_')[-1]
                     correction_type = value.strip()
                     correction_text = request.POST.get(f'correction_text_{sub_question_id}_{local_index}', '').strip()
-
+                    
                     if correction_type != 'none':
                         correction_types.append(correction_type)
                         correction_texts.append(correction_text)
@@ -612,17 +580,19 @@ def _save_answers_to_cache(request, page_record_id):
                     'index': correction_indices[i],
                     'text': correction_texts[i]
                 })
-            answer_text = json.dumps(answer_text)  # 将列表转换为 JSON 字符串
+            answer_text = json.dumps(answer_text)
         else:
-            # 主观题
             answer_text = request.POST.get(f'answer_{sub_question_id}', '').strip()
-
-        # 将答案存入缓存
+        
         cached_answers[sub_question_id] = answer_text
+    
+    return cached_answers
 
-    # 将更新后的答案存入缓存，设置缓存有效期为10分钟
-    cache.set(cache_key, cached_answers, timeout=600)
-
+#暂时缓存
+def _save_answers_to_cache(request, page_record_id):
+    """保存答案到缓存"""
+    answers_data = _extract_answers_from_request(request, page_record_id)
+    ExamServiceImpl.save_answers_to_cache(page_record_id, answers_data)
     return JsonResponse({'message': '已保存'})
 
 # def _save_answers_to_database(page_record_id):
@@ -639,74 +609,11 @@ def _save_answers_to_cache(request, page_record_id):
 #     cache.delete(cache_key)  # 删除缓存
 #     return JsonResponse({'message': '已保存'})
 
-def _update_cache(page_record):
-    """从数据库中读取最新答案并更新缓存"""
-    cache_key = f"answers_{page_record.id}"
-    cached_answers = {}
-
-    student_answers = StudentAnswer.objects.filter(student_page_record=page_record)
-    for answer in student_answers:
-        sub_question_id = answer.sub_question.id
-        if answer.sub_question.main_question.question_type == 'correction':
-            # 对于改错题，将答案转换为 JSON 字符串
-            corrections = []
-            if answer.type and answer.index is not None and answer.text:
-                corrections.append({
-                    'type': answer.type,
-                    'index': answer.index,
-                    'text': answer.text
-                })
-            cached_answers[sub_question_id] = json.dumps(corrections)
-        else:
-            cached_answers[sub_question_id] = answer.text
-
-
-    # 更新缓存
-    cache.set(cache_key, cached_answers, timeout=600)
+# _update_cache 已移至 ExamServiceImpl，不再需要
 
 def _save_answers_to_database(page_record_id):
     """从缓存中读取答案并保存到数据库"""
-    cache_key = f"answers_{page_record_id}"
-    cached_answers = cache.get(cache_key, {})
-
-    for sub_question_id, answer_text in cached_answers.items():
-        sub_question_id = int(sub_question_id)
-        # Use ContentService to get sub question by ID
-        sub_question = ContentServiceImpl.get_sub_question_by_id(sub_question_id)
-        if not sub_question:
-            return JsonResponse({'message': '小题不存在', 'status': 'error'}, status=404)
-
-        if sub_question.main_question.question_type == 'correction':
-            if answer_text == 'none':
-                StudentAnswer.objects.filter(
-                    sub_question=sub_question,
-                    student_page_record_id=page_record_id
-                ).delete()
-            else:
-                StudentAnswer.objects.filter(
-                    sub_question=sub_question,
-                    student_page_record_id=page_record_id
-                ).delete()
-
-                corrections = json.loads(answer_text)
-                for correction in corrections:
-                    StudentAnswer.objects.create(
-                        sub_question=sub_question,
-                        student_page_record_id=page_record_id,
-                        text=correction['text'],
-                        index=int(correction['index']),
-                        type=correction['type']
-                    )
-        else:
-            # 其他题型直接更新或创建答案记录
-            StudentAnswer.objects.update_or_create(
-                sub_question_id=sub_question_id,
-                student_page_record_id=page_record_id,
-                defaults={'text': answer_text}
-            )
-    # 更新缓存
-    page_record = StudentPageRecord.objects.get(id=page_record_id)
-    _update_cache(page_record)
+    ExamServiceImpl.save_answers_to_database(page_record_id)
     return JsonResponse({'message': '已保存'})
 
 
@@ -734,8 +641,10 @@ def save_page(request, exam_id, order):
         student = UserServiceImpl.get_student_by_username(username)
         if not student:
             return JsonResponse({'message': '学生信息不存在', 'status': 'error'}, status=404)
-        student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam=exam)
-        page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=current_page)
+        student_exam_record = ExamServiceImpl.get_exam_record(student.id, exam.id)
+        if not student_exam_record:
+            student_exam_record = ExamServiceImpl.create_exam_record(student.id, exam.id)
+        page_record = ExamServiceImpl.get_or_create_page_record(student_exam_record.id, current_page.id)
 
         page_main_questions = PageMainQuestion.objects.filter(page=current_page).exclude(
             main_question__question_type='text')
@@ -840,27 +749,24 @@ def submit_exam(request):
             return JsonResponse({'message': '考试记录 ID 必须是有效的数字', 'status': 'error'}, status=400)
 
         # 获取学生的考试记录
-        student_exam_record = get_object_or_404(StudentExamRecord, id=student_exam_record_id)
+        student_exam_record = ExamServiceImpl.get_exam_record_by_id(int(student_exam_record_id))
+        if not student_exam_record:
+            return JsonResponse({'message': '考试记录不存在', 'status': 'error'}, status=404)
         unit = student_exam_record.exam
         pages = unit.paper_pages.all()
         # 获取所有页面记录
-        page_records = StudentPageRecord.objects.filter(student_exam_record=student_exam_record,
-                                                        page__in=pages)
+        page_records = ExamServiceImpl.get_page_records_by_exam(student_exam_record.id)
         exam = student_exam_record.exam
         if force_submit:
             for page in pages:
-                page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
-                page_record.submitted = True
-                page_record.submitted_at = timezone.now()
-                page_record.save()
-            student_exam_record.submitted = True
-            student_exam_record.finished_at = timezone.now()
-            student_exam_record.save()
+                page_record = ExamServiceImpl.get_or_create_page_record(student_exam_record.id, page.id)
+                ExamServiceImpl.submit_page(page_record.id)
+            ExamServiceImpl.submit_exam(student_exam_record.id)
             return exam_result(request,exam_id=exam.id)
 
         unsubmitted_pages = []
         for page in pages:
-            page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
+            page_record = ExamServiceImpl.get_or_create_page_record(student_exam_record.id, page.id)
             if not page_record.submitted:
                 unsubmitted_pages.append(page.order)
 
@@ -873,13 +779,9 @@ def submit_exam(request):
 
         if still_submit or finish_submit:
             for page in pages:
-                page_record, created = StudentPageRecord.objects.get_or_create(student_exam_record=student_exam_record, page=page)
-                page_record.submitted = True
-                page_record.submitted_at = timezone.now()
-                page_record.save()
-            student_exam_record.submitted = True
-            student_exam_record.finished_at = timezone.now()
-            student_exam_record.save()
+                page_record = ExamServiceImpl.get_or_create_page_record(student_exam_record.id, page.id)
+                ExamServiceImpl.submit_page(page_record.id)
+            ExamServiceImpl.submit_exam(student_exam_record.id)
 
             # 批改所有已提交的页面
             for page_record in page_records:
@@ -887,19 +789,15 @@ def submit_exam(request):
                         and not page_record.is_graded):
                     try:
                         # 调用批改函数
-                        grade_page(page_record)
+                        ExamServiceImpl.grade_page(page_record.id)
                     except Exception as e:
                         print(f"Error grading page {page_record.page.order}: {e}")
 
             # 更新考试记录的总分
             try:
-                total_score = StudentPageRecord.objects.filter(
-                    student_exam_record=student_exam_record,
-                    is_graded=True
-                ).aggregate(Sum('page_score'))['page_score__sum'] or 0
+                page_records_graded = [pr for pr in page_records if pr.is_graded]
+                total_score = sum(pr.page_score for pr in page_records_graded if pr.page_score is not None) or 0
                 student_exam_record.score = total_score
-                student_exam_record.submitted = True
-                student_exam_record.finished_at = timezone.now()
                 student_exam_record.save()
             except Exception as e:
                 print(f"Error updating exam record score: {e}")
@@ -923,7 +821,9 @@ def update_play_count(request):
             return JsonResponse({"success": False, "message": "Invalid request data."}, status=400)
 
         # 获取学生考试记录
-        student_exam_record = StudentExamRecord.objects.get(id=student_exam_record_id)
+        student_exam_record = ExamServiceImpl.get_exam_record_by_id(int(student_exam_record_id))
+        if not student_exam_record:
+            return JsonResponse({'message': '考试记录不存在', 'status': 'error'}, status=404)
         # Use ContentService to get main question and media material by ID
         main_question = ContentServiceImpl.get_main_question_by_id(int(main_question_id))
         if not main_question:
@@ -933,21 +833,33 @@ def update_play_count(request):
             return JsonResponse({"success": False, "message": "Media material not found."}, status=404)
 
         # 获取或创建播放记录
-        play_record, created = StudentMediaPlayRecord.objects.get_or_create(
-            student_exam_record=student_exam_record,
-            main_question=main_question,
-            media_material=media_material,
-            defaults={"play_count": 0}
+        # 获取或创建播放记录
+        play_record = ExamServiceImpl.get_media_play_record(
+            int(student_exam_record_id),
+            int(main_question_id)
         )
-
+        
+        if not play_record:
+            # 创建新记录
+            play_record = ExamServiceImpl.update_media_play_record(
+                int(student_exam_record_id),
+                int(main_question_id),
+                0,
+                0.0
+            )
+        
         # 检查播放次数是否达到最大值
         if play_record.play_count >= main_question.maximum_play:
             return JsonResponse({"success": False, "message": "Maximum play count reached. Cannot play anymore."},
                                 status=403)
 
         # 更新播放次数
-        play_record.play_count += 1
-        play_record.save()
+        ExamServiceImpl.update_media_play_record(
+            int(student_exam_record_id),
+            int(main_question_id),
+            play_record.play_count + 1,
+            play_record.last_pause_time
+        )
 
         return JsonResponse({"success": True, "message": "Play count updated successfully."})
     except Exception as e:
@@ -963,7 +875,10 @@ def exam_result(request,exam_id):
     if not student:
         return JsonResponse({'status': 'error', 'message': 'Student not found.'}, status=404)
 
-    student_exam_record = get_object_or_404(StudentExamRecord, user=student, exam_id=exam_id,)
+    student_exam_record = ExamServiceImpl.get_exam_record(student.id, exam_id)
+    if not student_exam_record:
+        from django.http import Http404
+        raise Http404("Exam record not found")
     exam = student_exam_record.exam
     return render(request, 'exam/exam_result.html', {
         'exam': exam,
@@ -1031,132 +946,10 @@ def exam_result(request,exam_id):
 #     page_record.feedback = "\n".join(feedback)
 #     page_record.is_graded = True
 #     page_record.save()
-def grade_comprehension(sub_question, student_answer):
-    try:
-        m = Get_from_AI(model='ZhipuAI')
-        m.set_prompt_variables(my_dict={"原文": "暂无", "题目": sub_question.question_text,
-                                         "参考答案": sub_question.answer,
-                                         "学生回答": student_answer.text, "其他要求_评分": "请按格式｛\"分数\":, \"理由\":｝给出分数和理由，使用英文符号"})
-        res = m.get_answer(m.get_prompt("题目评分"))
-        dic = json.loads(res)
-        student_answer.score = dic['分数']
-        return dic['分数']
-    except Exception as e:
-        print(e)
-def background_grade_comprehension(sub_question, student_answer):
-    try:
-        score = grade_comprehension(sub_question, student_answer)
-        student_answer.score = score
-        student_answer.save()
+# grade_comprehension 和 background_grade_comprehension 已移至 ExamServiceImpl
+# 使用 ExamServiceImpl.grade_comprehension(sub_question_id, student_answer_id)
 
-        # 重新计算并更新页面分数
-        page_record = student_answer.student_page_record
-        answers = StudentAnswer.objects.filter(student_page_record=page_record)
-
-        # 只包括有效分数（>= 0）
-        valid_scores = [ans.score for ans in answers if ans.score is not None and ans.score >= 0]
-        if valid_scores:
-            page_record.page_score = sum(valid_scores)
-            page_record.save()
-
-        # 更新练习记录总分
-        student_practice_record = page_record.student_practice_record
-        page_records = StudentPageRecord.objects.filter(
-            student_practice_record=student_practice_record,
-            is_graded=True
-        )
-        total_score = sum(pr.page_score for pr in page_records if pr.page_score is not None)
-        student_practice_record.score = total_score
-        student_practice_record.save()
-    except Exception as e:
-        print(f"后台评分错误: {e}")
-
+# grade_page 已移至 ExamServiceImpl，使用 ExamServiceImpl.grade_page(page_record.id)
 def grade_page(page_record):
-    print('grade')
-    # 获取学生提交的答案
-    student_answers = StudentAnswer.objects.filter(student_page_record_id=page_record.id)
-
-    # 批改答案逻辑
-    total_score = 0
-    feedback = []
-
-    for student_answer in student_answers:
-        sub_question = student_answer.sub_question
-        correct_answer = sub_question.answer
-
-        # 根据题型进行不同的批改逻辑
-        if sub_question.main_question.question_type == 'choice':
-            # 选择题批改逻辑
-            if student_answer.text == correct_answer:
-                score = sub_question.score
-            else:
-                score = 0
-            feedback.append(f"第{sub_question.id}题: 你的答案是 {student_answer.text}, 正确答案是 {correct_answer}")
-        elif sub_question.main_question.question_type == 'blank':
-            # 填空题批改逻辑
-            correct = False
-            student_blank = student_answer.text
-            if student_blank == correct_answer:
-                correct = True
-
-            if correct:
-                score = sub_question.score
-            else:
-                score = 0
-        elif sub_question.main_question.question_type == 'matching':
-            # 连线题批改逻辑
-            correct = False
-            student_matching = student_answer.text
-            if student_matching == correct_answer:
-                correct = True
-
-            if correct:
-                score = sub_question.score
-            else:
-                score = 0
-        elif sub_question.main_question.question_type == 'correction':
-            # 改错题批改逻辑
-            correct_corrections = Correction.objects.filter(sub_question=sub_question)
-            student_corrections = StudentAnswer.objects.filter(sub_question=sub_question)
-            correct = True
-            for correct_correction in correct_corrections:
-                found = False
-                for student_correction in student_corrections:
-
-                    if (student_correction.type == correct_correction.type and
-                            student_correction.index == correct_correction.index):
-                        found = True
-                        break
-                if not found:
-                    correct = False
-                    break
-            if correct:
-                score = sub_question.score
-            else:
-                score = 0
-        elif sub_question.main_question.question_type == 'comprehension':
-            #后续批改
-            score = -1
-            # 启动后台线程进行AI评分
-            grading_thread = threading.Thread(
-                target=background_grade_comprehension,
-                args=(sub_question, student_answer)
-            )
-            grading_thread.daemon = True  # 使线程在主程序退出时终止
-            grading_thread.start()
-            continue
-
-        # 累加总分
-        if(score and score >= 0):
-            total_score += score
-            student_answer.score = score
-        else:
-            student_answer.score = score
-
-        student_answer.save()
-
-    # 保存批改结果
-    page_record.page_score = total_score
-    page_record.feedback = "\n".join(feedback)
-    page_record.is_graded = True
-    page_record.save()
+    """批改页面（已废弃，使用 ExamServiceImpl.grade_page）"""
+    return ExamServiceImpl.grade_page(page_record.id)

@@ -8,23 +8,37 @@
     <link rel="stylesheet" href="{% static 'css/teacher_side/unit_create.css' %}">
 </head>
 <body>
-<form method="post">
+<form method="post" action="{% url 'teacher_page_save' material_id %}">
     {% csrf_token %}
     <input type="text" id="preview_datas" name="preview_datas" value="{{ preview_datas_json }}" hidden>
     <input type="text" id="preview_page_infos" name="preview_page_infos" value="{{ preview_page_infos_json }}" hidden>
 
-    <h1>{{ teacher.name }}</h1>
-    <label for="selected_class">班级：</label>
-    <select name="selected_class" id="selected_class">
-        {% for class in classes %}
-            {% if class %}
-{#                <option value="{{ class.id }}">周{{ class.week }}: {{ class.start_time }}-{{ class.end_time }}</option>#}
-                <option value="{{ class.id }}">{{ class.class_name}}</option>
-            {% else %}
-                <p style="color: red">您当前没有正在教授的班级，无法进行组卷！</p>
-            {% endif %}
-        {% endfor %}
-    </select>
+    <h1>组卷信息填写</h1>
+    
+    {% if not classes or classes|length == 0 %}
+        <div style="padding: 20px; background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 5px; margin: 20px 0;">
+            <h2 style="color: #856404; margin-top: 0;">⚠️ 无法进行组卷</h2>
+            <p style="color: #856404; font-size: 16px; margin-bottom: 10px;">
+                您当前没有正在教授的班级，无法进行组卷！
+            </p>
+            <p style="color: #856404; font-size: 14px;">
+                请先联系管理员为您分配班级，然后再进行组卷操作。
+            </p>
+            <a href="{% url 'teacher_question_bank' %}" style="display: inline-block; margin-top: 15px; padding: 10px 20px; background-color: #007BFF; color: white; text-decoration: none; border-radius: 5px;">
+                返回题库管理
+            </a>
+        </div>
+    {% else %}
+        <label for="selected_class">班级：</label>
+        <select name="selected_class" id="selected_class" required>
+            <option value="">-- 请选择班级 --</option>
+            {% for class in classes %}
+                {% if class %}
+                    <option value="{{ class.id }}">{{ class.class_name}}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    {% endif %}
 
     <label for="title">单元名称</label>
     <input type="text" name="title" id="title">

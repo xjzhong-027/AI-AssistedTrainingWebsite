@@ -57,3 +57,8 @@ docs/
 *.docx
 *.doc
 
+# 前端Vue项目
+frontend/
+spring期末项目/
+学生端修改版/
+
