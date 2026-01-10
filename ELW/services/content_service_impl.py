@@ -96,6 +96,23 @@ class ContentServiceImpl(ContentService):
             return []
 
     @staticmethod
+    def get_main_questions_by_material(material_id: int) -> List['MainQuestion']:
+        """
+        获取媒体素材关联的所有大题
+        
+        Args:
+            material_id: 媒体素材ID
+            
+        Returns:
+            MainQuestion 对象列表（可能为空）
+        """
+        try:
+            material = MediaMaterial.objects.get(id=material_id)
+            return list(material.main_questions.all().prefetch_related('sub_questions'))
+        except MediaMaterial.DoesNotExist:
+            return []
+    
+    @staticmethod
     def get_media_material_by_id(material_id: int) -> Optional['MediaMaterial']:
         """
         根据ID获取媒体素材
@@ -352,9 +369,27 @@ class ContentServiceImpl(ContentService):
         return PaperPage.objects.create(
             unit=unit,
             order=data.get('order', 1),
+            text=data.get('text', ''),
             can_modify=data.get('can_modify', False),
             limited_time=data.get('limited_time')
         )
+    
+    @staticmethod
+    def associate_questions_to_page(page_id: int, main_question_ids: List[int]) -> bool:
+        """将大题关联到试卷页面"""
+        try:
+            page = PaperPage.objects.get(id=page_id)
+            for main_question_id in main_question_ids:
+                main_question = MainQuestion.objects.get(id=main_question_id)
+                # 检查是否已存在
+                if not PageMainQuestion.objects.filter(page=page, main_question=main_question).exists():
+                    PageMainQuestion.objects.create(
+                        page=page,
+                        main_question=main_question
+                    )
+            return True
+        except (PaperPage.DoesNotExist, MainQuestion.DoesNotExist) as e:
+            raise ValueError(f"Failed to associate questions: {str(e)}")
     
     @staticmethod
     def update_paper_page(page_id: int, data: Dict) -> Optional[PaperPage]:

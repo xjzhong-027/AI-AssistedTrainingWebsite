@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.db.models import Q
+from drf_spectacular.utils import extend_schema
 
 from common.api.response import Result
 from forum.api.serializers import (
@@ -12,10 +13,12 @@ from forum.api.serializers import (
     CommentSerializer, CommentCreateSerializer, CommentUpdateSerializer
 )
 from forum.services.communication_service_impl import CommunicationServiceImpl
+from announce.services.notification_service_impl import NotificationServiceImpl
 from Account.services.user_service_impl import UserServiceImpl
 from rest_framework_simplejwt.tokens import UntypedToken
 
 
+@extend_schema(tags=['论坛'])
 class PostListView(APIView):
     """
     获取帖子列表 API
@@ -113,6 +116,7 @@ class PostListView(APIView):
         return ''
 
 
+@extend_schema(tags=['论坛'])
 class PostDetailView(APIView):
     """
     获取帖子详情 API
@@ -131,6 +135,7 @@ class PostDetailView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(tags=['论坛'])
 class PostCreateView(APIView):
     """
     创建帖子 API
@@ -202,6 +207,7 @@ class PostCreateView(APIView):
         return ''
 
 
+@extend_schema(tags=['论坛'])
 class PostUpdateView(APIView):
     """
     更新帖子 API
@@ -237,6 +243,7 @@ class PostUpdateView(APIView):
         return Result.success(data=result_serializer.data, message='Post updated successfully')
 
 
+@extend_schema(tags=['论坛'])
 class PostDeleteView(APIView):
     """
     删除帖子 API
@@ -253,6 +260,7 @@ class PostDeleteView(APIView):
         return Result.not_found(message='Post not found')
 
 
+@extend_schema(tags=['论坛'])
 class CommentListView(APIView):
     """
     获取评论列表 API
@@ -268,6 +276,7 @@ class CommentListView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(tags=['论坛'])
 class CommentCreateView(APIView):
     """
     创建评论 API
@@ -303,6 +312,28 @@ class CommentCreateView(APIView):
                 comment.anonymous_name = serializer.validated_data['anonymous_name']
             comment.save()
             
+            # 发送回复通知（如果是回复帖子或回复评论）
+            try:
+                from forum.models import Post
+                post = Post.objects.get(id=post_id)
+                # 如果是回复帖子，通知帖子作者
+                if not comment.parent_comment and post.author:
+                    NotificationServiceImpl.send_forum_reply_notification(
+                        post_id=post.id,
+                        comment_id=comment.id,
+                        receiver_username=post.author
+                    )
+                # 如果是回复评论，通知父评论作者
+                elif comment.parent_comment and comment.parent_comment.author:
+                    NotificationServiceImpl.send_forum_reply_notification(
+                        post_id=post.id,
+                        comment_id=comment.id,
+                        receiver_username=comment.parent_comment.author
+                    )
+            except Exception as e:
+                # 通知发送失败不影响评论创建
+                print(f"Failed to send forum reply notification: {e}")
+            
             result_serializer = CommentSerializer(comment)
             return Result.created(data=result_serializer.data, message='Comment created successfully')
         except Exception as e:
@@ -335,6 +366,7 @@ class CommentCreateView(APIView):
         return ''
 
 
+@extend_schema(tags=['论坛'])
 class CommentUpdateView(APIView):
     """
     更新评论 API
@@ -372,6 +404,7 @@ class CommentUpdateView(APIView):
         return Result.success(data=result_serializer.data, message='Comment updated successfully')
 
 
+@extend_schema(tags=['论坛'])
 class CommentDeleteView(APIView):
     """
     删除评论 API
@@ -386,6 +419,8 @@ class CommentDeleteView(APIView):
         if success:
             return Result.success(message='Comment deleted successfully')
         return Result.not_found(message='Comment not found')
+
+
 
 
 

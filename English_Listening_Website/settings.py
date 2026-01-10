@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',  # Token blacklist for logout
     'corsheaders',
+    'drf_spectacular',  # OpenAPI 3.0 schema generation
     # Common services module (must be before other apps that use it)
     'common.apps.CommonConfig',
     # 注册app'ELW'
@@ -234,6 +235,7 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.MultiPartParser',
     ),
     'EXCEPTION_HANDLER': 'common.api.exceptions.custom_exception_handler',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # ============================================
@@ -307,3 +309,36 @@ CORS_ALLOW_HEADERS = [
 # For development only - allow all origins (remove in production)
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
+
+# ============================================
+# drf-spectacular Configuration (OpenAPI 3.0)
+# ============================================
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'AI辅助听力学习平台 API',
+    'DESCRIPTION': 'AI辅助听力学习平台后端接口文档，基于Django REST Framework开发',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,  # 分离请求和响应schema
+    'SCHEMA_PATH_PREFIX': '/api/v1',  # API路径前缀
+    'TAGS': [
+        {'name': '认证', 'description': '用户认证相关接口'},
+        {'name': '用户管理', 'description': '用户、学生、教师、班级管理接口'},
+        {'name': '内容管理', 'description': '媒体素材、单元、页面、题目管理接口'},
+        {'name': '论坛', 'description': '论坛帖子、评论相关接口'},
+        {'name': '公告', 'description': '公告、消息相关接口'},
+        {'name': '考试', 'description': '考试、练习相关接口'},
+        {'name': '数据查询', 'description': '考勤、学习记录、统计查询接口'},
+    ],
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'JWT',
+            'description': 'JWT Token认证，格式：Bearer <token>',
+        }
+    },
+    'AUTHENTICATION_WHITELIST': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+}

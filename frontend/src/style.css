@@ -1,0 +1,20 @@
+/* 基础样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #1A1A1A; /* 主背景 - 深色 */
+  color: #333;
+  min-height: 100vh;
+}
+
+#app {
+  min-height: 100vh;
+  background-color: #1A1A1A;
+}

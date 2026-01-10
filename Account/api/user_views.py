@@ -4,18 +4,24 @@ User management API views.
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from drf_spectacular.utils import extend_schema
 
 from common.api.response import Result
 from Account.api.serializers import StudentSerializer, TeacherSerializer, ClassSerializer
 from Account.api.create_serializers import (
-    CourseCreateSerializer, TeacherCreateSerializer, 
-    ClassCreateSerializer, StudentCreateSerializer
+    CourseCreateSerializer, TeacherCreateSerializer,
+    ClassCreateSerializer, StudentCreateSerializer,
+    StudentUpdateSerializer, TeacherUpdateSerializer
 )
 from Account.services.user_service_impl import UserServiceImpl
 from Account.services.auth_service_impl import AuthServiceImpl
 from Account.models import Course
 
 
+@extend_schema(
+    tags=['用户管理'],
+    responses={200: StudentSerializer}
+)
 class StudentDetailView(APIView):
     """
     获取学生详细信息 API
@@ -51,6 +57,10 @@ class StudentDetailView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(
+    tags=['用户管理'],
+    responses={200: StudentSerializer}
+)
 class StudentListView(APIView):
     """
     获取学生列表 API
@@ -99,6 +109,10 @@ class StudentListView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(
+    tags=['用户管理'],
+    responses={200: TeacherSerializer}
+)
 class TeacherDetailView(APIView):
     """
     获取教师详细信息 API
@@ -131,6 +145,10 @@ class TeacherDetailView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(
+    tags=['用户管理'],
+    responses={200: TeacherSerializer}
+)
 class TeacherListView(APIView):
     """
     获取教师列表 API
@@ -163,6 +181,10 @@ class TeacherListView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(
+    tags=['用户管理'],
+    responses={200: ClassSerializer}
+)
 class ClassDetailView(APIView):
     """
     获取班级详细信息 API
@@ -201,6 +223,10 @@ class ClassDetailView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(
+    tags=['用户管理'],
+    responses={200: ClassSerializer}
+)
 class ClassListView(APIView):
     """
     获取班级列表 API
@@ -250,6 +276,10 @@ class ClassListView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(
+    tags=['用户管理'],
+    responses={200: StudentSerializer}
+)
 class ClassStudentsView(APIView):
     """
     获取班级学生列表 API
@@ -288,6 +318,11 @@ class ClassStudentsView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(
+    tags=['用户管理'],
+    request=CourseCreateSerializer,
+    responses={201: CourseCreateSerializer}
+)
 class CourseCreateView(APIView):
     """
     创建课程 API
@@ -314,6 +349,11 @@ class CourseCreateView(APIView):
                                  data=serializer.errors)
 
 
+@extend_schema(
+    tags=['用户管理'],
+    request=TeacherCreateSerializer,
+    responses={201: TeacherSerializer}
+)
 class TeacherCreateView(APIView):
     """
     创建教师 API
@@ -340,6 +380,11 @@ class TeacherCreateView(APIView):
                                  data=serializer.errors)
 
 
+@extend_schema(
+    tags=['用户管理'],
+    request=ClassCreateSerializer,
+    responses={201: ClassSerializer}
+)
 class ClassCreateView(APIView):
     """
     创建班级 API
@@ -370,6 +415,11 @@ class ClassCreateView(APIView):
                                  data=serializer.errors)
 
 
+@extend_schema(
+    tags=['用户管理'],
+    request=StudentCreateSerializer,
+    responses={201: StudentSerializer}
+)
 class StudentCreateView(APIView):
     """
     创建学生 API
@@ -392,8 +442,91 @@ class StudentCreateView(APIView):
         serializer = StudentCreateSerializer(data=request.data)
         if serializer.is_valid():
             student = serializer.save()
-            return Result.created(data=StudentSerializer(student).data, 
+            return Result.created(data=StudentSerializer(student).data,
                                  message='Student created successfully')
-        return Result.bad_request(message='Validation failed', 
+        return Result.bad_request(message='Validation failed',
                                  data=serializer.errors)
+
+
+@extend_schema(
+    tags=['用户管理'],
+    request=StudentUpdateSerializer,
+    responses={200: StudentSerializer}
+)
+class StudentUpdateView(APIView):
+    """
+    更新学生信息 API
+
+    PUT/PATCH /api/v1/users/students/{student_id}/update/
+
+    Body:
+    {
+        "name": "新姓名",
+        "seat_number": "新座位号"
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, student_id):
+        """更新学生信息"""
+        student = UserServiceImpl.get_student_by_id(student_id)
+        if not student:
+            return Result.not_found(message='Student not found')
+
+        # 权限检查：只有学生本人可以更新自己的信息
+        if request.user.username != student.username:
+            return Result.forbidden(message='You can only update your own profile')
+
+        serializer = StudentUpdateSerializer(student, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Result.success(data=StudentSerializer(student).data,
+                                message='Student information updated successfully')
+        return Result.bad_request(message='Validation failed',
+                                 data=serializer.errors)
+
+    def patch(self, request, student_id):
+        """部分更新学生信息"""
+        return self.put(request, student_id)
+
+
+@extend_schema(
+    tags=['用户管理'],
+    request=TeacherUpdateSerializer,
+    responses={200: TeacherSerializer}
+)
+class TeacherUpdateView(APIView):
+    """
+    更新教师信息 API
+
+    PUT/PATCH /api/v1/users/teachers/{teacher_id}/update/
+
+    Body:
+    {
+        "name": "新姓名"
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, teacher_id):
+        """更新教师信息"""
+        teacher = UserServiceImpl.get_teacher_by_id(teacher_id)
+        if not teacher:
+            return Result.not_found(message='Teacher not found')
+
+        # 权限检查：只有教师本人可以更新自己的信息
+        if request.user.username != teacher.username:
+            return Result.forbidden(message='You can only update your own profile')
+
+        serializer = TeacherUpdateSerializer(teacher, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Result.success(data=TeacherSerializer(teacher).data,
+                                message='Teacher information updated successfully')
+        return Result.bad_request(message='Validation failed',
+                                 data=serializer.errors)
+
+    def patch(self, request, teacher_id):
+        """部分更新教师信息"""
+        return self.put(request, teacher_id)
 

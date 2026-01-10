@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework_simplejwt.tokens import UntypedToken
 from django.db.models import Avg, Count, Q
+from drf_spectacular.utils import extend_schema
 
 from common.api.response import Result
 from Query.api.serializers import (
@@ -17,9 +18,11 @@ from Account.services.user_service_impl import UserServiceImpl
 from Account.models import Attendance, ClassScheduleAdjustment, ClassScheduleAddition
 from Query.models import ClassroomLayout, OverdueDeductionRule, OverduePeriod
 from accessment.models import StudentExamRecord
+from accessment.services.exam_service_impl import ExamServiceImpl
 from ELW.models import Unit
 
 
+@extend_schema(tags=['数据查询'])
 class AttendanceQueryView(APIView):
     """
     考勤查询 API
@@ -98,6 +101,7 @@ class AttendanceQueryView(APIView):
         return ''
 
 
+@extend_schema(tags=['数据查询'])
 class StudentLearningRecordView(APIView):
     """
     学生学习记录查询 API
@@ -197,6 +201,7 @@ class StudentLearningRecordView(APIView):
         return ''
 
 
+@extend_schema(tags=['数据查询'])
 class ClassStatisticView(APIView):
     """
     班级统计 API
@@ -258,6 +263,7 @@ class ClassStatisticView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(tags=['数据查询'])
 class UnitStatisticView(APIView):
     """
     单元统计 API
@@ -324,6 +330,7 @@ class UnitStatisticView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(tags=['数据查询'])
 class OverdueRuleListView(APIView):
     """
     获取逾期扣分规则列表 API
@@ -339,6 +346,7 @@ class OverdueRuleListView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(tags=['数据查询'])
 class OverdueRuleDetailView(APIView):
     """
     获取逾期扣分规则详情 API

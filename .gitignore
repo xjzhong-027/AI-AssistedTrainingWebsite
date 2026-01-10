@@ -21,6 +21,9 @@ ENV/
 # IDE
 .idea/
 .vscode/
+.cursor/*
+!.cursor/rules/
+.claude/
 *.swp
 *.swo
 *~
@@ -41,9 +44,6 @@ desktop.ini
 ~$*.docx
 ~$*.doc
 
-# 媒体文件（如果不想提交）
-# media_material/
-
 # 日志文件
 *.log
 
@@ -51,14 +51,15 @@ desktop.ini
 .env
 .env.local
 
-# 文档文件
-*.md
-docs/
-*.docx
-*.doc
+# 排除无关团队开发的文档
+docs/*
+!docs/03-团队协作/
 
-# 前端Vue项目
-frontend/
+# 排除无关项目
 spring期末项目/
 学生端修改版/
 
+# 媒体文件（大文件）
+media_material/media/*.mp4
+media_material/media/*.avi
+media_material/media/*.mov

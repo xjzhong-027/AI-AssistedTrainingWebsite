@@ -7,13 +7,59 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
 
 from common.api.response import Result
 from Account.api.serializers import CustomTokenObtainPairSerializer, UserInfoSerializer
+from Account.api.create_serializers import ChangePasswordSerializer
 from Account.services.auth_service_impl import AuthServiceImpl
 from Account.services.user_service_impl import UserServiceImpl
 
 
+@extend_schema(
+    tags=['认证'],
+    summary='用户登录',
+    description='用户登录接口，支持学生、教师、管理员三种角色登录，返回 JWT Token',
+    request=CustomTokenObtainPairSerializer,
+    responses={
+        200: {
+            'description': '登录成功',
+            'examples': {
+                'application/json': {
+                    'code': 200,
+                    'message': 'success',
+                    'data': {
+                        'access': 'eyJ0eXAiOiJKV1QiLCJhbGc...',
+                        'refresh': 'eyJ0eXAiOiJKV1QiLCJhbGc...',
+                        'username': 'student001',
+                        'role': 'student',
+                        'user_id': 1
+                    }
+                }
+            }
+        },
+        401: {'description': '认证失败，用户名或密码错误'}
+    },
+    examples=[
+        OpenApiExample(
+            '学生登录',
+            value={
+                'username': 'student001',
+                'password': 'student123',
+                'role': 'student'
+            }
+        ),
+        OpenApiExample(
+            '教师登录',
+            value={
+                'username': 'teacher001',
+                'password': 'teacher123',
+                'role': 'teacher'
+            }
+        ),
+    ]
+)
 class LoginView(TokenObtainPairView):
     """
     用户登录 API
@@ -105,6 +151,25 @@ class LoginView(TokenObtainPairView):
         return Result.success(data=response_data, message='Login successful')
 
 
+@extend_schema(
+    tags=['认证'],
+    summary='Token 获取（兼容接口）',
+    description='JWT Token 获取接口（兼容旧版本），建议使用 /api/v1/auth/login/ 接口',
+    deprecated=True
+)
+class TokenObtainPairViewWithTag(TokenObtainPairView):
+    """
+    Token 获取视图（带标签，兼容接口）
+    
+    POST /api/v1/auth/token/
+    
+    注意：此接口为兼容旧版本保留，建议使用 /api/v1/auth/login/ 接口
+    """
+    serializer_class = CustomTokenObtainPairSerializer
+    permission_classes = [AllowAny]
+
+
+@extend_schema(tags=['认证'])
 class RefreshTokenView(TokenRefreshView):
     """
     Token 刷新 API
@@ -144,6 +209,7 @@ class RefreshTokenView(TokenRefreshView):
         )
 
 
+@extend_schema(tags=['认证'])
 class LogoutView(APIView):
     """
     用户登出 API
@@ -180,6 +246,7 @@ class LogoutView(APIView):
         return Result.success(message='Logout successful')
 
 
+@extend_schema(tags=['认证'])
 class CurrentUserView(APIView):
     """
     获取当前用户信息 API
@@ -255,4 +322,106 @@ class CurrentUserView(APIView):
             }, message='success')
         
         return Result.unauthorized(message='User information not found')
+
+
+@extend_schema(
+    tags=['认证'],
+    request=ChangePasswordSerializer,
+    responses={200: {'description': '密码修改成功'}}
+)
+class ChangePasswordView(APIView):
+    """
+    修改密码 API
+
+    POST /api/v1/auth/change-password/
+
+    Headers:
+    Authorization: Bearer <access_token>
+
+    Body:
+    {
+        "old_password": "string",
+        "new_password": "string"
+    }
+
+    Response:
+    {
+        "code": 200,
+        "message": "Password changed successfully",
+        "data": null
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """修改密码"""
+        serializer = ChangePasswordSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Result.bad_request(message='Validation failed',
+                                     data=serializer.errors)
+
+        old_password = serializer.validated_data['old_password']
+        new_password = serializer.validated_data['new_password']
+
+        # 获取当前用户的角色和用户名
+        user = request.user
+        username = user.username
+
+        # 从 JWT token 中获取角色信息
+        from rest_framework_simplejwt.tokens import UntypedToken
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if not auth_header.startswith('Bearer '):
+            return Result.unauthorized(message='No valid authorization token provided')
+
+        token = auth_header.split(' ')[1]
+        try:
+            untyped_token = UntypedToken(token)
+            token_payload = untyped_token.payload
+            role = token_payload.get('role', '')
+        except Exception as e:
+            return Result.unauthorized(message=f'Invalid token: {str(e)}')
+
+        # 根据角色验证旧密码并更新新密码
+        if role == 'student':
+            from Account.models import Students
+            try:
+                student = Students.objects.get(username=username)
+                # 验证旧密码
+                if student.password != old_password:
+                    return Result.bad_request(message='Old password is incorrect')
+                # 更新密码
+                student.password = new_password
+                student.save()
+            except Students.DoesNotExist:
+                return Result.not_found(message='Student not found')
+
+        elif role == 'teacher':
+            from Account.models import Teachers
+            try:
+                teacher = Teachers.objects.get(username=username)
+                # 验证旧密码
+                if teacher.password != old_password:
+                    return Result.bad_request(message='Old password is incorrect')
+                # 更新密码
+                teacher.password = new_password
+                teacher.save()
+            except Teachers.DoesNotExist:
+                return Result.not_found(message='Teacher not found')
+
+        elif role == 'admin':
+            from Account.models import Admins
+            try:
+                admin = Admins.objects.get(username=username)
+                # 验证旧密码
+                if admin.password != old_password:
+                    return Result.bad_request(message='Old password is incorrect')
+                # 更新密码
+                admin.password = new_password
+                admin.save()
+            except Admins.DoesNotExist:
+                return Result.not_found(message='Admin not found')
+        else:
+            return Result.bad_request(message='Invalid role')
+
+        return Result.success(message='Password changed successfully')
 

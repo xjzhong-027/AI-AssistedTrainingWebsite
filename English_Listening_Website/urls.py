@@ -31,13 +31,14 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 import announce.routing
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from Account.api.views import LoginView, RefreshTokenView, LogoutView, CurrentUserView
+from Account.api.views import LoginView, RefreshTokenView, LogoutView, CurrentUserView, TokenObtainPairViewWithTag, ChangePasswordView
 from Account.api import user_views
 from ELW.api import views as content_views
 from forum.api import views as forum_views
 from announce.api import views as announce_views
 from accessment.api import views as exam_views
 from Query.api import views as query_views
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 
 urlpatterns = [
@@ -48,14 +49,20 @@ urlpatterns = [
     path(route='logout/', view=account_views.log_out, name='logout'),
     path('update_last_activity/', view=account_views.update_last_activity, name='update_last_activity'),
     
+    # API Documentation (Swagger/OpenAPI)
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    
     # API routes
     path('api/v1/auth/', include([
         path('login/', LoginView.as_view(), name='api_login'),
-        path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),  # Keep for compatibility
+        path('token/', TokenObtainPairViewWithTag.as_view(), name='token_obtain_pair'),  # Keep for compatibility
         path('token/refresh/', RefreshTokenView.as_view(), name='api_token_refresh'),
         path('refresh/', RefreshTokenView.as_view(), name='api_refresh'),  # Alias
         path('logout/', LogoutView.as_view(), name='api_logout'),
         path('user/', CurrentUserView.as_view(), name='api_current_user'),
+        path('change-password/', ChangePasswordView.as_view(), name='api_change_password'),
     ])),
     path('api/v1/users/', include([
         # 创建 API（用于测试，不需要认证）
@@ -67,10 +74,12 @@ urlpatterns = [
         path('students/', include([
             path('', user_views.StudentListView.as_view(), name='api_student_list'),
             path('<int:student_id>/', user_views.StudentDetailView.as_view(), name='api_student_detail'),
+            path('<int:student_id>/update/', user_views.StudentUpdateView.as_view(), name='api_student_update'),
         ])),
         path('teachers/', include([
             path('', user_views.TeacherListView.as_view(), name='api_teacher_list'),
             path('<int:teacher_id>/', user_views.TeacherDetailView.as_view(), name='api_teacher_detail'),
+            path('<int:teacher_id>/update/', user_views.TeacherUpdateView.as_view(), name='api_teacher_update'),
         ])),
         path('classes/', include([
             path('', user_views.ClassListView.as_view(), name='api_class_list'),
@@ -82,6 +91,7 @@ urlpatterns = [
         path('media-materials/', include([
             path('', content_views.MediaMaterialListView.as_view(), name='api_media_material_list'),
             path('<int:material_id>/', content_views.MediaMaterialDetailView.as_view(), name='api_media_material_detail'),
+            path('<int:material_id>/questions/', content_views.MediaMaterialQuestionsView.as_view(), name='api_media_material_questions'),
         ])),
         path('main-questions/', include([
             path('<int:question_id>/', content_views.MainQuestionDetailView.as_view(), name='api_main_question_detail'),

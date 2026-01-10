@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework_simplejwt.tokens import UntypedToken
+from drf_spectacular.utils import extend_schema
 
 from common.api.response import Result
 from announce.api.serializers import (
@@ -12,9 +13,11 @@ from announce.api.serializers import (
     MessageSerializer
 )
 from announce.services.communication_service_impl import CommunicationServiceImpl
+from announce.services.notification_service_impl import NotificationServiceImpl
 from Account.services.user_service_impl import UserServiceImpl
 
 
+@extend_schema(tags=['公告'])
 class AnnouncementListView(APIView):
     """
     获取公告列表 API
@@ -44,6 +47,7 @@ class AnnouncementListView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(tags=['公告'])
 class AnnouncementDetailView(APIView):
     """
     获取公告详情 API
@@ -64,6 +68,7 @@ class AnnouncementDetailView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(tags=['公告'])
 class AnnouncementCreateView(APIView):
     """
     创建公告 API
@@ -98,6 +103,26 @@ class AnnouncementCreateView(APIView):
                 receiver_student_ids=serializer.validated_data.get('receiver_student_ids', [])
             )
             
+            # 发送通知（如果有接收者）
+            receiver_student_ids = serializer.validated_data.get('receiver_student_ids', [])
+            if receiver_student_ids:
+                try:
+                    # 获取接收者用户名列表
+                    receiver_usernames = []
+                    for student_id in receiver_student_ids:
+                        student = UserServiceImpl.get_student_by_id(student_id)
+                        if student:
+                            receiver_usernames.append(student.username)
+                    
+                    if receiver_usernames:
+                        NotificationServiceImpl.send_announcement_notification(
+                            announcement_id=announcement.id,
+                            receiver_usernames=receiver_usernames
+                        )
+                except Exception as e:
+                    # 通知发送失败不影响公告创建
+                    print(f"Failed to send announcement notification: {e}")
+            
             result_serializer = AnnouncementSerializer(announcement)
             return Result.created(data=result_serializer.data, message='Announcement created successfully')
         except Exception as e:
@@ -130,6 +155,7 @@ class AnnouncementCreateView(APIView):
         return ''
 
 
+@extend_schema(tags=['公告'])
 class AnnouncementUpdateView(APIView):
     """
     更新公告 API
@@ -169,6 +195,7 @@ class AnnouncementUpdateView(APIView):
         return Result.success(data=result_serializer.data, message='Announcement updated successfully')
 
 
+@extend_schema(tags=['公告'])
 class AnnouncementDeleteView(APIView):
     """
     删除公告 API
@@ -185,6 +212,7 @@ class AnnouncementDeleteView(APIView):
         return Result.not_found(message='Announcement not found')
 
 
+@extend_schema(tags=['公告'])
 class MessageListView(APIView):
     """
     获取消息列表 API
@@ -221,6 +249,7 @@ class MessageListView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(tags=['公告'])
 class MessageDetailView(APIView):
     """
     获取消息详情 API
@@ -239,6 +268,8 @@ class MessageDetailView(APIView):
         
         serializer = MessageSerializer(message)
         return Result.success(data=serializer.data, message='success')
+
+
 
 
 

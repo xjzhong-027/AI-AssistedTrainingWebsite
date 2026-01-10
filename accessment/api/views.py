@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework_simplejwt.tokens import UntypedToken
+from drf_spectacular.utils import extend_schema
 
 from common.api.response import Result
 from accessment.api.serializers import (
@@ -16,6 +17,7 @@ from Account.services.user_service_impl import UserServiceImpl
 from ELW.services.content_service_impl import ContentServiceImpl
 
 
+@extend_schema(tags=['考试'])
 class ExamListView(APIView):
     """
     获取考试列表 API
@@ -91,6 +93,7 @@ class ExamListView(APIView):
         return ''
 
 
+@extend_schema(tags=['考试'])
 class ExamDetailView(APIView):
     """
     获取考试详情 API
@@ -145,6 +148,7 @@ class ExamDetailView(APIView):
         return ''
 
 
+@extend_schema(tags=['考试'])
 class ExamStartView(APIView):
     """
     开始考试 API
@@ -205,6 +209,7 @@ class ExamStartView(APIView):
         return ''
 
 
+@extend_schema(tags=['考试'])
 class ExamPageView(APIView):
     """
     获取考试页面 API
@@ -274,6 +279,7 @@ class ExamPageView(APIView):
         return ''
 
 
+@extend_schema(tags=['考试'])
 class ExamPageAnswersSaveView(APIView):
     """
     保存页面答案 API
@@ -314,6 +320,7 @@ class ExamPageAnswersSaveView(APIView):
         return Result.success(data=result_serializer.data, message='Answers saved successfully')
 
 
+@extend_schema(tags=['考试'])
 class ExamSubmitView(APIView):
     """
     提交考试 API
@@ -375,6 +382,7 @@ class ExamSubmitView(APIView):
         return ''
 
 
+@extend_schema(tags=['考试'])
 class ExamResultView(APIView):
     """
     获取考试结果 API
@@ -429,6 +437,7 @@ class ExamResultView(APIView):
         return ''
 
 
+@extend_schema(tags=['考试'])
 class MediaPlayUpdateView(APIView):
     """
     更新媒体播放记录 API

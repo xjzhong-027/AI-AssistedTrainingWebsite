@@ -1,0 +1,159 @@
+/* 颜色变量定义 */
+:root {
+  /* 主色调 */
+  --bg-primary: #1A1A1A; /* 主背景 - 深色 */
+  --bg-light: #F9F8F3; /* 浅色背景 - 米白色 */
+  --bg-white: #FFFFFF; /* 白色 */
+  --text-primary: #1A1A1A; /* 主要文字颜色 */
+
+  /* 辅助颜色 */
+  --color-cyan: #99B6B4; /* 瓷釉青 */
+  --color-cyan-light: #BACFCE; /* 釉面蓝 */
+  --color-red: #D48982; /* 酒痕红 */
+  --color-orange: #DFB199; /* 杏皮褐 */
+
+  /* 侧边栏/主容器颜色块 */
+  /* IT&软件(粉) */
+  --color-it-light: #FAD4D4;
+  --color-it-dark: #E07A7A;
+  
+  /* 商务(橙) */
+  --color-business-light: #FDE2B8;
+  --color-business-dark: #D99B4E;
+  
+  /* 媒体训练(紫) */
+  --color-media-light: #D8D8F6;
+  --color-media-dark: #E8ECA;
+  
+  /* 青色 */
+  --color-cyan-old: #D1F2EB;
+  
+  /* 室内设计(绿) */
+  --color-design-green: #76C7B7;
+}
+
+/* 全局基础样式 */
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+  background-color: var(--bg-light);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+}
+
+/* 统一卡片样式 */
+.card {
+  background-color: var(--bg-white);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-cyan), var(--color-cyan-light), var(--color-red), var(--color-orange));
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 选中状态样式 */
+.selected {
+  background-color: var(--bg-primary) !important;
+  color: var(--bg-white) !important;
+}
+
+.selected * {
+  color: var(--bg-white) !important;
+}
+
+/* 容器样式 */
+.container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* 侧边栏样式 - 使用媒体训练(紫) */
+.sidebar {
+  width: 250px;
+  background-color: var(--color-media-light); /* #D8D8F6 */
+  padding: 20px;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.sidebar ul li {
+  margin-bottom: 15px;
+}
+
+.sidebar ul li a {
+  color: #333;
+  text-decoration: none;
+  font-size: 16px;
+  display: block;
+  padding: 10px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.sidebar ul li a:hover {
+  background-color: var(--color-media-dark); /* #E8ECA */
+  color: #fff;
+}
+
+/* 主要内容区域样式 */
+.content {
+  flex-grow: 1;
+  padding: 20px;
+  background-color: var(--bg-light); /* #F9F8F3 */
+}
+
+/* 消息提示样式 */
+.messages {
+  margin: 10px;
+  padding: 10px;
+}
+
+.alert {
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 4px;
+}
+
+.alert-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.alert-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.alert-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
