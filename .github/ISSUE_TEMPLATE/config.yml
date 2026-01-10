@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 项目文档
+    url: https://github.com/xjzhong-027/AI-AssistedTrainingWebsite/tree/dev/docs
+    about: 查看项目文档和开发指南
+  - name: 💬 讨论区
+    url: https://github.com/xjzhong-027/AI-AssistedTrainingWebsite/discussions
+    about: 提问、讨论和分享想法
+  - name: 🔧 贡献指南
+    url: https://github.com/xjzhong-027/AI-AssistedTrainingWebsite/blob/dev/docs/03-团队协作/CONTRIBUTING.md
+    about: 了解如何为项目做贡献
