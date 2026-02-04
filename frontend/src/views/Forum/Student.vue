@@ -17,6 +17,13 @@
             </template>
           </el-input>
           <el-button type="primary" style="margin-left: 10px" @click="loadPosts">搜索</el-button>
+          <el-button
+            :type="showMyPosts ? 'warning' : 'default'"
+            style="margin-left: 10px"
+            @click="toggleMyPosts"
+          >
+            {{ showMyPosts ? '显示全部' : '我的帖子' }}
+          </el-button>
           <el-button type="success" style="margin-left: 10px" @click="showPostForm = true">发布帖子</el-button>
         </div>
 
@@ -86,13 +93,16 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { getAllPosts, createPost } from '@/api/forum'
 import type { Post } from '@/api/forum'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const searchKeyword = ref('')
 const selectedIndex = ref<number | null>(null)
 const showPostForm = ref(false)
+const showMyPosts = ref(false)
 const posts = ref<Post[]>([])
 
 const newPost = ref({
@@ -118,10 +128,23 @@ const formatDate = (date: string) => {
   })
 }
 
+const toggleMyPosts = () => {
+  showMyPosts.value = !showMyPosts.value
+  loadPosts()
+}
+
 const loadPosts = async () => {
   loading.value = true
   try {
-    const params = searchKeyword.value ? { search: searchKeyword.value } : {}
+    const params: any = {}
+
+    if (searchKeyword.value) {
+      params.search = searchKeyword.value
+    }
+
+    if (showMyPosts.value && userStore.userInfo?.id) {
+      params.author = userStore.userInfo.id
+    }
     const data = await getAllPosts(params)
     posts.value = data.map((post: any) => ({
       id: post.id,

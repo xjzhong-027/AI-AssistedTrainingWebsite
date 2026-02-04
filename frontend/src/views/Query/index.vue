@@ -43,7 +43,6 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import Layout from '@/components/Layout/index.vue'
 
 const router = useRouter()
@@ -53,8 +52,7 @@ const goToAttendance = () => {
 }
 
 const goToScheduleAdjustment = () => {
-  // 注意：调课补课管理功能在后端API中未找到对应接口，暂不实现
-  ElMessage.warning('调课补课管理功能暂未在后端实现，请联系管理员')
+  router.push('/query/schedule-adjustment')
 }
 
 const goToLearningRecord = () => {

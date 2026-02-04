@@ -31,6 +31,8 @@
               <a @click="viewMaterialDetail(material.id)">{{ material.title }}</a>
             </td>
             <td>
+              <button @click="addQuestion(material.id)" class="btn-add">添加题目</button>
+              &nbsp;&nbsp;
               <button @click="deleteMaterial(material.id)" class="btn-delete">删除</button>
               &nbsp;&nbsp;
               <button @click="createPage(material.id)" class="btn-create">组卷</button>
@@ -68,6 +70,10 @@
           <div class="detail-item">
             <span class="label">标题：</span>
             <span class="value">{{ currentMaterial.title }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">关联题目数：</span>
+            <span class="value">{{ questionCount }} 道大题</span>
           </div>
           <div v-if="currentMaterial.theme" class="detail-item">
             <span class="label">主题：</span>
@@ -109,6 +115,8 @@
       </div>
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="handleDetailCreatePage">组卷</el-button>
+        <el-button type="danger" @click="handleDetailDelete">删除</el-button>
       </template>
     </el-dialog>
   </div>
@@ -118,7 +126,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElDialog } from 'element-plus'
-import { getAllMediaMaterials, getMediaMaterialById, deleteMediaMaterial } from '@/api/content'
+import { getAllMediaMaterials, getMediaMaterialById, deleteMediaMaterial, getMaterialQuestions } from '@/api/content'
 import type { MediaMaterial } from '@/api/content'
 
 const router = useRouter()
@@ -130,6 +138,7 @@ const pageSize = ref(10)
 const totalPages = ref(1)
 const detailDialogVisible = ref(false)
 const currentMaterial = ref<MediaMaterial | null>(null)
+const questionCount = ref(0)
 const detailLoading = ref(false)
 
 const pageRange = computed(() => {
@@ -159,15 +168,33 @@ const goToNewTaskPackage = () => {
 const viewMaterialDetail = async (materialId: number) => {
   detailLoading.value = true
   detailDialogVisible.value = true
+  currentMaterial.value = null
+  questionCount.value = 0
   try {
-    currentMaterial.value = await getMediaMaterialById(materialId)
+    const [material, questions] = await Promise.all([
+      getMediaMaterialById(materialId),
+      getMaterialQuestions(materialId)
+    ])
+    currentMaterial.value = material
+    questionCount.value = Array.isArray(questions) ? questions.length : 0
   } catch (error: any) {
-    console.error('加载媒体素材详情失败', error)
     ElMessage.error(error.message || '加载媒体素材详情失败')
     detailDialogVisible.value = false
   } finally {
     detailLoading.value = false
   }
+}
+
+const handleDetailCreatePage = () => {
+  if (!currentMaterial.value) return
+  detailDialogVisible.value = false
+  createPage(currentMaterial.value.id)
+}
+
+const handleDetailDelete = () => {
+  if (!currentMaterial.value) return
+  detailDialogVisible.value = false
+  deleteMaterial(currentMaterial.value.id)
 }
 
 const deleteMaterial = async (materialId: number) => {
@@ -196,6 +223,13 @@ const deleteMaterial = async (materialId: number) => {
 const createPage = (materialId: number) => {
   router.push({
     name: 'CreatePaperPage',
+    params: { materialId: materialId.toString() }
+  })
+}
+
+const addQuestion = (materialId: number) => {
+  router.push({
+    name: 'QuestionType',
     params: { materialId: materialId.toString() }
   })
 }
@@ -384,6 +418,21 @@ tbody a:hover {
   background-color: #7A9E9C;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-add {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  background-color: #E8D5B7;
+  color: #333;
+  transition: all 0.3s ease;
+}
+
+.btn-add:hover {
+  background-color: #D4C4A0;
 }
 
 .pagination {

@@ -134,6 +134,39 @@ export function changePassword(oldPassword: string, newPassword: string): Promis
 }
 
 /**
+ * 课程类型
+ */
+export interface Course {
+  id: number
+  year: number
+  grade: string
+  semester: string
+}
+
+/**
+ * 获取课程列表
+ */
+export function getCourseList(): Promise<Course[]> {
+  return request.get('/users/courses/')
+}
+
+/**
+ * 创建课程
+ */
+export function createCourse(data: { year: number; grade: string; semester: string }): Promise<Course> {
+  return request.post('/users/courses/create/', data)
+}
+
+/**
+ * 教师简要类型（用于下拉等）
+ */
+export interface TeacherBrief {
+  id: number
+  username: string
+  name: string
+}
+
+/**
  * 班级类型
  */
 export interface Class {
@@ -141,11 +174,19 @@ export interface Class {
   class_name: string
   teacher_id?: number
   teacher_name?: string
+  course_id?: number
+  course_name?: string
   start_date?: string
   week?: number
   start_time?: string
   end_time?: string
-  course_name?: string
+}
+
+/**
+ * 获取教师列表
+ */
+export function getTeacherList(): Promise<TeacherBrief[]> {
+  return request.get('/users/teachers/')
 }
 
 /**
@@ -168,4 +209,37 @@ export function getClassById(id: number): Promise<Class> {
  */
 export function getClassStudents(classId: number): Promise<User[]> {
   return request.get(`/users/classes/${classId}/students/`)
+}
+
+/**
+ * 创建班级
+ */
+export function createClass(data: {
+  class_name: string
+  course: number
+  teacher: number
+  start_date?: string
+  week: number
+  start_time: string
+  end_time: string
+}): Promise<Class> {
+  return request.post('/users/classes/create/', data)
+}
+
+/**
+ * 更新班级
+ */
+export function updateClass(
+  classId: number,
+  data: Partial<{
+    class_name: string
+    course: number
+    teacher: number
+    start_date: string
+    week: number
+    start_time: string
+    end_time: string
+  }>
+): Promise<Class> {
+  return request.put(`/users/classes/${classId}/update/`, data)
 }

@@ -100,9 +100,37 @@ class UnitSerializer(serializers.ModelSerializer):
     class_id = serializers.IntegerField(source='class_instance.id', read_only=True)
     class_name = serializers.CharField(source='class_instance.class_name', read_only=True)
     pages = PaperPageSerializer(many=True, read_only=True, source='paper_pages')
-    
+    week = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
     class Meta:
         model = Unit
-        fields = ['id', 'title', 'type', 'order', 'class_id', 'class_name', 'pages']
+        fields = ['id', 'title', 'type', 'order', 'class_id', 'class_name', 'pages', 'week', 'status']
         read_only_fields = ['id']
+
+    def get_week(self, obj):
+        """获取周次信息"""
+        from ELW.models import TimeManagement
+        time_mgmt = TimeManagement.objects.filter(unit=obj).first()
+        return time_mgmt.week if time_mgmt else None
+
+    def get_status(self, obj):
+        """获取任务状态"""
+        from ELW.models import TimeManagement
+        from datetime import datetime, date
+
+        time_mgmt = TimeManagement.objects.filter(unit=obj).first()
+        if not time_mgmt:
+            return '未设置'
+
+        if time_mgmt.exam_date:
+            today = date.today()
+            if time_mgmt.exam_date > today:
+                return '未开始'
+            elif time_mgmt.exam_date == today:
+                return '进行中'
+            else:
+                return '已结束'
+
+        return '已发布'
 

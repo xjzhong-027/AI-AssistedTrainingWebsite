@@ -76,6 +76,11 @@ export const useUserStore = defineStore('user', () => {
   // 初始化
   initUser()
 
+  // 登出：清除状态，调用方负责跳转登录页
+  const logout = () => {
+    clearUser()
+  }
+
   return {
     userInfo,
     token,
@@ -83,6 +88,7 @@ export const useUserStore = defineStore('user', () => {
     setUser,
     setToken,
     clearUser,
+    logout,
     getUserRole,
     isAdmin,
     isTeacher,

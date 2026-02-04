@@ -22,16 +22,17 @@ from rest_framework_simplejwt.tokens import UntypedToken
 class PostListView(APIView):
     """
     获取帖子列表 API
-    
+
     GET /api/v1/forum/posts/
-    
+
     Query Parameters:
     - category: 可选，分类筛选
     - search: 可选，搜索关键词
     - is_question: 可选，是否关于题目
     - main_question_id: 可选，按大题筛选
     - sub_question_id: 可选，按小题筛选
-    
+    - author: 可选，按作者ID筛选
+
     Headers:
     Authorization: Bearer <access_token>
     """
@@ -64,24 +65,34 @@ class PostListView(APIView):
         is_question = request.query_params.get('is_question')
         main_question_id = request.query_params.get('main_question_id')
         sub_question_id = request.query_params.get('sub_question_id')
-        
+        author_id = request.query_params.get('author')
+
         if category and category != 'all':
             # 可以根据需要添加分类筛选
             pass
-        
+
         if search:
             posts = posts.filter(
                 Q(title__icontains=search) | Q(content__icontains=search)
             )
-        
+
         if is_question is not None:
             posts = posts.filter(is_question=is_question.lower() == 'true')
-        
+
         if main_question_id:
             posts = posts.filter(main_question_id=main_question_id)
-        
+
         if sub_question_id:
             posts = posts.filter(sub_question_id=sub_question_id)
+
+        if author_id:
+            # 按作者ID筛选
+            from Account.models import Students
+            try:
+                student = Students.objects.get(id=author_id)
+                posts = posts.filter(student=student)
+            except Students.DoesNotExist:
+                posts = posts.none()
         
         # 排序：置顶优先，然后按时间
         posts = posts.order_by('-is_top', '-created_at')

@@ -23,6 +23,7 @@
 
         <div style="margin-top: 30px">
           <el-button type="primary" @click="handleEdit">编辑信息</el-button>
+          <el-button type="default" @click="router.push('/profile/change-password')">修改密码</el-button>
         </div>
       </div>
     </el-card>

@@ -718,6 +718,438 @@ class MainQuestionSubQuestionsView(APIView):
         return Result.success(data=serializer.data, message='success')
 
 
+@extend_schema(tags=['周任务管理'])
+class WeekTaskPackageCreateView(APIView):
+    """
+    创建周任务包 API
+
+    POST /api/v1/content/week-task-packages/
+
+    Headers:
+    Authorization: Bearer <access_token>
+    Content-Type: multipart/form-data
+
+    Request Body (multipart/form-data):
+    - title: string (required) - 任务标题
+    - theme: string (optional) - 主题
+    - abstract: string (optional) - 摘要
+    - keywords: string (optional) - 关键词
+    - transcript: string (optional) - 文本内容
+    - media_file: file (required) - 媒体文件（音频/视频）
+    - image_file: file[] (optional) - 图片文件（可多个）
+
+    Response:
+    {
+        "code": 200,
+        "message": "Week task package created successfully",
+        "data": {
+            "id": int,
+            "title": "string",
+            "theme": "string",
+            "abstract": "string",
+            "keywords": "string",
+            "transcript": "string",
+            "media_url": "string",
+            "image_url": "string"
+        }
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='创建周任务包',
+        description='创建新的周任务包，包含媒体素材和图片',
+        responses={
+            200: {
+                'description': '创建成功',
+                'content': {
+                    'application/json': {
+                        'example': {
+                            'code': 200,
+                            'message': 'Week task package created successfully',
+                            'data': {
+                                'id': 1,
+                                'title': '任务包标题',
+                                'theme': '主题',
+                                'abstract': '摘要',
+                                'keywords': '关键词',
+                                'transcript': '文本内容',
+                                'media_url': '/media/...',
+                                'image_url': '/media/...'
+                            }
+                        }
+                    }
+                }
+            },
+            400: {'description': '参数错误或缺少必填字段'},
+            500: {'description': '创建失败'}
+        }
+    )
+    def post(self, request):
+        """创建周任务包"""
+        try:
+            from ELW.services.file_service_impl import FileServiceImpl
+            from ELW.models import MediaMaterial
+
+            # 检查必填字段
+            media_file = request.FILES.get('media_file')
+            if not media_file:
+                return Result.error(message='请上传媒体文件（音频/视频）', code=400)
+
+            # 上传媒体文件
+            media_file_path, media_url = FileServiceImpl.upload_media_file(media_file, file_type='media')
+
+            # 上传图片文件
+            image_files = request.FILES.getlist('image_file')
+            image_urls = ''
+            if image_files:
+                image_url_list = FileServiceImpl.upload_image_files(image_files)
+                image_urls = ','.join(image_url_list)
+                if image_urls:
+                    image_urls += ','
+
+            # 创建MediaMaterial对象
+            new_task_package = MediaMaterial.objects.create(
+                title=request.data.get('title', ''),
+                theme=request.data.get('theme', ''),
+                abstract=request.data.get('abstract', ''),
+                keywords=request.data.get('keywords', ''),
+                transcript=request.data.get('transcript', ''),
+                media_url=media_url,
+                image_url=image_urls,
+            )
+
+            serializer = MediaMaterialSerializer(new_task_package)
+            return Result.success(data=serializer.data, message='Week task package created successfully')
+        except Exception as e:
+            return Result.error(message=f'Failed to create week task package: {str(e)}', code=500)
+
+
+@extend_schema(tags=['周任务管理'])
+class WeekTaskImportView(APIView):
+    """
+    导入周任务Word文档 API
+
+    POST /api/v1/content/week-task-import/
+
+    Headers:
+    Authorization: Bearer <access_token>
+    Content-Type: multipart/form-data
+
+    Request Body:
+    - word_file: file (required) - Word文档(.docx格式)
+    - material_id: int (required) - 素材包ID
+
+    Response:
+    {
+        "code": 200,
+        "message": "Document parsed successfully",
+        "data": {
+            "question_data": [...]
+        }
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='导入Word文档',
+        description='上传并解析Word文档，提取题目信息',
+        responses={
+            200: {'description': '解析成功'},
+            400: {'description': '参数错误或文件格式错误'},
+            500: {'description': '解析失败'}
+        }
+    )
+    def post(self, request):
+        """导入Word文档并解析"""
+        try:
+            from io import BytesIO
+            from docx import Document
+            from ELW.models import MediaMaterial
+            import ELW.doc_page_func as doc_page_func
+            import re
+
+            word_file = request.FILES.get('word_file')
+            material_id = request.data.get('material_id')
+
+            if not word_file:
+                return Result.error(message='请上传Word文档', code=400)
+
+            if not material_id:
+                return Result.error(message='缺少素材包ID', code=400)
+
+            # 验证文件扩展名
+            if not word_file.name.lower().endswith('.docx'):
+                return Result.error(
+                    message='请上传有效的Word文档（仅支持.docx格式）',
+                    code=400
+                )
+
+            # 验证素材包是否存在
+            try:
+                media_material = MediaMaterial.objects.get(pk=material_id)
+            except MediaMaterial.DoesNotExist:
+                return Result.error(message='素材包不存在', code=404)
+
+            # 提取文本内容
+            def extract_text_from_word(doc_file):
+                try:
+                    file_content = doc_file.read()
+                    doc_file.seek(0)
+                    docx_file = BytesIO(file_content)
+                    doc = Document(docx_file)
+
+                    text = ''
+                    for para in doc.paragraphs:
+                        text += para.text + '\n'
+                    return text
+                except Exception as e:
+                    error_msg = str(e)
+                    if 'Content_Types' in error_msg or 'not a zip file' in error_msg.lower():
+                        raise ValueError(
+                            '无法读取Word文档。请确保：1) 文件是有效的.docx格式（不是.doc格式）；'
+                            '2) 文件没有损坏。如果您有.doc格式的文件，请在Word中打开并另存为.docx格式。'
+                        )
+                    else:
+                        raise ValueError(f'无法读取Word文档: {error_msg}')
+
+            text_content = extract_text_from_word(word_file)
+            question_data = doc_page_func.main_process(text_content)
+
+            # 获取图片路径根目录
+            img_directory = ""
+            if media_material.image_url:
+                first_path = media_material.image_url.split(',')[0]
+                match = re.match(r"(.+[/\\])[^/\\]+$", first_path)
+                if match:
+                    img_directory = match.group(1)
+
+            # 处理题目数据
+            for page_question in question_data:
+                # 将页面限制时间转为分钟
+                hours, minutes, seconds = map(int, page_question['limited_time'].split(':'))
+                page_question['limited_time'] = int(hours * 60 + minutes + seconds / 60)
+
+                for main_question in page_question['page_content']:
+                    main_question['media_material_id'] = material_id
+                    main_question['img_directory'] = img_directory
+
+                    if main_question['question_type'] == 'correction':
+                        for sub_question in main_question['sub_questions']:
+                            sub_question['questions'] = []
+                            for i in range(len(sub_question['sub_list'])):
+                                sub_question['questions'].append({
+                                    'sub': sub_question['sub_list'][i],
+                                    'type': sub_question['type_list'][i],
+                                    'answer': sub_question['answer_list'][i],
+                                    'index': sub_question['index_list'][i]
+                                })
+
+            return Result.success(
+                data={'question_data': question_data},
+                message='Document parsed successfully'
+            )
+        except ValueError as e:
+            return Result.error(message=str(e), code=400)
+        except Exception as e:
+            return Result.error(message=f'Failed to parse document: {str(e)}', code=500)
+
+
+@extend_schema(tags=['周任务管理'])
+class WeekTaskSaveView(APIView):
+    """
+    保存周任务 API
+
+    POST /api/v1/content/week-task-save/
+
+    Headers:
+    Authorization: Bearer <access_token>
+
+    Request Body:
+    {
+        "title": "string",
+        "class_id": int,
+        "type": "task|practice|exam|quiz",
+        "week": int,
+        "order": int,
+        "material_id": int,
+        "question_data": [...],
+        "exam_date": "YYYY-MM-DD" (optional),
+        "start_time": "HH:MM:SS" (optional),
+        "end_time": "HH:MM:SS" (optional),
+        "duration": int (optional),
+        "overdue_rule_id": int (optional)
+    }
+
+    Response:
+    {
+        "code": 200,
+        "message": "Task saved successfully",
+        "data": {
+            "unit_id": int
+        }
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='保存周任务',
+        description='保存周任务及其题目数据',
+        responses={
+            200: {'description': '保存成功'},
+            400: {'description': '参数错误'},
+            500: {'description': '保存失败'}
+        }
+    )
+    def post(self, request):
+        """保存周任务"""
+        try:
+            from ELW.models import (
+                Unit, PaperPage, MainQuestion, SubQuestion, PageMainQuestion,
+                PageSubQuestion, MediaMaterial, TimeManagement, OverdueDeductionRule,
+                ChoiceOption, MatchingOption, Correction
+            )
+            from Account.services.user_service_impl import UserServiceImpl
+            import datetime
+
+            data = request.data
+
+            # 验证必填字段
+            required_fields = ['title', 'class_id', 'type', 'week', 'material_id', 'question_data']
+            for field in required_fields:
+                if field not in data:
+                    return Result.error(message=f'缺少必填字段: {field}', code=400)
+
+            # 获取班级
+            class_instance = UserServiceImpl.get_class_by_id(data['class_id'])
+            if not class_instance:
+                return Result.error(message='班级不存在', code=404)
+
+            # 获取逾期规则
+            overdue_rule_instance = None
+            if data.get('overdue_rule_id'):
+                try:
+                    overdue_rule_instance = OverdueDeductionRule.objects.get(id=data['overdue_rule_id'])
+                except OverdueDeductionRule.DoesNotExist:
+                    pass
+
+            # 创建Unit
+            unit_instance = Unit.objects.create(
+                class_instance=class_instance,
+                order=data.get('order', 0),
+                title=data['title'],
+                type=data['type'],
+                overdue_rule=overdue_rule_instance
+            )
+
+            # 创建TimeManagement
+            if data['type'] == 'exam' and data.get('exam_date'):
+                TimeManagement.objects.create(
+                    unit=unit_instance,
+                    duration=data.get('duration', 60),
+                    exam_date=datetime.date.fromisoformat(data['exam_date']),
+                    start_time=datetime.time.fromisoformat(data['start_time']) if data.get('start_time') else None,
+                    end_time=datetime.time.fromisoformat(data['end_time']) if data.get('end_time') else None,
+                )
+            elif data['type'] in ['quiz', 'task']:
+                TimeManagement.objects.create(
+                    unit=unit_instance,
+                    week=data['week'],
+                    duration=data.get('duration', 60),
+                )
+
+            # 获取素材包
+            media_material = MediaMaterial.objects.get(pk=data['material_id'])
+
+            # 遍历所有页面
+            for page_idx, page_item in enumerate(data['question_data']):
+                # 创建PaperPage
+                paper_page = PaperPage.objects.create(
+                    unit=unit_instance,
+                    order=page_idx,
+                    text=f'第{page_idx+1}个页面',
+                    limited_time=page_item.get('limited_time'),
+                    can_modify=page_item.get('can_modify', False)
+                )
+
+                # 遍历所有大题
+                for main_item in page_item.get('page_content', []):
+                    # 创建MainQuestion
+                    main_question = MainQuestion.objects.create(
+                        media_material=media_material,
+                        question_type=main_item.get('question_type'),
+                        question_text=main_item.get('question_text', ''),
+                        maximum_play=int(main_item.get('max', 3)),
+                        minimum_play=int(main_item.get('min', 1)),
+                        start_time=datetime.time.fromisoformat(main_item['start']) if main_item.get('start') else None,
+                        end_time=datetime.time.fromisoformat(main_item['end']) if main_item.get('end') else None,
+                        allow_pause=main_item.get('allow_pause', False),
+                        limited_time=datetime.time.fromisoformat(main_item['limited_time']) if main_item.get('limited_time') else None,
+                        no_media=main_item.get('no_media', False)
+                    )
+
+                    # 保存大题图片
+                    if main_item.get('main_question_images'):
+                        main_question.image_url = ','.join(main_item['main_question_images'])
+                        main_question.save()
+
+                    # 创建PageMainQuestion关联
+                    PageMainQuestion.objects.create(
+                        page=paper_page,
+                        main_question=main_question
+                    )
+
+                    # 创建小题
+                    for sub_item in main_item.get('sub_questions', []):
+                        sub_question = SubQuestion.objects.create(
+                            main_question=main_question,
+                            question_text=sub_item.get('question_text', ''),
+                            score=float(sub_item.get('score', 0)),
+                            answer=sub_item.get('answer', ''),
+                            tips=sub_item.get('tips', ''),
+                            analysis=sub_item.get('analysis', ''),
+                            image_url=sub_item.get('image_url', '')
+                        )
+
+                        # 创建选择题选项
+                        if main_item['question_type'] == 'choice':
+                            for option in sub_item.get('options', []):
+                                ChoiceOption.objects.create(
+                                    sub_question=sub_question,
+                                    option_label=option.get('label', ''),
+                                    option_content=option.get('content', ''),
+                                    image_url=option.get('image_url', ''),
+                                    is_answer=option.get('is_answer', False)
+                                )
+
+                        # 创建连线题选项
+                        elif main_item['question_type'] == 'matching':
+                            for option in sub_item.get('matching_options', []):
+                                MatchingOption.objects.create(
+                                    sub_question=sub_question,
+                                    option_label=option.get('label', ''),
+                                    option_content=option.get('content', ''),
+                                    image_url=option.get('image_url', '')
+                                )
+
+                        # 创建改错题
+                        elif main_item['question_type'] == 'correction':
+                            for correction in sub_item.get('corrections', []):
+                                Correction.objects.create(
+                                    sub_question=sub_question,
+                                    type=correction.get('type', ''),
+                                    index=correction.get('index', 0)
+                                )
+
+            serializer = UnitSerializer(unit_instance)
+            return Result.success(
+                data={'unit_id': unit_instance.id, 'unit': serializer.data},
+                message='Task saved successfully'
+            )
+        except Exception as e:
+            return Result.error(message=f'Failed to save task: {str(e)}', code=500)
+
+
 
 
 

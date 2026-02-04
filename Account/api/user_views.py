@@ -9,13 +9,13 @@ from drf_spectacular.utils import extend_schema
 from common.api.response import Result
 from Account.api.serializers import StudentSerializer, TeacherSerializer, ClassSerializer
 from Account.api.create_serializers import (
-    CourseCreateSerializer, TeacherCreateSerializer,
-    ClassCreateSerializer, StudentCreateSerializer,
-    StudentUpdateSerializer, TeacherUpdateSerializer
+    CourseCreateSerializer, CourseSerializer,
+    TeacherCreateSerializer, ClassCreateSerializer, ClassUpdateSerializer,
+    StudentCreateSerializer, StudentUpdateSerializer, TeacherUpdateSerializer
 )
 from Account.services.user_service_impl import UserServiceImpl
 from Account.services.auth_service_impl import AuthServiceImpl
-from Account.models import Course
+from Account.models import Course, Class
 
 
 @extend_schema(
@@ -280,6 +280,31 @@ class ClassListView(APIView):
     tags=['用户管理'],
     responses={200: StudentSerializer}
 )
+@extend_schema(
+    tags=['用户管理'],
+    request=ClassUpdateSerializer,
+    responses={200: ClassSerializer}
+)
+class ClassUpdateView(APIView):
+    """
+    更新班级 API
+    
+    PUT /api/v1/users/classes/{class_id}/update/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, class_id):
+        """更新班级"""
+        class_instance = UserServiceImpl.get_class_by_id(class_id)
+        if not class_instance:
+            return Result.not_found(message='Class not found')
+        serializer = ClassUpdateSerializer(class_instance, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Result.success(data=ClassSerializer(class_instance).data, message='Class updated successfully')
+        return Result.bad_request(message='Validation failed', data=serializer.errors)
+
+
 class ClassStudentsView(APIView):
     """
     获取班级学生列表 API
@@ -320,6 +345,25 @@ class ClassStudentsView(APIView):
 
 @extend_schema(
     tags=['用户管理'],
+    responses={200: CourseSerializer(many=True)}
+)
+class CourseListView(APIView):
+    """
+    课程列表 API
+    
+    GET /api/v1/users/courses/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """获取课程列表"""
+        courses = Course.objects.all().order_by('-year', 'grade', 'semester')
+        serializer = CourseSerializer(courses, many=True)
+        return Result.success(data=serializer.data, message='success')
+
+
+@extend_schema(
+    tags=['用户管理'],
     request=CourseCreateSerializer,
     responses={201: CourseCreateSerializer}
 )
@@ -336,8 +380,8 @@ class CourseCreateView(APIView):
         "semester": "上"
     }
     """
-    permission_classes = []  # 允许未认证访问，用于测试
-    
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         """创建课程"""
         serializer = CourseCreateSerializer(data=request.data)
@@ -402,8 +446,8 @@ class ClassCreateView(APIView):
         "end_time": "10:00:00"
     }
     """
-    permission_classes = []  # 允许未认证访问，用于测试
-    
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         """创建班级"""
         serializer = ClassCreateSerializer(data=request.data)

@@ -94,6 +94,13 @@ export function deletePost(id: number): Promise<void> {
 }
 
 /**
+ * 置顶/取消置顶帖子
+ */
+export function togglePostTop(id: number): Promise<void> {
+  return request.post(`/forum/posts/${id}/toggle-top/`)
+}
+
+/**
  * 获取帖子的评论列表
  */
 export function getPostComments(postId: number): Promise<Comment[]> {

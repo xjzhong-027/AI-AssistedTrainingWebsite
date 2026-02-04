@@ -209,16 +209,43 @@ class RefreshTokenView(TokenRefreshView):
         )
 
 
-@extend_schema(tags=['认证'])
+@extend_schema(
+    tags=['认证'],
+    operation_id='logout',
+    summary='用户登出',
+    description='用户登出接口，可选择性将 refresh token 加入黑名单',
+    request={
+        'application/json': {
+            'type': 'object',
+            'properties': {
+                'refresh_token': {'type': 'string', 'description': 'Refresh Token（可选）'}
+            }
+        }
+    },
+    responses={
+        200: {
+            'description': '登出成功',
+            'content': {
+                'application/json': {
+                    'example': {
+                        'code': 200,
+                        'message': 'Logout successful',
+                        'data': None
+                    }
+                }
+            }
+        }
+    }
+)
 class LogoutView(APIView):
     """
     用户登出 API
-    
+
     POST /api/v1/auth/logout/
-    
+
     Headers:
     Authorization: Bearer <access_token>
-    
+
     Response:
     {
         "code": 200,
@@ -246,16 +273,40 @@ class LogoutView(APIView):
         return Result.success(message='Logout successful')
 
 
-@extend_schema(tags=['认证'])
+@extend_schema(
+    tags=['认证'],
+    operation_id='get_current_user',
+    summary='获取当前用户信息',
+    description='从 JWT Token 中获取当前登录用户的基本信息',
+    responses={
+        200: {
+            'description': '获取成功',
+            'content': {
+                'application/json': {
+                    'example': {
+                        'code': 200,
+                        'message': 'success',
+                        'data': {
+                            'username': 'student001',
+                            'role': 'student',
+                            'user_id': 1
+                        }
+                    }
+                }
+            }
+        },
+        401: {'description': 'Token 无效或已过期'}
+    }
+)
 class CurrentUserView(APIView):
     """
     获取当前用户信息 API
-    
+
     GET /api/v1/auth/user/
-    
+
     Headers:
     Authorization: Bearer <access_token>
-    
+
     Response:
     {
         "code": 200,

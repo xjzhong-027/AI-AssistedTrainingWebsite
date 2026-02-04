@@ -25,20 +25,28 @@
           v-for="(post, index) in posts"
           :key="post.id"
           class="post-card card"
-          :class="{ selected: selectedIndex === index }"
-          @click="selectPost(index, post.id)"
         >
           <div class="post-header">
             <h3>{{ post.title }}</h3>
-            <span class="post-status" :class="post.isPublic ? 'public' : 'private'">
-              {{ post.isPublic ? '公开' : '私密' }}
-            </span>
+            <div class="post-badges">
+              <el-tag v-if="post.isTop" type="danger" size="small">置顶</el-tag>
+              <el-tag :type="post.isPublic ? 'success' : 'warning'" size="small">
+                {{ post.isPublic ? '公开' : '私密' }}
+              </el-tag>
+            </div>
           </div>
           <p class="post-content">{{ post.content }}</p>
           <div class="post-footer">
             <span class="post-author">作者: {{ post.author }}</span>
             <span class="post-time">{{ formatDate(post.createdAt) }}</span>
             <span class="post-comments">评论: {{ post.commentCount || 0 }}</span>
+          </div>
+          <div class="post-actions">
+            <el-button size="small" @click="viewPost(post.id)">查看详情</el-button>
+            <el-button size="small" type="warning" @click="toggleTop(post)">
+              {{ post.isTop ? '取消置顶' : '置顶' }}
+            </el-button>
+            <el-button size="small" type="danger" @click="handleDeletePost(post.id)">删除</el-button>
           </div>
         </div>
       </div>
@@ -53,20 +61,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { getAllPosts, deletePost } from '@/api/forum'
+import { getAllPosts, deletePost, togglePostTop } from '@/api/forum'
 import type { Post } from '@/api/forum'
 
 const router = useRouter()
 
 const loading = ref(false)
 const searchKeyword = ref('')
-const selectedIndex = ref<number | null>(null)
 const posts = ref<Post[]>([])
 
-const selectPost = (index: number, id: number) => {
-  selectedIndex.value = selectedIndex.value === index ? null : index
+const viewPost = (id: number) => {
+  router.push(`/forum/post/${id}`)
 }
 
 const formatDate = (date: string) => {
@@ -79,6 +86,48 @@ const formatDate = (date: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const toggleTop = async (post: any) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要${post.isTop ? '取消置顶' : '置顶'}这个帖子吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await togglePostTop(post.id)
+    ElMessage.success(`${post.isTop ? '取消置顶' : '置顶'}成功`)
+    await loadPosts()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('操作失败', error)
+      ElMessage.error(error.message || '操作失败')
+    }
+  }
+}
+
+const handleDeletePost = async (id: number) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这个帖子吗？删除后无法恢复。', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    await deletePost(id)
+    ElMessage.success('删除成功')
+    await loadPosts()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('删除失败', error)
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
 }
 
 const loadPosts = async () => {
@@ -95,6 +144,7 @@ const loadPosts = async () => {
       createdAt: post.created_at || post.createdAt,
       updatedAt: post.updated_at || post.updatedAt,
       isPublic: post.is_public !== false,
+      isTop: post.is_top || false,
       commentCount: post.comment_count || 0
     }))
   } catch (error) {

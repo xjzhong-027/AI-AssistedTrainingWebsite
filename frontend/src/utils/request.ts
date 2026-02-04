@@ -59,10 +59,10 @@ service.interceptors.response.use(
           break
         case 401:
           message = '未授权，请重新登录'
-          // 清除 token 和用户信息
+          // 清除 token（与请求头读取来源一致）
           localStorage.removeItem('token')
+          localStorage.removeItem('accessToken')
           localStorage.removeItem('refreshToken')
-          // 跳转到登录页
           if (window.location.pathname !== '/login') {
             window.location.href = '/login'
           }

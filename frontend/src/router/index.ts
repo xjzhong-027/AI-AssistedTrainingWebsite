@@ -130,6 +130,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '个人中心' }
       },
       {
+        path: 'profile/change-password',
+        name: 'ChangePassword',
+        component: () => import('@/views/Profile/ChangePassword.vue'),
+        meta: { title: '修改密码' }
+      },
+      {
         path: 'student/index',
         name: 'StudentIndex',
         component: () => import('@/views/Dashboard/index.vue'),
@@ -172,6 +178,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '帖子详情' }
       },
       {
+        path: 'forum/post/:id/edit',
+        name: 'ForumPostEdit',
+        component: () => import('@/views/Forum/Edit.vue'),
+        meta: { title: '编辑帖子' }
+      },
+      {
         path: 'announcements',
         name: 'AnnouncementsStudent',
         component: () => import('@/views/Announcement/Student.vue'),
@@ -208,16 +220,64 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '周任务', roles: ['TEACHER', 'ADMIN'] }
       },
       {
+        path: 'teacher/week-task/create',
+        name: 'WeekTaskCreate',
+        component: () => import('@/views/Teacher/WeekTask/Create.vue'),
+        meta: { title: '新建任务包', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/week-task/import/:id',
+        name: 'WeekTaskImport',
+        component: () => import('@/views/Teacher/WeekTask/Import.vue'),
+        meta: { title: '导入任务', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/week-task/preview/:id',
+        name: 'WeekTaskPreview',
+        component: () => import('@/views/Teacher/WeekTask/Preview.vue'),
+        meta: { title: '预览任务', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
         path: 'teacher/question-bank',
         name: 'QuestionBank',
         component: () => import('@/views/Teacher/QuestionBank/index.vue'),
         meta: { title: '题库管理', roles: ['TEACHER', 'ADMIN'] }
       },
       {
+        path: 'teacher/question-bank/material/:materialId/question-type',
+        name: 'QuestionType',
+        component: () => import('@/views/Teacher/QuestionBank/QuestionType.vue'),
+        meta: { title: '选择题型', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/question-bank/material/:materialId/question/edit/:type',
+        name: 'QuestionEditByType',
+        component: () => import('@/views/Teacher/QuestionBank/QuestionEditByType.vue'),
+        meta: { title: '题目编辑', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
         path: 'teacher/exam-bank',
         name: 'ExamBank',
         component: () => import('@/views/Teacher/ExamBank/index.vue'),
         meta: { title: '任务管理', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/exam-bank/management',
+        name: 'ExamBankManagement',
+        component: () => import('@/views/Teacher/ExamBank/Management.vue'),
+        meta: { title: '任务管理-高级', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/course',
+        name: 'Course',
+        component: () => import('@/views/Teacher/Course/index.vue'),
+        meta: { title: '课程管理', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/class',
+        name: 'Class',
+        component: () => import('@/views/Teacher/Class/index.vue'),
+        meta: { title: '班级管理', roles: ['TEACHER', 'ADMIN'] }
       },
       {
         path: 'teacher/units/:id/edit',
@@ -272,6 +332,12 @@ const routes: RouteRecordRaw[] = [
         name: 'QueryAttendance',
         component: () => import('@/views/Query/Attendance.vue'),
         meta: { title: '考勤管理', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'query/schedule-adjustment',
+        name: 'QueryScheduleAdjustment',
+        component: () => import('@/views/Query/ScheduleAdjustment.vue'),
+        meta: { title: '调课补课管理', roles: ['TEACHER', 'ADMIN'] }
       },
       {
         path: 'query/learning-record',

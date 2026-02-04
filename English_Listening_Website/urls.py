@@ -67,6 +67,7 @@ urlpatterns = [
     path('api/v1/users/', include([
         # 创建 API（用于测试，不需要认证）
         path('courses/create/', user_views.CourseCreateView.as_view(), name='api_course_create'),
+        path('courses/', user_views.CourseListView.as_view(), name='api_course_list'),
         path('teachers/create/', user_views.TeacherCreateView.as_view(), name='api_teacher_create'),
         path('classes/create/', user_views.ClassCreateView.as_view(), name='api_class_create'),
         path('students/create/', user_views.StudentCreateView.as_view(), name='api_student_create'),
@@ -83,6 +84,7 @@ urlpatterns = [
         ])),
         path('classes/', include([
             path('', user_views.ClassListView.as_view(), name='api_class_list'),
+            path('<int:class_id>/update/', user_views.ClassUpdateView.as_view(), name='api_class_update'),
             path('<int:class_id>/', user_views.ClassDetailView.as_view(), name='api_class_detail'),
             path('<int:class_id>/students/', user_views.ClassStudentsView.as_view(), name='api_class_students'),
         ])),
@@ -108,6 +110,9 @@ urlpatterns = [
             path('<int:page_id>/', content_views.PaperPageDetailView.as_view(), name='api_page_detail'),
             path('<int:page_id>/questions/', content_views.PageQuestionsView.as_view(), name='api_page_questions'),
         ])),
+        path('week-task-packages/', content_views.WeekTaskPackageCreateView.as_view(), name='api_week_task_package_create'),
+        path('week-task-import/', content_views.WeekTaskImportView.as_view(), name='api_week_task_import'),
+        path('week-task-save/', content_views.WeekTaskSaveView.as_view(), name='api_week_task_save'),
     ])),
     path('api/v1/forum/', include([
         path('posts/', include([

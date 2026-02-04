@@ -3,6 +3,7 @@ Serializers for Account API.
 """
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from drf_spectacular.utils import extend_schema_field
 from Account.models import Students, Teachers, Admins, Class
 from Account.services.user_service_impl import UserServiceImpl
 
@@ -197,15 +198,17 @@ class ClassSerializer(serializers.ModelSerializer):
     """班级序列化器"""
     teacher_name = serializers.CharField(source='teacher.name', read_only=True)
     teacher_id = serializers.IntegerField(source='teacher.id', read_only=True)
+    course_id = serializers.IntegerField(source='course.id', read_only=True, allow_null=True)
     course_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Class
-        fields = ['id', 'class_name', 'teacher_id', 'teacher_name', 'start_date', 
-                  'week', 'start_time', 'end_time', 'course_name']
+        fields = ['id', 'class_name', 'teacher_id', 'teacher_name', 'course_id', 'course_name',
+                  'start_date', 'week', 'start_time', 'end_time']
         read_only_fields = ['id']
     
-    def get_course_name(self, obj):
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_course_name(self, obj) -> str:
         """获取课程名称"""
         if obj.course:
             return f"{obj.course.year}-{obj.course.grade}-{obj.course.semester}"

@@ -1,28 +1,92 @@
 <template>
   <div class="week-task">
     <div class="header">
-      <button @click="goHome">返回首页</button>
-      <h2>周任务</h2>
-      <button @click="goToNewTaskPackage">New task package</button>
+      <el-button @click="goHome" type="default">返回首页</el-button>
+      <h2>周任务管理</h2>
+      <el-button @click="goToNewTaskPackage" type="primary">新建任务包</el-button>
     </div>
-    <h1>周任务</h1>
-    <p>点击左侧边栏中的栏目以进行相应操作。</p>
+
+    <el-table :data="taskList" style="width: 100%" v-loading="loading">
+      <el-table-column prop="week" label="周次" width="100" sortable>
+        <template #default="{ row }">
+          <el-tag v-if="row.week">第{{ row.week }}周</el-tag>
+          <el-tag v-else type="info">未设置</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="title" label="任务包名称" min-width="200" />
+      <el-table-column prop="class_name" label="班级" width="150" />
+      <el-table-column prop="type" label="类型" width="100">
+        <template #default="{ row }">
+          <el-tag v-if="row.type === 'task'" type="success">作业</el-tag>
+          <el-tag v-else-if="row.type === 'exam'" type="danger">考试</el-tag>
+          <el-tag v-else-if="row.type === 'practice'" type="warning">练习</el-tag>
+          <el-tag v-else type="info">{{ row.type }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="status" label="状态" width="120">
+        <template #default="{ row }">
+          <el-tag v-if="row.status === '进行中'" type="success">{{ row.status }}</el-tag>
+          <el-tag v-else-if="row.status === '未开始'" type="info">{{ row.status }}</el-tag>
+          <el-tag v-else-if="row.status === '已结束'" type="danger">{{ row.status }}</el-tag>
+          <el-tag v-else type="warning">{{ row.status }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="250" fixed="right">
+        <template #default="{ row }">
+          <el-button size="small" @click="handlePreview(row)">预览</el-button>
+          <el-button size="small" @click="handleImport(row)">导入</el-button>
+          <el-button size="small" type="primary" @click="handleEdit(row)">编辑</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { getAllUnits, type Unit } from '@/api/content'
 
 const router = useRouter()
+const loading = ref(false)
+const taskList = ref<Unit[]>([])
 
 const goHome = () => {
   router.push('/teacher/index')
 }
 
 const goToNewTaskPackage = () => {
-  // TODO: 导航到新建任务包页面
-  // router.push('/teacher/week-task/package-add')
+  router.push('/teacher/week-task/create')
 }
+
+const handlePreview = (row: Unit) => {
+  router.push(`/teacher/week-task/preview/${row.id}`)
+}
+
+const handleImport = (row: Unit) => {
+  router.push(`/teacher/week-task/import/${row.id}`)
+}
+
+const handleEdit = (row: Unit) => {
+  router.push(`/teacher/units/${row.id}/edit`)
+}
+
+const loadTaskList = async () => {
+  loading.value = true
+  try {
+    const data = await getAllUnits()
+    taskList.value = data
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载任务列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadTaskList()
+})
 </script>
 
 <style scoped>
@@ -47,39 +111,6 @@ const goToNewTaskPackage = () => {
   color: #333;
   font-size: 24px;
   font-weight: 600;
-}
-
-.header button {
-  padding: 10px 20px;
-  background-color: #E8ECA;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
-
-.header button:hover {
-  background-color: #D8D8F6;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.week-task h1 {
-  font-size: 32px;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 15px;
-  text-align: center;
-}
-
-.week-task p {
-  font-size: 16px;
-  color: #666;
-  text-align: center;
-  line-height: 1.6;
 }
 </style>
 

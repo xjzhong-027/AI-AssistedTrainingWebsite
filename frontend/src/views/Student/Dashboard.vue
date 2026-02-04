@@ -138,12 +138,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, FormInstance, FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { getStudentPracticeScores } from '@/api/practice'
 import { getUserById, changePassword } from '@/api/user'
 import type { PracticeScore } from '@/api/practice'
 
+const router = useRouter()
 const userStore = useUserStore()
 
 const chartCanvas = ref<HTMLCanvasElement | null>(null)
@@ -242,6 +244,7 @@ const savePassword = async () => {
       // 2秒后跳转到登录页面
       setTimeout(() => {
         userStore.logout()
+        router.push('/login')
       }, 2000)
     } catch (error: any) {
       console.error('修改密码失败', error)

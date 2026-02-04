@@ -22,12 +22,14 @@ export interface Unit {
   title: string
   name?: string  // 兼容旧字段
   unit_name?: string  // 兼容旧字段
-  type: 'exam' | 'practice'
-  unit_type?: 'exam' | 'practice'  // 兼容旧字段
+  type: 'exam' | 'practice' | 'task' | 'quiz'
+  unit_type?: 'exam' | 'practice' | 'task' | 'quiz'  // 兼容旧字段
   class_id?: number
   class_name?: string
   order?: number
   pages?: any[]
+  week?: number  // 周次
+  status?: string  // 状态：未设置、未开始、进行中、已结束、已发布
 }
 
 /**

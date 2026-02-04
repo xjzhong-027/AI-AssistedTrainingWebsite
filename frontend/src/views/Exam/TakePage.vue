@@ -1,6 +1,61 @@
 <template>
   <div class="exam-take-page">
-    <el-card v-loading="loading">
+    <!-- 考试确认对话框 -->
+    <el-dialog
+      v-model="showConfirmDialog"
+      title="考试须知"
+      width="600px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+    >
+      <div class="exam-confirm-content">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="考试名称">
+            {{ exam?.title || unit?.unit_name }}
+          </el-descriptions-item>
+          <el-descriptions-item label="考试类型">
+            {{ unit?.unit_type === 'exam' ? '考试' : '练习' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="总页数">
+            {{ totalPages }} 页
+          </el-descriptions-item>
+          <el-descriptions-item label="时长限制" v-if="exam?.duration || unit?.duration">
+            {{ exam?.duration || unit?.duration }} 分钟
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <el-alert
+          title="考试须知"
+          type="warning"
+          :closable="false"
+          style="margin-top: 20px"
+        >
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            <li>请确保网络连接稳定</li>
+            <li>考试过程中请勿刷新页面</li>
+            <li>每页答题完成后请及时保存</li>
+            <li>所有页面完成后请点击"提交考试"按钮</li>
+            <li>提交后将无法修改答案</li>
+          </ul>
+        </el-alert>
+
+        <div style="margin-top: 20px; text-align: center;">
+          <el-checkbox v-model="confirmRead">
+            我已阅读并理解以上须知
+          </el-checkbox>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="handleCancelExam">取消</el-button>
+        <el-button type="primary" @click="handleStartExam" :disabled="!confirmRead">
+          开始答题
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-card v-loading="loading" v-if="!showConfirmDialog">
       <div class="card-header">
         <div>
           <h3>{{ exam?.title || unit?.unit_name }}</h3>
@@ -162,6 +217,8 @@ const userStore = useUserStore()
 const loading = ref(false)
 const saving = ref(false)
 const submitting = ref(false)
+const showConfirmDialog = ref(true)
+const confirmRead = ref(false)
 
 const exam = ref<Exam | null>(null)
 const unit = ref<any>(null)
@@ -629,6 +686,20 @@ const loadPage = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 处理取消考试
+const handleCancelExam = () => {
+  router.back()
+}
+
+// 处理开始考试
+const handleStartExam = () => {
+  if (!confirmRead.value) {
+    ElMessage.warning('请先阅读并确认考试须知')
+    return
+  }
+  showConfirmDialog.value = false
 }
 
 onMounted(() => {

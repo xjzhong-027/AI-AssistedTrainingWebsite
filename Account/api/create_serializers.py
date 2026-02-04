@@ -11,7 +11,17 @@ class CourseCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Course
-        fields = ['year', 'grade', 'semester']
+        fields = ['id', 'year', 'grade', 'semester']
+        read_only_fields = ['id']
+
+
+class CourseSerializer(serializers.ModelSerializer):
+    """课程列表/详情序列化器（只读）"""
+    
+    class Meta:
+        model = Course
+        fields = ['id', 'year', 'grade', 'semester']
+        read_only_fields = ['id', 'year', 'grade', 'semester']
 
 
 class TeacherCreateSerializer(serializers.ModelSerializer):
@@ -43,6 +53,16 @@ class ClassCreateSerializer(serializers.ModelSerializer):
         model = Class
         fields = ['class_name', 'course', 'teacher', 'start_date', 'week', 
                   'start_time', 'end_time']
+
+
+class ClassUpdateSerializer(serializers.ModelSerializer):
+    """班级更新序列化器（部分更新）"""
+    
+    class Meta:
+        model = Class
+        fields = ['class_name', 'course', 'teacher', 'start_date', 'week', 
+                  'start_time', 'end_time']
+        extra_kwargs = {f: {'required': False} for f in ['class_name', 'course', 'teacher', 'start_date', 'week', 'start_time', 'end_time']}
 
 
 class StudentCreateSerializer(serializers.ModelSerializer):

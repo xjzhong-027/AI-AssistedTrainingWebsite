@@ -8,6 +8,7 @@
           {{ classItem.class_name }}
         </option>
       </select>
+      <button @click="goToManagement" class="btn-management">高级管理</button>
     </div>
 
     <div class="main">
@@ -112,6 +113,10 @@ const pageRange = computed(() => {
 
 const goHome = () => {
   router.push('/teacher/index')
+}
+
+const goToManagement = () => {
+  router.push({ name: 'ExamBankManagement' })
 }
 
 const filterUnits = () => {
@@ -354,6 +359,21 @@ tbody a:hover {
   background-color: #C07770;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-management {
+  padding: 8px 16px;
+  background-color: #99B6B4;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.btn-management:hover {
+  background-color: #7A9E9C;
 }
 
 .pagination {

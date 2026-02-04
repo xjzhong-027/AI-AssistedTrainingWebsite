@@ -26,6 +26,9 @@
           <li>
             <router-link to="/messages">消息箱</router-link>
           </li>
+          <li>
+            <router-link to="/profile/change-password">修改密码</router-link>
+          </li>
         </template>
         <!-- 教师端菜单 -->
         <template v-else-if="userStore.isTeacher()">
@@ -37,6 +40,12 @@
           </li>
           <li>
             <router-link to="/teacher/exam-bank">任务管理</router-link>
+          </li>
+          <li>
+            <router-link to="/teacher/course">课程管理</router-link>
+          </li>
+          <li>
+            <router-link to="/teacher/class">班级管理</router-link>
           </li>
           <li>
             <router-link to="/teacher/forum">论坛管理</router-link>
@@ -52,6 +61,9 @@
           </li>
           <li>
             <router-link to="/teacher/index">附件下载</router-link>
+          </li>
+          <li>
+            <router-link to="/profile/change-password">修改密码</router-link>
           </li>
         </template>
         <!-- 退出登录 -->
