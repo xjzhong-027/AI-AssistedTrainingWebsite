@@ -1,5 +1,6 @@
 from AI_module.AI_module_local import AI_module_local
 from .Get_from_ZhipuAI import Get_from_ZhipuAI
+from .Get_from_VolcEngine import Get_from_VolcEngine
 import copy
 
 
@@ -29,9 +30,9 @@ class Get_from_AI:
     local = AI_module_local()
     m = None
 
-    def __init__(self, model="ZhipuAI"):
+    def __init__(self, model="VolcEngine"):
         self.prompt = ""
-        self.AI_model_name = model   #默认使用智谱清言
+        self.AI_model_name = model   #默认使用火山引擎（豆包）
         if model == "Local":
             try:
                 pass
@@ -41,6 +42,8 @@ class Get_from_AI:
                 pass
         elif model == "ZhipuAI":
             self.m = Get_from_ZhipuAI()
+        elif model == "VolcEngine":
+            self.m = Get_from_VolcEngine()
 
     def get_prompt_template(self, key):
         return copy.deepcopy(self.__prompt_template[key])
@@ -90,6 +93,13 @@ class Get_from_AI:
         model = self.get_AI_module_name()
 
         if text == "": return "未接收到输入文本。"
+        elif model == "VolcEngine":
+            try:
+                res = self.m.get_msg(text)
+                return res
+            except Exception as e:
+                print(f"VolcEngine API调用失败: {e}")
+                return self.local.get_answer_once(text)
         elif model == "ZhipuAI":
             try:
                 res = self.m.get_msg(text)

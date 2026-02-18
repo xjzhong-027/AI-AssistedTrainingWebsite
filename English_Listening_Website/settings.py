@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'Backup.apps.BackupConfig',
     'Log.apps.LogConfig',
     'Query.apps.QueryConfig',
+    'AI_module',  # AI评分和对话模块
 ]
 CHANNEL_LAYERS = {
     'default': {

@@ -38,6 +38,7 @@ from forum.api import views as forum_views
 from announce.api import views as announce_views
 from accessment.api import views as exam_views
 from Query.api import views as query_views
+from common.api import scoring_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 
@@ -162,7 +163,15 @@ urlpatterns = [
             path('<int:rule_id>/', query_views.OverdueRuleDetailView.as_view(), name='api_overdue_rule_detail'),
         ])),
     ])),
-    
+
+    # AI评分和对话 API
+    path('api/v1/scoring/', include([
+        path('subjective/', scoring_views.AIScoringView.as_view(), name='api_ai_scoring'),
+        path('explanation/', scoring_views.AIExplanationView.as_view(), name='api_ai_explanation'),
+        path('history/', scoring_views.AIScoreHistoryView.as_view(), name='api_ai_score_history'),
+        path('conversation/', scoring_views.AIConversationView.as_view(), name='api_ai_conversation'),
+    ])),
+
     # 分发路由
     path('teacher/', include('ELW.urls')),
     path('student/', include('student_ELW.urls')),
