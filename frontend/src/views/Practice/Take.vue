@@ -32,16 +32,36 @@
 
           <!-- 媒体播放器 -->
           <div v-if="mainQuestion.media_material_id" class="media-player">
-            <audio
-              :ref="el => setAudioRef(el, mainQuestion.id)"
-              :src="getMediaUrl(mainQuestion)"
-              controls
-              @play="handlePlay(mainQuestion)"
-              @pause="handlePause(mainQuestion)"
-            ></audio>
-            <div class="play-info">
-              <span>最多播放次数：{{ mainQuestion.maximum_play || '无限制' }}</span>
-              <span>已播放：{{ getPlayCount(mainQuestion.id) }} 次</span>
+            <template v-if="hasMediaUrl(mainQuestion)">
+              <video
+                v-if="isVideoUrl(mainQuestion)"
+                :ref="el => setAudioRef(el, mainQuestion.id)"
+                :src="getMediaUrl(mainQuestion)"
+                controls
+                playsinline
+                class="media-element"
+                @play="handlePlay(mainQuestion)"
+                @pause="handlePause(mainQuestion)"
+                @error="onMediaError(mainQuestion.id)"
+              ></video>
+              <audio
+                v-else
+                :ref="el => setAudioRef(el, mainQuestion.id)"
+                :src="getMediaUrl(mainQuestion)"
+                controls
+                class="media-element"
+                @play="handlePlay(mainQuestion)"
+                @pause="handlePause(mainQuestion)"
+                @error="onMediaError(mainQuestion.id)"
+              ></audio>
+              <div class="play-info">
+                <span>最多播放次数：{{ mainQuestion.maximum_play || '无限制' }}</span>
+                <span>已播放：{{ getPlayCount(mainQuestion.id) }} 次</span>
+              </div>
+            </template>
+            <div v-else class="no-media-tip">
+              <span>暂无音频/视频</span>
+              <p class="tip-desc">请在「题库管理」中为该素材填写或上传媒体文件地址后即可播放。</p>
             </div>
           </div>
 
@@ -106,6 +126,22 @@
                 </div>
               </div>
 
+              <!-- 理解导向提示：选择题、填空题可请求分级提示 -->
+              <div v-if="canShowHint(subQuestion)" class="hint-section">
+                <div class="hint-actions">
+                  <span class="hint-label">需要提示？</span>
+                  <el-button size="small" :loading="hintLoading[subQuestion.id]" @click="requestHint(subQuestion, 1)">轻提示</el-button>
+                  <el-button size="small" :loading="hintLoading[subQuestion.id]" @click="requestHint(subQuestion, 2)">方向提示</el-button>
+                  <el-button size="small" type="primary" :loading="hintLoading[subQuestion.id]" @click="requestHint(subQuestion, 3)">详细解释</el-button>
+                </div>
+                <HintPanel
+                  v-if="hintResults[subQuestion.id]"
+                  :hint-content="hintResults[subQuestion.id].content"
+                  :level="hintResults[subQuestion.id].level"
+                  :request-time="hintResults[subQuestion.id].request_time"
+                />
+              </div>
+
               <!-- 改错题 -->
               <div v-else-if="subQuestion.question_type === 'correction'" class="correction-answer">
                 <div
@@ -124,16 +160,52 @@
               </div>
 
               <!-- 简答题/理解题 -->
-              <el-input
-                v-else
-                v-model="answers[subQuestion.id]"
-                type="textarea"
-                :rows="6"
-                placeholder="请输入您的答案"
-                maxlength="2000"
-                show-word-limit
-                @input="onAnswerChange(subQuestion.id)"
-              ></el-input>
+              <div v-else>
+                <el-input
+                  v-model="answers[subQuestion.id]"
+                  type="textarea"
+                  :rows="6"
+                  placeholder="请输入您的答案"
+                  maxlength="2000"
+                  show-word-limit
+                  @input="onAnswerChange(subQuestion.id)"
+                ></el-input>
+
+                <!-- AI评分按钮 -->
+                <div class="ai-scoring-section" style="margin-top: 15px;">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    :loading="aiScoring[subQuestion.id]"
+                    @click="requestAIScoring(subQuestion)"
+                  >
+                    {{ aiScoring[subQuestion.id] ? 'AI评分中...' : '请求AI评分' }}
+                  </el-button>
+                </div>
+
+                <!-- AI评分结果 -->
+                <div v-if="scoringResults[subQuestion.id]" class="ai-feedback" style="margin-top: 15px;">
+                  <el-alert
+                    :type="scoringResults[subQuestion.id].score >= 60 ? 'success' : 'warning'"
+                    :closable="false"
+                  >
+                    <template #title>
+                      <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>AI评分结果</span>
+                        <el-tag :type="scoringResults[subQuestion.id].score >= 60 ? 'success' : 'warning'">
+                          得分: {{ scoringResults[subQuestion.id].score }}
+                        </el-tag>
+                      </div>
+                    </template>
+                    <div style="margin-top: 10px;">
+                      <p><strong>反馈:</strong> {{ scoringResults[subQuestion.id].feedback }}</p>
+                      <p v-if="scoringResults[subQuestion.id].suggestions">
+                        <strong>建议:</strong> {{ scoringResults[subQuestion.id].suggestions }}
+                      </p>
+                    </div>
+                  </el-alert>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -150,10 +222,13 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { startExam, getExamPage, saveAnswers, submitExam, updateMediaPlayRecord } from '@/api/exam'
+import { startExam, getExamPage, saveAnswers, submitExam, getExamResult, updateMediaPlayRecord } from '@/api/exam'
 import { getUnitById, getPagesByUnit, getPageQuestions } from '@/api/content'
 import { startPractice } from '@/api/practice'
 import { useUserStore } from '@/stores/user'
+import { scoringApi } from '@/api/scoring'
+import { hintsApi } from '@/api/hints'
+import HintPanel from '@/components/common/HintPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -174,6 +249,14 @@ const audioRefs = ref<Record<number, HTMLAudioElement>>({})
 const playCounts = ref<Record<number, number>>({})
 const pauseTimes = ref<Record<number, number>>({})
 const practiceRecordId = ref<number | null>(null)
+
+// AI评分相关状态
+const aiScoring = ref<Record<number, boolean>>({})
+const scoringResults = ref<Record<number, any>>({})
+
+// AI 提示相关（选择/填空）
+const hintLoading = ref<Record<number, boolean>>({})
+const hintResults = ref<Record<number, { content: string; level: number; request_time: string }>>({})
 
 const totalPages = computed(() => pages.value.length)
 const isLastPage = computed(() => currentPageOrder.value === totalPages.value - 1)
@@ -234,6 +317,22 @@ const getMediaUrl = (mainQuestion: any): string => {
   }
   
   return ''
+}
+
+/** 是否有可用的媒体地址（仅当已填写 media_url 时显示播放器，否则显示提示） */
+const hasMediaUrl = (mainQuestion: any): boolean => {
+  return !!(mainQuestion.media_material_url && String(mainQuestion.media_material_url).trim())
+}
+
+/** 是否为视频（按扩展名），视频用 <video> 显示画面，否则用 <audio> */
+const isVideoUrl = (mainQuestion: any): boolean => {
+  const url = mainQuestion.media_material_url || ''
+  const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv']
+  return videoExtensions.some(ext => String(url).toLowerCase().includes(ext))
+}
+
+const onMediaError = (_questionId: number) => {
+  ElMessage.warning('媒体加载失败，请确认该素材已上传或填写正确的媒体文件地址')
 }
 
 // 获取播放次数
@@ -394,6 +493,38 @@ const getBlankCount = (subQuestion: any): number[] => {
   return [0]
 }
 
+// 是否显示提示入口（选择题、填空题）
+const canShowHint = (subQuestion: any): boolean => {
+  const t = subQuestion?.question_type
+  return t === 'choice' || t === 'blank'
+}
+
+// 请求分级提示（后端会自动从题目关联的媒体素材带出 transcript）
+const requestHint = async (subQuestion: any, level: 1 | 2 | 3) => {
+  hintLoading.value[subQuestion.id] = true
+  try {
+    const mainQ = mainQuestions.value.find((mq: any) => mq.sub_questions?.some((sq: any) => sq.id === subQuestion.id))
+    const transcript = mainQ?.media_material?.transcript ?? ''
+    const res = await hintsApi.request({
+      sub_question_id: subQuestion.id,
+      level,
+      transcript,
+      context: { page_id: pageRecord.value?.id }
+    })
+    hintResults.value[subQuestion.id] = {
+      content: res.content,
+      level: res.level,
+      request_time: res.request_time
+    }
+    if (res.message) ElMessage.info(res.message)
+    else ElMessage.success('已获取提示')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '获取提示失败')
+  } finally {
+    hintLoading.value[subQuestion.id] = false
+  }
+}
+
 // 获取改错题数据
 const getCorrectionData = (subQuestion: any): number[] => {
   // 从subQuestion.corrections中获取错误数量
@@ -432,6 +563,36 @@ const timeLeftType = computed(() => {
 // 答案变化
 const onAnswerChange = (subQuestionId: number) => {
   // 自动保存逻辑可以在这里实现
+}
+
+// AI评分功能
+const requestAIScoring = async (subQuestion: any) => {
+  const studentAnswer = answers.value[subQuestion.id]
+  if (!studentAnswer || !studentAnswer.trim()) {
+    ElMessage.warning('请先输入答案')
+    return
+  }
+
+  aiScoring.value[subQuestion.id] = true
+  try {
+    const mainQuestion = mainQuestions.value.find(mq =>
+      mq.sub_questions.some((sq: any) => sq.id === subQuestion.id)
+    )
+
+    const response = await scoringApi.subjective({
+      sub_question_id: subQuestion.id,
+      student_answer: studentAnswer,
+      transcript: mainQuestion?.media_material?.transcript || ''
+    })
+
+    scoringResults.value[subQuestion.id] = response.data.data
+    ElMessage.success('AI评分完成')
+  } catch (error: any) {
+    console.error('AI评分失败', error)
+    ElMessage.error(error.message || 'AI评分失败')
+  } finally {
+    aiScoring.value[subQuestion.id] = false
+  }
 }
 
 // 保存当前页
@@ -515,7 +676,7 @@ const handleSubmit = async () => {
   if (!pageRecord.value) return
 
   try {
-    await ElMessageBox.confirm('确定要提交练习吗？提交后将无法修改答案。', '提示', {
+    await ElMessageBox.confirm('确定要提交吗？提交后将无法修改答案，并立即显示得分与正确答案。', '提交确认', {
       confirmButtonText: '确定提交',
       cancelButtonText: '取消',
       type: 'warning'
@@ -526,9 +687,8 @@ const handleSubmit = async () => {
 
     submitting.value = true
     const practiceId = Number(route.params.id)
-    // 使用保存的practiceRecordId，如果没有则使用practiceId
-    const recordId = practiceRecordId.value || pageRecord.value?.exam_record_id || practiceId
-    await submitExam(recordId)
+    // 提交接口需要传 unit_id（任务包 ID），不是 exam_record_id
+    await submitExam(practiceId)
     
     ElMessage.success('练习提交成功')
     router.push(`/practice/${practiceId}/result`)
@@ -552,6 +712,17 @@ const loadPage = async () => {
 
   loading.value = true
   try {
+    // 已提交则直接进入结果页，不可再作答
+    try {
+      const res = await getExamResult(practiceId)
+      if (res && res.submitted) {
+        router.replace(`/practice/${practiceId}/result`)
+        return
+      }
+    } catch {
+      // 无记录或未提交，继续答题流程
+    }
+
     // 获取单元信息
     practice.value = await getUnitById(practiceId)
     if (!practice.value) {
@@ -735,12 +906,36 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(186, 207, 206, 0.2);
 }
 
+.media-element {
+  display: block;
+  max-width: 100%;
+}
+.media-element video {
+  width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+}
+
 .play-info {
   display: flex;
   gap: 20px;
   margin-top: 10px;
   font-size: 14px;
   color: #606266;
+}
+
+.no-media-tip {
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  color: #909399;
+  font-size: 14px;
+}
+
+.no-media-tip .tip-desc {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #c0c4cc;
 }
 
 .sub-question {
@@ -802,6 +997,25 @@ onBeforeUnmount(() => {
   min-width: 60px;
 }
 
+/* 理解导向提示区域 */
+.hint-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(186, 207, 206, 0.3);
+}
+.hint-section .hint-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.hint-section .hint-label {
+  font-size: 14px;
+  color: #666;
+  margin-right: 8px;
+}
+
 /* 按钮样式优化 */
 :deep(.el-button) {
   border-radius: 6px;
@@ -839,6 +1053,54 @@ onBeforeUnmount(() => {
 .empty-state {
   padding: 40px;
   text-align: center;
+}
+
+/* AI评分样式 */
+.ai-scoring-section {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ai-feedback {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ai-feedback :deep(.el-alert) {
+  border-radius: 12px;
+  border-left: 4px solid #99B6B4;
+}
+
+.ai-feedback :deep(.el-alert--success) {
+  background-color: rgba(153, 182, 180, 0.1);
+  border-left-color: #99B6B4;
+}
+
+.ai-feedback :deep(.el-alert--warning) {
+  background-color: rgba(223, 177, 153, 0.1);
+  border-left-color: #DFB199;
+}
+
+.ai-feedback p {
+  margin: 8px 0;
+  line-height: 1.6;
+  color: #1A1A1A;
+}
+
+.ai-feedback strong {
+  color: #99B6B4;
+  font-weight: 600;
 }
 </style>
 

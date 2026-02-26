@@ -345,8 +345,12 @@ class ExamSubmitView(APIView):
         if not exam_record:
             return Result.not_found(message='Exam record not found')
         
-        # 提交考试
+        # 提交考试：先逐页批改（选择题等直接出分，主观题走 AI 异步评分），再标记已提交
         try:
+            page_records = ExamServiceImpl.get_page_records_by_exam(exam_record.id)
+            for pr in page_records:
+                if not pr.is_graded:
+                    ExamServiceImpl.grade_page(pr.id)
             ExamServiceImpl.submit_exam(exam_record.id)
             exam_record.refresh_from_db()
             

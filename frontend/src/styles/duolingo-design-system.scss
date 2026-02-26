@@ -1,0 +1,241 @@
+/**
+ * Duolingo Design System
+ * 设计规范：颜色、字体、间距、圆角、阴影等
+ */
+
+// ==================== 颜色系统 ====================
+
+// 主色调 - 绿色系（成功、积极）
+$duo-green-primary: #58cc02;
+$duo-green-hover: #61d802;
+$duo-green-active: #4caf00;
+$duo-green-light: #89e219;
+$duo-green-lighter: #d7ffb8;
+$duo-green-dark: #46a302;
+
+// 辅助色 - 蓝色系（信息、学习）
+$duo-blue-primary: #1cb0f6;
+$duo-blue-hover: #28bcff;
+$duo-blue-active: #0fa0e6;
+$duo-blue-light: #84d8ff;
+$duo-blue-lighter: #ddf4ff;
+$duo-blue-dark: #0c8fd6;
+
+// 警告色 - 黄色系（注意、提示）
+$duo-yellow-primary: #ffc800;
+$duo-yellow-hover: #ffd500;
+$duo-yellow-active: #f0b800;
+$duo-yellow-light: #ffde5c;
+$duo-yellow-lighter: #fff4cc;
+$duo-yellow-dark: #e0b000;
+
+// 错误色 - 红色系（错误、失败）
+$duo-red-primary: #ff4b4b;
+$duo-red-hover: #ff5c5c;
+$duo-red-active: #f03b3b;
+$duo-red-light: #ff8989;
+$duo-red-lighter: #ffe0e0;
+$duo-red-dark: #e03b3b;
+
+// 中性色 - 灰色系
+$duo-gray-900: #3c3c3c;
+$duo-gray-800: #4b4b4b;
+$duo-gray-700: #777777;
+$duo-gray-600: #afafaf;
+$duo-gray-500: #e5e5e5;
+$duo-gray-400: #f0f0f0;
+$duo-gray-300: #f7f7f7;
+$duo-gray-200: #fafafa;
+$duo-gray-100: #ffffff;
+
+// 背景色
+$duo-bg-primary: #ffffff;
+$duo-bg-secondary: #f7f7f7;
+$duo-bg-tertiary: #f0f0f0;
+
+// 文字色
+$duo-text-primary: #3c3c3c;
+$duo-text-secondary: #777777;
+$duo-text-tertiary: #afafaf;
+$duo-text-inverse: #ffffff;
+
+// ==================== 字体系统 ====================
+
+// 字体家族
+$duo-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+  'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+$duo-font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+
+// 字体大小
+$duo-font-size-xs: 12px;
+$duo-font-size-sm: 14px;
+$duo-font-size-base: 16px;
+$duo-font-size-lg: 18px;
+$duo-font-size-xl: 20px;
+$duo-font-size-2xl: 24px;
+$duo-font-size-3xl: 30px;
+$duo-font-size-4xl: 36px;
+$duo-font-size-5xl: 48px;
+
+// 字体粗细
+$duo-font-weight-normal: 400;
+$duo-font-weight-medium: 500;
+$duo-font-weight-semibold: 600;
+$duo-font-weight-bold: 700;
+$duo-font-weight-extrabold: 800;
+
+// 行高
+$duo-line-height-tight: 1.2;
+$duo-line-height-normal: 1.5;
+$duo-line-height-relaxed: 1.75;
+
+// ==================== 间距系统 ====================
+$duo-spacing-0: 0;
+$duo-spacing-1: 4px;
+$duo-spacing-2: 8px;
+$duo-spacing-3: 12px;
+$duo-spacing-4: 16px;
+$duo-spacing-5: 20px;
+$duo-spacing-6: 24px;
+$duo-spacing-8: 32px;
+$duo-spacing-10: 40px;
+$duo-spacing-12: 48px;
+$duo-spacing-16: 64px;
+$duo-spacing-20: 80px;
+
+// ==================== 圆角系统 ====================
+$duo-radius-sm: 8px;
+$duo-radius-base: 12px;
+$duo-radius-lg: 16px;
+$duo-radius-xl: 20px;
+$duo-radius-2xl: 24px;
+$duo-radius-full: 9999px;
+
+// ==================== 阴影系统 ====================
+$duo-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+$duo-shadow-base: 0 4px 8px rgba(0, 0, 0, 0.12);
+$duo-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
+$duo-shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.18);
+$duo-shadow-2xl: 0 16px 32px rgba(0, 0, 0, 0.20);
+
+// 内阴影
+$duo-shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+
+// 彩色阴影
+$duo-shadow-green: 0 4px 0 $duo-green-dark;
+$duo-shadow-blue: 0 4px 0 $duo-blue-dark;
+$duo-shadow-yellow: 0 4px 0 $duo-yellow-dark;
+$duo-shadow-red: 0 4px 0 $duo-red-dark;
+
+// ==================== 动画系统 ====================
+
+// 缓动函数
+$duo-ease-in: cubic-bezier(0.4, 0, 1, 1);
+$duo-ease-out: cubic-bezier(0, 0, 0.2, 1);
+$duo-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+$duo-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+// 动画时长
+$duo-duration-fast: 150ms;
+$duo-duration-base: 250ms;
+$duo-duration-slow: 350ms;
+$duo-duration-slower: 500ms;
+
+// ==================== 断点系统 ====================
+$duo-breakpoint-xs: 480px;
+$duo-breakpoint-sm: 640px;
+$duo-breakpoint-md: 768px;
+$duo-breakpoint-lg: 1024px;
+$duo-breakpoint-xl: 1280px;
+$duo-breakpoint-2xl: 1536px;
+
+// ==================== Z-index 系统 ====================
+$duo-z-dropdown: 1000;
+$duo-z-sticky: 1020;
+$duo-z-fixed: 1030;
+$duo-z-modal-backdrop: 1040;
+$duo-z-modal: 1050;
+$duo-z-popover: 1060;
+$duo-z-tooltip: 1070;
+
+// ==================== 通用混合宏 ====================
+
+// 按钮基础样式
+@mixin duo-button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: $duo-spacing-3 $duo-spacing-6;
+  font-family: $duo-font-family;
+  font-size: $duo-font-size-base;
+  font-weight: $duo-font-weight-bold;
+  line-height: $duo-line-height-tight;
+  text-align: center;
+  border: none;
+  border-radius: $duo-radius-lg;
+  cursor: pointer;
+  transition: all $duo-duration-base $duo-ease-out;
+  user-select: none;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// 卡片基础样式
+@mixin duo-card-base {
+  background: $duo-bg-primary;
+  border-radius: $duo-radius-xl;
+  box-shadow: $duo-shadow-base;
+  padding: $duo-spacing-6;
+  transition: all $duo-duration-base $duo-ease-out;
+}
+
+// 渐变背景
+@mixin duo-gradient-green {
+  background: linear-gradient(180deg, $duo-green-light 0%, $duo-green-primary 100%);
+}
+
+@mixin duo-gradient-blue {
+  background: linear-gradient(180deg, $duo-blue-light 0%, $duo-blue-primary 100%);
+}
+
+@mixin duo-gradient-yellow {
+  background: linear-gradient(180deg, $duo-yellow-light 0%, $duo-yellow-primary 100%);
+}
+
+// 响应式
+@mixin duo-responsive($breakpoint) {
+  @if $breakpoint == xs {
+    @media (min-width: $duo-breakpoint-xs) { @content; }
+  } @else if $breakpoint == sm {
+    @media (min-width: $duo-breakpoint-sm) { @content; }
+  } @else if $breakpoint == md {
+    @media (min-width: $duo-breakpoint-md) { @content; }
+  } @else if $breakpoint == lg {
+    @media (min-width: $duo-breakpoint-lg) { @content; }
+  } @else if $breakpoint == xl {
+    @media (min-width: $duo-breakpoint-xl) { @content; }
+  } @else if $breakpoint == 2xl {
+    @media (min-width: $duo-breakpoint-2xl) { @content; }
+  }
+}
+
+// 文字截断
+@mixin duo-text-ellipsis($lines: 1) {
+  @if $lines == 1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  } @else {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

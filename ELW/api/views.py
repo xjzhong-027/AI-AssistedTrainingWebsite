@@ -1,6 +1,9 @@
 """
 Content management API views.
 """
+import os
+from django.http import HttpResponseRedirect
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
@@ -51,6 +54,33 @@ class MediaMaterialListView(APIView):
         materials = MediaMaterial.objects.all().order_by('-id')
         serializer = MediaMaterialSerializer(materials, many=True)
         return Result.success(data=serializer.data, message='success')
+    
+    @extend_schema(
+        summary='创建媒体素材',
+        description='新建一条媒体素材（标题、主题、摘要、原文等）',
+        request=MediaMaterialSerializer,
+        responses={
+            200: {'description': '创建成功', 'content': {'application/json': {'example': {'code': 200, 'message': 'success', 'data': {'id': 1, 'title': '...'}}}}},
+            400: {'description': '参数错误'}
+        }
+    )
+    def post(self, request):
+        """创建媒体素材"""
+        try:
+            data = request.data
+            material = ContentServiceImpl.create_media_material({
+                'title': data.get('title', ''),
+                'theme': data.get('theme', ''),
+                'abstract': data.get('abstract', ''),
+                'keywords': data.get('keywords', ''),
+                'transcript': data.get('transcript', ''),
+                'media_url': data.get('media_url', ''),
+                'image_url': data.get('image_url', ''),
+            })
+            serializer = MediaMaterialSerializer(material)
+            return Result.success(data=serializer.data, message='创建成功')
+        except Exception as e:
+            return Result.error(message=f'创建失败: {str(e)}', code=400)
 
 
 @extend_schema(tags=['内容管理'])
@@ -58,26 +88,8 @@ class MediaMaterialQuestionsView(APIView):
     """
     获取媒体素材关联的所有大题 API
     
-    GET /api/v1/content/media-materials/{material_id}/questions/
-    
-    Headers:
-    Authorization: Bearer <access_token>
-    
-    Response:
-    {
-        "code": 200,
-        "message": "success",
-        "data": [
-            {
-                "id": int,
-                "question_text": "string",
-                "question_type": "string",
-                "media_material_id": int,
-                "media_material_title": "string",
-                "sub_questions": [...]
-            }
-        ]
-    }
+    GET /api/v1/content/media-materials/{material_id}/questions/ - 列表
+    POST /api/v1/content/media-materials/{material_id}/questions/ - 创建一道大题（含小题与选项）
     """
     permission_classes = [IsAuthenticated]
     
@@ -86,6 +98,72 @@ class MediaMaterialQuestionsView(APIView):
         questions = ContentServiceImpl.get_main_questions_by_material(material_id)
         serializer = MainQuestionSerializer(questions, many=True)
         return Result.success(data=serializer.data, message='success')
+    
+    @extend_schema(
+        summary='在媒体素材下创建题目',
+        description='创建一道大题，含小题；选择题需传 options，连线题传 matching_options，改错题传 corrections',
+        request=None,
+        responses={200: {'description': '创建成功'}, 400: {'description': '参数错误'}, 404: {'description': '素材不存在'}}
+    )
+    def post(self, request, material_id):
+        """创建大题及小题、选项"""
+        from ELW.models import MainQuestion, SubQuestion, ChoiceOption, MatchingOption, Correction
+        material = ContentServiceImpl.get_media_material_by_id(material_id)
+        if not material:
+            return Result.not_found(message='Media material not found')
+        data = request.data
+        question_type = data.get('question_type', 'choice')
+        main_data = {
+            'question_type': question_type,
+            'question_text': data.get('question_text', ''),
+            'maximum_play': data.get('maximum_play', 3),
+            'minimum_play': data.get('minimum_play', 0),
+            'no_media': data.get('no_media', False),
+        }
+        try:
+            main_question = ContentServiceImpl.create_main_question(material_id, main_data)
+        except ValueError as e:
+            return Result.error(message=str(e), code=400)
+        sub_questions_payload = data.get('sub_questions') or []
+        for sub in sub_questions_payload:
+            sub_data = {
+                'question_text': sub.get('question_text', ''),
+                'answer': sub.get('answer', ''),
+                'score': float(sub.get('score', 1.0)),
+                'tips': sub.get('tips') or '',
+                'analysis': sub.get('analysis') or '',
+            }
+            try:
+                sub_question = ContentServiceImpl.create_sub_question(main_question.id, sub_data)
+            except ValueError as e:
+                return Result.error(message=str(e), code=400)
+            if question_type == 'choice':
+                for idx, opt in enumerate(sub.get('options') or []):
+                    label = (str(opt.get('option_label', '')).strip() or
+                             chr(65 + (idx % 26)))
+                    ChoiceOption.objects.create(
+                        sub_question=sub_question,
+                        option_label=label,
+                        option_content=opt.get('option_content', ''),
+                        is_answer=bool(opt.get('is_answer', False)),
+                    )
+            elif question_type == 'matching':
+                for opt in sub.get('matching_options') or []:
+                    MatchingOption.objects.create(
+                        sub_question=sub_question,
+                        option_label=str(opt.get('option_label', '')).strip() or 'A',
+                        option_content=opt.get('option_content', ''),
+                    )
+            elif question_type == 'correction':
+                for corr in sub.get('corrections') or []:
+                    Correction.objects.create(
+                        sub_question=sub_question,
+                        type=corr.get('type', 'insert'),
+                        index=int(corr.get('index', 0)),
+                    )
+        main_question.refresh_from_db()
+        serializer = MainQuestionSerializer(main_question)
+        return Result.success(data=serializer.data, message='题目创建成功')
 
 
 @extend_schema(tags=['内容管理'])
@@ -169,6 +247,79 @@ class MediaMaterialDetailView(APIView):
                 return Result.error(message='Failed to delete media material', code=500)
         except Exception as e:
             return Result.error(message=f'Failed to delete media material: {str(e)}', code=500)
+
+
+@extend_schema(tags=['内容管理'])
+class MediaMaterialUploadMediaView(APIView):
+    """
+    上传媒体文件（音频/视频），返回可存入 media_url 的相对路径。
+    POST /api/v1/content/media-materials/upload-media/
+    Content-Type: multipart/form-data, file: 媒体文件
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from ELW.services.file_service_impl import FileServiceImpl
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Result.error(message='请选择媒体文件', code=400)
+        try:
+            file_path, _ = FileServiceImpl.upload_media_file(file_obj, file_type='media')
+            relative = os.path.relpath(file_path, settings.MEDIA_ROOT).replace('\\', '/')
+            return Result.success(data={'media_url': relative}, message='上传成功')
+        except Exception as e:
+            return Result.error(message=f'上传失败: {str(e)}', code=500)
+
+
+@extend_schema(tags=['内容管理'])
+class MediaMaterialUploadImageView(APIView):
+    """
+    上传图片，返回可存入 image_url 的相对路径。
+    POST /api/v1/content/media-materials/upload-image/
+    Content-Type: multipart/form-data, file: 图片文件
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from ELW.services.file_service_impl import FileServiceImpl
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Result.error(message='请选择图片文件', code=400)
+        try:
+            url_list = FileServiceImpl.upload_image_files([file_obj])
+            if not url_list:
+                return Result.error(message='上传失败', code=500)
+            # 返回相对 MEDIA_ROOT 的路径，便于存入 DB
+            raw = url_list[0].replace('\\', '/')
+            if raw.startswith('media_material/'):
+                relative = raw[len('media_material/'):]
+            else:
+                relative = raw
+            return Result.success(data={'image_url': relative}, message='上传成功')
+        except Exception as e:
+            return Result.error(message=f'上传失败: {str(e)}', code=500)
+
+
+@extend_schema(tags=['内容管理'])
+class MediaMaterialMediaView(APIView):
+    """
+    获取媒体素材的音频/视频文件 URL（重定向到实际文件）
+    GET /api/v1/content/media-materials/{material_id}/media/
+    若素材已设置 media_url，则 302 重定向到可播放的地址；否则 404。
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, material_id):
+        material = ContentServiceImpl.get_media_material_by_id(material_id)
+        if not material:
+            return Result.not_found(message='Media material not found')
+        if not (getattr(material, 'media_url', None) or '').strip():
+            return Result.error(message='该素材未设置媒体文件地址', code=404)
+        media_url = (material.media_url or '').strip().lstrip('/')
+        base = (settings.MEDIA_URL or '/media_material/').rstrip('/')
+        path = f"{base}/{media_url}"
+        redirect_url = request.build_absolute_uri(path)
+        return HttpResponseRedirect(redirect_url)
 
 
 @extend_schema(tags=['内容管理'])

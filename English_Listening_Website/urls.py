@@ -39,6 +39,7 @@ from announce.api import views as announce_views
 from accessment.api import views as exam_views
 from Query.api import views as query_views
 from common.api import scoring_views
+from common.api import hint_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 
@@ -93,7 +94,10 @@ urlpatterns = [
     path('api/v1/content/', include([
         path('media-materials/', include([
             path('', content_views.MediaMaterialListView.as_view(), name='api_media_material_list'),
+            path('upload-media/', content_views.MediaMaterialUploadMediaView.as_view(), name='api_media_material_upload_media'),
+            path('upload-image/', content_views.MediaMaterialUploadImageView.as_view(), name='api_media_material_upload_image'),
             path('<int:material_id>/', content_views.MediaMaterialDetailView.as_view(), name='api_media_material_detail'),
+            path('<int:material_id>/media/', content_views.MediaMaterialMediaView.as_view(), name='api_media_material_media'),
             path('<int:material_id>/questions/', content_views.MediaMaterialQuestionsView.as_view(), name='api_media_material_questions'),
         ])),
         path('main-questions/', include([
@@ -170,6 +174,11 @@ urlpatterns = [
         path('explanation/', scoring_views.AIExplanationView.as_view(), name='api_ai_explanation'),
         path('history/', scoring_views.AIScoreHistoryView.as_view(), name='api_ai_score_history'),
         path('conversation/', scoring_views.AIConversationView.as_view(), name='api_ai_conversation'),
+    ])),
+    # AI 提示 API（与 scoring 一致：Result + 火山引擎）
+    path('api/v1/hints/', include([
+        path('request/', hint_views.HintRequestView.as_view(), name='api_hint_request'),
+        path('log/', hint_views.HintLogView.as_view(), name='api_hint_log'),
     ])),
 
     # 分发路由

@@ -54,10 +54,11 @@ export function saveAnswers(pageRecordId: number, answers: Array<{ sub_question_
 }
 
 /**
- * 提交考试
+ * 提交考试/练习
+ * @param unitId 单元 ID（任务包/考试 ID，即开始时的 unit_id），不是 exam_record_id
  */
-export function submitExam(examId: number): Promise<Exam> {
-  return request.post(`/exams/${examId}/submit/`)
+export function submitExam(unitId: number): Promise<Exam> {
+  return request.post(`/exams/${unitId}/submit/`)
 }
 
 /**

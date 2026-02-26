@@ -47,6 +47,43 @@ export function getMediaMaterialById(id: number): Promise<MediaMaterial> {
 }
 
 /**
+ * 创建媒体素材
+ */
+export function createMediaMaterial(data: {
+  title: string
+  theme?: string
+  abstract?: string
+  keywords?: string
+  transcript?: string
+  media_url?: string
+  image_url?: string
+}): Promise<MediaMaterial> {
+  return request.post('/content/media-materials/', data)
+}
+
+/**
+ * 上传媒体文件（音频/视频），返回可存入 media_url 的相对路径
+ */
+export function uploadMediaFile(file: File): Promise<{ media_url: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/content/media-materials/upload-media/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+/**
+ * 上传图片，返回可存入 image_url 的相对路径
+ */
+export function uploadMaterialImage(file: File): Promise<{ image_url: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/content/media-materials/upload-image/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+/**
  * 获取所有单元列表
  */
 export function getAllUnits(classId?: number): Promise<Unit[]> {
@@ -117,6 +154,43 @@ export function createUnit(data: {
  */
 export function getMaterialQuestions(materialId: number): Promise<any[]> {
   return request.get(`/content/media-materials/${materialId}/questions/`)
+}
+
+/**
+ * 在媒体素材下创建题目（大题+小题+选项）
+ */
+export function createMaterialQuestion(materialId: number, data: {
+  question_type: 'choice' | 'matching' | 'correction' | 'comprehension' | 'text'
+  question_text: string
+  maximum_play?: number
+  minimum_play?: number
+  no_media?: boolean
+  sub_questions: Array<{
+    question_text: string
+    answer: string
+    score?: number
+    tips?: string
+    analysis?: string
+    options?: Array<{ option_label?: string; option_content: string; is_answer?: boolean }>
+    matching_options?: Array<{ option_label?: string; option_content: string }>
+    corrections?: Array<{ type: string; index?: number }>
+  }>
+}): Promise<any> {
+  return request.post(`/content/media-materials/${materialId}/questions/`, data)
+}
+
+/**
+ * 创建试卷页（组卷：在指定任务包下新建一页并关联大题）
+ */
+export function createPaperPage(data: {
+  unit_id: number
+  text?: string
+  order?: number
+  limited_time?: number
+  can_modify?: boolean
+  main_question_ids: number[]
+}): Promise<any> {
+  return request.post('/content/pages/', data)
 }
 
 

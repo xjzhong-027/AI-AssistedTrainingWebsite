@@ -35,7 +35,15 @@
           </div>
         </el-card>
 
-        <!-- 各页面得分 -->
+        <!-- 总分（提交后显示） -->
+        <el-card v-if="result.submitted" class="score-summary-card">
+          <div class="total-score-row">
+            <span class="label">本次得分（提交后不可修改答案）</span>
+            <span class="total-score">{{ result.score != null ? result.score : 0 }} 分</span>
+          </div>
+        </el-card>
+
+        <!-- 各页面得分与答题详情 -->
         <el-card v-if="result.page_records && result.page_records.length > 0" class="pages-card">
           <template #header>
             <div class="card-header-title">各页面得分</div>
@@ -46,7 +54,7 @@
             <el-table-column prop="page_score" label="得分" width="100" align="center">
               <template #default="{ row }">
                 <span :class="{ 'score-highlight': row.is_graded }">
-                  {{ row.is_graded ? (row.page_score || 0) : '待批改' }}
+                  {{ row.is_graded ? (row.page_score ?? 0) : '待批改' }}
                 </span>
               </template>
             </el-table-column>
@@ -66,10 +74,35 @@
             </el-table-column>
             <el-table-column label="操作" width="150" align="center">
               <template #default="{ row }">
-                <el-button size="small" @click="viewPageDetail(row)">查看详情</el-button>
+                <el-button size="small" @click="viewPageDetail(row)">查看答题详情</el-button>
               </template>
             </el-table-column>
           </el-table>
+        </el-card>
+
+        <!-- 各题得分与答案（已提交时展示，只读） -->
+        <el-card v-if="result.submitted && result.page_records && result.page_records.length > 0" class="answers-card">
+          <template #header>
+            <div class="card-header-title">各题得分与答案（仅查看，不可修改）</div>
+          </template>
+          <div v-for="(pageRecord, pIdx) in result.page_records" :key="pageRecord.id" class="page-answers-block">
+            <div class="page-title">第 {{ (pageRecord.page_order ?? pIdx) + 1 }} 页 · {{ pageRecord.page_title || '未命名' }}</div>
+            <el-table :data="pageRecord.answers || []" border size="small" class="answers-table">
+              <el-table-column label="题号" width="80" align="center">
+                <template #default="{ row, $index }">{{ $index + 1 }}</template>
+              </el-table-column>
+              <el-table-column prop="sub_question_text" label="题目" min-width="200" show-overflow-tooltip />
+              <el-table-column prop="text" label="你的答案" width="140" show-overflow-tooltip />
+              <el-table-column prop="correct_answer" label="正确答案" width="140" show-overflow-tooltip />
+              <el-table-column prop="score" label="得分" width="80" align="center">
+                <template #default="{ row }">
+                  <span :class="{ 'score-ok': row.score != null && Number(row.score) > 0, 'score-zero': row.score != null && Number(row.score) === 0 }">
+                    {{ row.score != null ? row.score : '—' }}
+                  </span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </el-card>
 
         <!-- 反馈信息 -->
@@ -263,9 +296,45 @@ onMounted(() => {
   color: #99B6B4;
 }
 
+.score-summary-card .total-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 18px;
+}
+.score-summary-card .total-score {
+  font-weight: bold;
+  font-size: 24px;
+  color: #99B6B4;
+}
+
 .pages-card,
-.feedback-card {
+.feedback-card,
+.answers-card {
   margin-top: 20px;
+}
+
+.page-answers-block {
+  margin-bottom: 24px;
+}
+.page-answers-block:last-child {
+  margin-bottom: 0;
+}
+.page-title {
+  font-weight: 500;
+  color: #99B6B4;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+.answers-table {
+  margin-bottom: 0;
+}
+.score-ok {
+  color: #67c23a;
+  font-weight: 500;
+}
+.score-zero {
+  color: #909399;
 }
 
 .card-header-title {

@@ -238,3 +238,56 @@ class AIConversationHistory(models.Model):
     def __str__(self):
         content_preview = self.content[:30] + '...' if len(self.content) > 30 else self.content
         return f"{self.student.username} - {self.role} - {content_preview}"
+
+
+# 提示级别：1=轻提示 2=方向提示 3=详细解释
+HINT_LEVEL_CHOICES = [(1, '轻提示'), (2, '方向提示'), (3, '详细解释')]
+
+
+class HintRequestLog(models.Model):
+    """学生请求提示的记录，用于消退策略与形成性评估"""
+    id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(
+        Students,
+        on_delete=models.CASCADE,
+        related_name='hint_request_logs',
+        verbose_name='学生'
+    )
+    sub_question = models.ForeignKey(
+        SubQuestion,
+        on_delete=models.CASCADE,
+        related_name='hint_request_logs',
+        verbose_name='题目'
+    )
+    level = models.PositiveSmallIntegerField(
+        choices=HINT_LEVEL_CHOICES,
+        verbose_name='提示级别'
+    )
+    hint_content = models.TextField(
+        verbose_name='返回的提示内容',
+        blank=True,
+        default=''
+    )
+    request_time = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='请求时间'
+    )
+    context = models.JSONField(
+        default=dict,
+        verbose_name='上下文',
+        help_text='练习/页面等 {"practice_id": 1, "page_id": 2}'
+    )
+
+    class Meta:
+        db_table = 'ai_hint_request_log'
+        verbose_name = '提示请求记录'
+        verbose_name_plural = '提示请求记录'
+        ordering = ['-request_time']
+        indexes = [
+            models.Index(fields=['student']),
+            models.Index(fields=['sub_question']),
+            models.Index(fields=['request_time']),
+        ]
+
+    def __str__(self):
+        return f"{self.student.username} - 题目{self.sub_question_id} - 级别{self.level}"

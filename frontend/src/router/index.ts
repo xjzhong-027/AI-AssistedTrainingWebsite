@@ -22,6 +22,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '注册' }
   },
   {
+    path: '/design-demo',
+    name: 'DesignSystemDemo',
+    component: () => import('@/views/DesignSystemDemo.vue'),
+    meta: { title: '设计系统演示' }
+  },
+  {
     path: '/',
     component: () => import('@/components/Layout/index.vue'),
     redirect: '/dashboard',
@@ -244,6 +250,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '题库管理', roles: ['TEACHER', 'ADMIN'] }
       },
       {
+        path: 'teacher/question-bank/material/create',
+        name: 'MaterialCreate',
+        component: () => import('@/views/Teacher/QuestionBank/MaterialCreate.vue'),
+        meta: { title: '新建媒体素材', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
         path: 'teacher/question-bank/material/:materialId/question-type',
         name: 'QuestionType',
         component: () => import('@/views/Teacher/QuestionBank/QuestionType.vue'),
@@ -302,6 +314,12 @@ const routes: RouteRecordRaw[] = [
         name: 'UnitDetail',
         component: () => import('@/views/Teacher/Unit/Detail.vue'),
         meta: { title: '任务详情', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/units/:id/add-page',
+        name: 'UnitAddPage',
+        component: () => import('@/views/Teacher/Unit/AddPage.vue'),
+        meta: { title: '添加页面（组卷）', roles: ['TEACHER', 'ADMIN'] }
       },
       {
         path: 'teacher/forum',

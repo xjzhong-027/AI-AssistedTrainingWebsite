@@ -9,14 +9,15 @@ from ELW.models import Unit, PaperPage, SubQuestion, MainQuestion
 
 
 class StudentAnswerSerializer(serializers.ModelSerializer):
-    """学生答案序列化器"""
+    """学生答案序列化器（结果页含正确答案，供学生查看）"""
     sub_question_id = serializers.IntegerField(source='sub_question.id', read_only=True)
     sub_question_text = serializers.CharField(source='sub_question.question_text', read_only=True)
-    
+    correct_answer = serializers.CharField(source='sub_question.answer', read_only=True)
+
     class Meta:
         model = StudentAnswer
-        fields = ['id', 'sub_question_id', 'sub_question_text', 'text', 'index', 
-                  'type', 'score']
+        fields = ['id', 'sub_question_id', 'sub_question_text', 'text', 'correct_answer',
+                  'index', 'type', 'score']
         read_only_fields = ['id', 'score']
 
 

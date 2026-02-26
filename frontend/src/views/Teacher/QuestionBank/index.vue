@@ -3,7 +3,10 @@
     <div class="header">
       <button @click="goHome">返回首页</button>
       <h2>Question Management</h2>
-      <button @click="goToNewTaskPackage">New task package</button>
+      <div class="header-actions">
+        <button @click="goToNewMaterial" class="btn-primary">新建媒体素材</button>
+        <button @click="goToNewTaskPackage">新建任务包</button>
+      </div>
     </div>
 
     <h1 style="text-align: center">媒体素材列表</h1>
@@ -165,6 +168,12 @@ const goToNewTaskPackage = () => {
   })
 }
 
+const goToNewMaterial = () => {
+  router.push({
+    name: 'MaterialCreate'
+  })
+}
+
 const viewMaterialDetail = async (materialId: number) => {
   detailLoading.value = true
   detailDialogVisible.value = true
@@ -293,6 +302,20 @@ onMounted(() => {
   margin-bottom: 20px;
   padding-bottom: 15px;
   border-bottom: 2px solid #e0e0e0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.header-actions .btn-primary {
+  background-color: #99B6B4;
+  color: #fff;
+}
+
+.header-actions .btn-primary:hover {
+  background-color: #7A9E9C;
 }
 
 .header h2 {

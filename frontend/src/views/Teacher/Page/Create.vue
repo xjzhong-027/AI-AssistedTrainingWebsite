@@ -367,11 +367,19 @@ const goBack = () => {
   router.push('/teacher/question-bank')
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadMaterial()
   loadQuestions()
-  loadUnits()
+  await loadUnits()
   loadClasses()
+  // 从任务包详情「添加页面」进入时，预选当前任务包
+  const unitIdFromQuery = route.query.unit_id
+  if (unitIdFromQuery) {
+    const id = Number(unitIdFromQuery)
+    if (id && units.value.some((u) => u.id === id)) {
+      form.unit_id = id
+    }
+  }
 })
 </script>
 

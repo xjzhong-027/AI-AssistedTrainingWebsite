@@ -6,6 +6,7 @@
           <span>任务详情</span>
           <div>
             <el-button @click="goBack">返回</el-button>
+            <el-button v-if="userStore.isTeacher()" @click="addPage">添加页面</el-button>
             <el-button v-if="userStore.isTeacher()" type="primary" @click="editUnit">编辑</el-button>
           </div>
         </div>
@@ -35,7 +36,7 @@
           <el-divider>页面列表</el-divider>
           <el-table :data="pages" style="width: 100%" stripe>
             <el-table-column prop="order" label="序号" width="80" />
-            <el-table-column prop="title" label="页面标题" min-width="200" />
+            <el-table-column prop="text" label="页面标题" min-width="200" />
             <el-table-column prop="limited_time" label="限时（秒）" width="120" />
             <el-table-column label="操作" width="150">
               <template #default="{ row }">
@@ -45,7 +46,9 @@
           </el-table>
         </div>
         <div v-else style="margin-top: 30px">
-          <el-empty description="暂无页面"></el-empty>
+          <el-empty description="暂无页面">
+            <el-button v-if="userStore.isTeacher()" type="primary" @click="addPage">添加页面（组卷）</el-button>
+          </el-empty>
         </div>
       </div>
     </el-card>
@@ -120,6 +123,15 @@ const editUnit = () => {
 
 const viewPage = (pageId: number) => {
   router.push(`/teacher/pages/${pageId}`)
+}
+
+/** 添加页面：先选媒体素材，再进入组卷页（会预填当前任务包） */
+const addPage = () => {
+  if (!unit.value?.id) return
+  router.push({
+    name: 'UnitAddPage',
+    params: { id: unit.value.id.toString() }
+  })
 }
 
 onMounted(() => {
