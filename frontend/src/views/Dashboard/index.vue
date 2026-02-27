@@ -5,11 +5,13 @@
         <h1>欢迎, {{ userStore.userInfo?.realName || '用户' }}!</h1>
         <p>点击左侧边栏中的栏目以进行相应操作。</p>
       </div>
+    <AIWindow :show-grade-button="false" />
     </div>
 </template>
 
 <script setup lang="ts">
 import { useUserStore } from '@/stores/user'
+import AIWindow from '@/components/common/AIWindow/index.vue'
 
 const userStore = useUserStore()
 </script>

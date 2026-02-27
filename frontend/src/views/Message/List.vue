@@ -45,6 +45,7 @@
             @current-change="loadMessages"
           />
         </div>
+        <AIWindow :show-grade-button="false" />
       </div>
     </div>
 </template>
@@ -54,6 +55,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getAllMessages } from '@/api/message'
+import AIWindow from '@/components/common/AIWindow/index.vue'
 import type { Message } from '@/api/message'
 
 const router = useRouter()

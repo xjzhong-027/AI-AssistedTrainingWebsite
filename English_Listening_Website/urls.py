@@ -174,6 +174,7 @@ urlpatterns = [
         path('explanation/', scoring_views.AIExplanationView.as_view(), name='api_ai_explanation'),
         path('history/', scoring_views.AIScoreHistoryView.as_view(), name='api_ai_score_history'),
         path('conversation/', scoring_views.AIConversationView.as_view(), name='api_ai_conversation'),
+        path('chat/', scoring_views.AIChatReplyView.as_view(), name='api_ai_chat_reply'),
     ])),
     # AI 提示 API（与 scoring 一致：Result + 火山引擎）
     path('api/v1/hints/', include([

@@ -82,6 +82,7 @@
             <el-button type="primary" @click="submitPost">发布</el-button>
           </template>
         </el-dialog>
+        <AIWindow :show-grade-button="false" />
       </div>
     </div>
 </template>
@@ -94,6 +95,7 @@ import { Search } from '@element-plus/icons-vue'
 import { getAllPosts, createPost } from '@/api/forum'
 import type { Post } from '@/api/forum'
 import { useUserStore } from '@/stores/user'
+import AIWindow from '@/components/common/AIWindow/index.vue'
 
 const router = useRouter()
 const userStore = useUserStore()

@@ -134,6 +134,7 @@
         </span>
       </template>
     </el-dialog>
+    <AIWindow :show-grade-button="false" />
 </template>
 
 <script setup lang="ts">
@@ -142,6 +143,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, FormInstance, FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { getStudentPracticeScores } from '@/api/practice'
+import AIWindow from '@/components/common/AIWindow/index.vue'
 import { getUserById, changePassword } from '@/api/user'
 import type { PracticeScore } from '@/api/practice'
 

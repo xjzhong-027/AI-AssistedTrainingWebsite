@@ -43,6 +43,7 @@
         <el-empty description="公告不存在"></el-empty>
       </div>
     </el-card>
+    <AIWindow :show-grade-button="false" />
   </div>
 </template>
 
@@ -51,6 +52,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAnnouncementById, markAnnouncementAsRead, deleteAnnouncement } from '@/api/announcement'
+import AIWindow from '@/components/common/AIWindow/index.vue'
 import { useUserStore } from '@/stores/user'
 import type { Announcement } from '@/api/announcement'
 

@@ -30,6 +30,7 @@
         <el-empty description="消息不存在"></el-empty>
       </div>
     </el-card>
+    <AIWindow :show-grade-button="false" />
   </div>
 </template>
 
@@ -38,6 +39,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMessageById, markMessageAsRead, deleteMessage } from '@/api/message'
+import AIWindow from '@/components/common/AIWindow/index.vue'
 
 const route = useRoute()
 const router = useRouter()

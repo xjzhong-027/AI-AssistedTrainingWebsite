@@ -45,6 +45,7 @@
             @current-change="loadAnnouncements"
           />
         </div>
+        <AIWindow :show-grade-button="false" />
       </div>
     </div>
 </template>
@@ -54,6 +55,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getStudentAnnouncements } from '@/api/announcement'
+import AIWindow from '@/components/common/AIWindow/index.vue'
 import { useUserStore } from '@/stores/user'
 import type { Announcement } from '@/api/announcement'
 

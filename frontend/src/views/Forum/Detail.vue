@@ -100,6 +100,7 @@
         </span>
       </template>
     </el-dialog>
+    <AIWindow :show-grade-button="false" />
   </div>
 </template>
 
@@ -110,6 +111,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPostById, getPostComments, createComment, updateComment, deleteComment as deleteCommentApi, deletePost as deletePostApi } from '@/api/forum'
 import { useUserStore } from '@/stores/user'
 import type { Post, Comment } from '@/api/forum'
+import AIWindow from '@/components/common/AIWindow/index.vue'
 
 const route = useRoute()
 const router = useRouter()

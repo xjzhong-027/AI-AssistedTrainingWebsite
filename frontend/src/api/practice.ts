@@ -70,12 +70,39 @@ export function startPractice(unitId: number): Promise<ExamRecord> {
   return request.post(`/exams/${unitId}/start/`)
 }
 
+/** 后端返回的原始记录格式（与 Exam API 序列化器一致） */
+interface RawExamRecord {
+  id: number
+  unit_id: number
+  unit_name?: string
+  unit_type?: string
+  started_at?: string
+  finished_at?: string
+  score?: number
+  submitted?: boolean
+  [key: string]: unknown
+}
+
+function toExamRecord(raw: RawExamRecord): ExamRecord {
+  return {
+    id: raw.id,
+    student_id: 0,
+    unit_id: raw.unit_id,
+    unit_name: raw.unit_name,
+    unit_type: raw.unit_type as 'exam' | 'practice',
+    status: raw.submitted ? 'completed' : 'in-progress',
+    start_time: raw.started_at || '',
+    submit_time: raw.finished_at,
+    total_score: raw.score
+  }
+}
+
 /**
  * 获取学生的练习记录（从考试记录中筛选unit_type=practice）
  */
 export function getStudentPracticeRecords(studentId?: number): Promise<ExamRecord[]> {
   const params = studentId ? { student_id: studentId, unit_type: 'practice' } : { unit_type: 'practice' }
-  return request.get('/exams/', { params })
+  return request.get<RawExamRecord[]>('/exams/', { params }).then(rows => (rows || []).map(toExamRecord))
 }
 
 /**

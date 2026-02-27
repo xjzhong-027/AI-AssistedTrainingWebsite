@@ -1,8 +1,10 @@
+from datetime import datetime
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from AI_module.models import AIScoreRecord, AIExplanationRecord, AIConversationHistory
 from AI_module.scoring_service import AIScoringService
+from AI_module.chat_service import ChatService
 from Account.models import Students
 from ELW.models import SubQuestion
 from common.api.response import Result
@@ -227,3 +229,35 @@ class AIConversationView(APIView):
         except Exception as e:
             print(f"保存对话消息错误: {e}")
             return Result.error(message=f'保存对话消息失败: {str(e)}')
+
+
+class AIChatReplyView(APIView):
+    """
+    AI 聊天回复接口（调用火山引擎生成回复）
+
+    POST /api/v1/scoring/chat/
+    请求: { "message": "用户消息", "context": { "practice_id": 1, "page_id": 2, "sub_question_id": 3 } }
+    响应: { "reply": "AI回复", "timestamp": "..." }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            message = request.data.get('message', '').strip()
+            if not message:
+                return Result.error(message='消息内容不能为空')
+
+            context = request.data.get('context', {}) or {}
+
+            chat_service = ChatService()
+            reply = chat_service.get_reply(message=message, context=context)
+
+            return Result.success(data={
+                'reply': reply,
+                'timestamp': datetime.now().isoformat()
+            }, message='success')
+        except ValueError as e:
+            return Result.error(message=str(e), code=400)
+        except Exception as e:
+            print(f"AI聊天接口错误: {e}")
+            return Result.error(message=f'AI回复失败: {str(e)}', code=500)

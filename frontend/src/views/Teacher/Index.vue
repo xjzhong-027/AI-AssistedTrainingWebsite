@@ -27,10 +27,13 @@
         </tr>
       </tbody>
     </table>
+    <AIWindow :show-grade-button="false" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AIWindow from '@/components/common/AIWindow/index.vue'
+
 const downloadFile = (event: Event) => {
   const button = event.currentTarget as HTMLButtonElement
   const filename = button.getAttribute('data-filename')
