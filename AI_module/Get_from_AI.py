@@ -6,7 +6,7 @@ import copy
 
 class Get_from_AI:
     __prompt_variables = {"题型": "", "题目数量": 0, "难度": "", "格式要求": "", "材料": "", "重点考察内容": "",
-                          "其他要求": "", "原文":"", "题目":"", "参考答案":"", "学生回答":"", "其他要求_评分":""}
+                          "其他要求": "", "原文":"", "题目":"", "参考答案":"", "学生回答":"", "其他要求_评分":"", "transcript":""}
     __prompt_template = {"题目生成": "请你为英语听力网站生成题目，要求：\
                             \n1.依据给出的材料生成\
                             \n2.题型：{题型}\
@@ -24,6 +24,10 @@ class Get_from_AI:
                            \n其他要求：{其他要求_评分}\
                            \n请你根据参考答案为学生回答打出评分:\
                            \n参考答案：'{参考答案}'",
+                "素材分析": "请根据以下视频/音频的文本内容（transcript）进行分析，并以JSON格式返回结果：\
+                            \n\nTranscript内容：\n{transcript}\n\n请返回以下JSON格式的内容，不要有其他额外文字：\
+                            \n{\"title\": \"简短的标题（不超过20个词）\", \"theme\": \"主题（1-2句话概括）\", \
+                            \"abstract\": \"摘要（3-5句话概括主要内容）\", \"keywords\": \"关键词（用逗号分隔的3-5个关键词）\"}",
                          }
 
     AI_model_name = ""
@@ -64,6 +68,7 @@ class Get_from_AI:
     def get_prompt(self, my_key=None):
         if my_key == "题目评分": return self.__prompt_template["题目评分"].format(**self.__prompt_variables)
         elif my_key == "题目生成": return self.__prompt_template["题目生成"].format(**self.__prompt_variables)
+        elif my_key == "素材分析": return self.__prompt_template["素材分析"].format(**self.__prompt_variables)
 
     def get_prompt_variables(self):
         return self.__prompt_variables
