@@ -268,6 +268,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '题目编辑', roles: ['TEACHER', 'ADMIN'] }
       },
       {
+        path: 'teacher/question-bank/material/:materialId/batch-import',
+        name: 'BatchImport',
+        component: () => import('@/views/Teacher/QuestionBank/BatchImport.vue'),
+        meta: { title: '批量导入选择题', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
         path: 'teacher/exam-bank',
         name: 'ExamBank',
         component: () => import('@/views/Teacher/ExamBank/index.vue'),
@@ -308,6 +314,12 @@ const routes: RouteRecordRaw[] = [
         name: 'CreatePaperPage',
         component: () => import('@/views/Teacher/Page/Create.vue'),
         meta: { title: '组卷', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/pages/:id',
+        name: 'PaperPageDetail',
+        component: () => import('@/views/Teacher/Page/Detail.vue'),
+        meta: { title: '页面详情', roles: ['TEACHER', 'ADMIN'] }
       },
       {
         path: 'teacher/units/:id',

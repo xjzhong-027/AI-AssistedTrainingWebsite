@@ -29,6 +29,10 @@
           <el-descriptions-item label="排序" v-if="unit.order !== undefined">
             {{ unit.order }}
           </el-descriptions-item>
+          <el-descriptions-item label="开放周次">
+            {{ weekDisplay }}
+            <span class="week-hint">（周次以班级开课日期为起点，在班级管理中设置）</span>
+          </el-descriptions-item>
         </el-descriptions>
 
         <!-- 页面列表 -->
@@ -56,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
@@ -70,6 +74,14 @@ const userStore = useUserStore()
 const loading = ref(false)
 const unit = ref<Unit | null>(null)
 const pages = ref<any[]>([])
+
+/** 开放周次展示：0=始终开放，1-20=第N周起 */
+const weekDisplay = computed(() => {
+  const w = unit.value?.week
+  if (w === undefined || w === null) return '未设置'
+  if (w === 0) return '始终开放'
+  return `第 ${w} 周起`
+})
 
 // 加载单元详情
 const loadUnit = async () => {
@@ -111,7 +123,6 @@ const editUnit = () => {
     ElMessage.warning('无法获取任务信息')
     return
   }
-  console.log('跳转到编辑页面，unitId:', unit.value.id)
   router.push({
     name: 'UnitEdit',
     params: { id: unit.value.id }
@@ -154,6 +165,12 @@ onMounted(() => {
 
 .detail-content {
   padding: 20px 0;
+}
+
+.week-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-left: 8px;
 }
 </style>
 

@@ -479,6 +479,14 @@ class ExamServiceImpl(ExamService):
         if not exam_record:
             return False
         
+        # 根据各页面得分重新计算总分（修复：同步批改时未更新 exam_record.score 的问题）
+        page_records = ExamServiceImpl.get_page_records_by_exam(exam_record_id)
+        total_score = sum(
+            float(pr.page_score) for pr in page_records
+            if pr.page_score is not None
+        )
+        exam_record.score = total_score
+        
         exam_record.submitted = True
         exam_record.finished_at = timezone.now()
         exam_record.save()

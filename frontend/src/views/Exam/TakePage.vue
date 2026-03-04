@@ -71,6 +71,7 @@
         </div>
         <div>
           <el-button @click="savePage" :loading="saving">保存当前页</el-button>
+          <el-button v-if="!isFirstPage" @click="prevPage">上一页</el-button>
           <el-button v-if="isLastPage" type="danger" @click="handleSubmit" :disabled="submitting">
             提交考试
           </el-button>
@@ -79,45 +80,48 @@
       </div>
 
       <div v-if="mainQuestions.length > 0" class="exam-content">
-        <div v-for="(mainQuestion, mainIndex) in mainQuestions" :key="mainQuestion.id" class="main-question">
-          <div class="main-question-header">
-            <h4>{{ mainIndex + 1 }}. {{ mainQuestion.question_text }}</h4>
-            <el-tag>{{ getQuestionTypeText(mainQuestion.question_type) }}</el-tag>
-          </div>
-
-          <!-- 媒体播放器 -->
-          <div v-if="mainQuestion.media_material_id" class="media-player">
-            <template v-if="hasMediaUrl(mainQuestion)">
+        <!-- 左侧：整页共用一个视频/音频 -->
+        <div v-if="pageMedia" class="page-media-column">
+          <div class="media-player">
+            <template v-if="hasMediaUrl(pageMedia)">
               <video
-                v-if="isVideoUrl(mainQuestion)"
-                :ref="el => setAudioRef(el, mainQuestion.id)"
-                :src="getMediaUrl(mainQuestion)"
+                v-if="isVideoUrl(pageMedia)"
+                :ref="el => setAudioRef(el, pageMedia.id)"
+                :src="getMediaUrl(pageMedia)"
                 controls
                 playsinline
                 class="media-element"
-                @play="handlePlay(mainQuestion)"
-                @pause="handlePause(mainQuestion)"
-                @error="onMediaError(mainQuestion.id)"
+                @play="handlePlay(pageMedia)"
+                @pause="handlePause(pageMedia)"
+                @error="onMediaError(pageMedia.id)"
               ></video>
               <audio
                 v-else
-                :ref="el => setAudioRef(el, mainQuestion.id)"
-                :src="getMediaUrl(mainQuestion)"
+                :ref="el => setAudioRef(el, pageMedia.id)"
+                :src="getMediaUrl(pageMedia)"
                 controls
                 class="media-element"
-                @play="handlePlay(mainQuestion)"
-                @pause="handlePause(mainQuestion)"
-                @error="onMediaError(mainQuestion.id)"
+                @play="handlePlay(pageMedia)"
+                @pause="handlePause(pageMedia)"
+                @error="onMediaError(pageMedia.id)"
               ></audio>
               <div class="play-info">
-                <span>最多播放次数：{{ mainQuestion.maximum_play || '无限制' }}</span>
-                <span>已播放：{{ getPlayCount(mainQuestion.id) }} 次</span>
+                <span>最多播放次数：{{ pageMedia.maximum_play || '无限制' }}</span>
+                <span>已播放：{{ getPlayCount(pageMedia.id) }} 次</span>
               </div>
             </template>
             <div v-else class="no-media-tip">
               <span>暂无音频/视频</span>
               <p class="tip-desc">请在「题库管理」中为该素材填写或上传媒体文件地址后即可播放。</p>
             </div>
+          </div>
+        </div>
+        <!-- 右侧：题目列表 -->
+        <div class="questions-column">
+        <div v-for="(mainQuestion, mainIndex) in mainQuestions" :key="mainQuestion.id" class="main-question">
+          <div class="main-question-header">
+            <h4>{{ mainIndex + 1 }}. {{ mainQuestion.question_text }}</h4>
+            <el-tag>{{ getQuestionTypeText(mainQuestion.question_type) }}</el-tag>
           </div>
 
           <!-- 小题列表 -->
@@ -212,6 +216,7 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
 
       <div v-else-if="!loading" class="empty-state">
@@ -255,6 +260,9 @@ const examRecordId = ref<number | null>(null)
 
 const totalPages = computed(() => pages.value.length)
 const isLastPage = computed(() => currentPageOrder.value === totalPages.value - 1)
+const isFirstPage = computed(() => currentPageOrder.value === 0)
+/** 页面级媒体：取第一个有媒体的题目，整页只显示一个视频/音频 */
+const pageMedia = computed(() => mainQuestions.value.find((q) => q.media_material_id && hasMediaUrl(q)) || null)
 
 // 设置音频引用
 const setAudioRef = (el: any, questionId: number) => {
@@ -287,6 +295,11 @@ const getMediaUrl = (mainQuestion: any): string => {
       }
     }
     
+    // 如果已包含 media_material（如 media_material/media/xxx），直接拼接，避免重复
+    if (mainQuestion.media_material_url.startsWith('media_material/')) {
+      return `${apiBaseUrl}/${mainQuestion.media_material_url}`
+    }
+    
     // 如果是以 media/ 开头（相对路径），需要添加 /media_material/ 前缀
     if (mainQuestion.media_material_url.startsWith('media/')) {
       return `${apiBaseUrl}/media_material/${mainQuestion.media_material_url}`
@@ -294,7 +307,6 @@ const getMediaUrl = (mainQuestion: any): string => {
     
     // 如果是其他相对路径（如 /xxx.mp3），添加 /media_material/media/ 前缀
     if (mainQuestion.media_material_url.startsWith('/')) {
-      // 检查是否已经包含 media_material
       if (!mainQuestion.media_material_url.includes('media_material')) {
         return `${apiBaseUrl}/media_material/media${mainQuestion.media_material_url}`
       } else {
@@ -302,7 +314,7 @@ const getMediaUrl = (mainQuestion: any): string => {
       }
     }
     
-    // 如果是文件名（如 xxx.mp3），添加完整路径
+    // 如果是纯文件名（如 xxx.mp3），添加完整路径
     return `${apiBaseUrl}/media_material/media/${mainQuestion.media_material_url}`
   }
   
@@ -602,6 +614,15 @@ const savePage = async () => {
   }
 }
 
+// 上一页
+const prevPage = async () => {
+  await savePage()
+  if (currentPageOrder.value > 0) {
+    currentPageOrder.value--
+    await loadPage()
+  }
+}
+
 // 下一页
 const nextPage = async () => {
   // 先保存当前页
@@ -827,6 +848,21 @@ onBeforeUnmount(() => {
 
 .exam-content {
   margin-top: 20px;
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.page-media-column {
+  flex-shrink: 0;
+  width: 360px;
+  position: sticky;
+  top: 20px;
+}
+
+.questions-column {
+  flex: 1;
+  min-width: 0;
 }
 
 .main-question {

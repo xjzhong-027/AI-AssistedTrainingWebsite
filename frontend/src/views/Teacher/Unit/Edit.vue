@@ -50,6 +50,17 @@
           <div class="form-tip">数字越小越靠前</div>
         </el-form-item>
 
+        <el-form-item label="开放周次" prop="week">
+          <el-input-number
+            v-model="form.week"
+            :min="0"
+            :max="20"
+            placeholder="0 表示始终开放"
+            style="width: 100%"
+          />
+          <div class="form-tip">0=始终开放；1-20=第N周起学生可见可做</div>
+        </el-form-item>
+
         <el-form-item>
           <el-button type="primary" @click="handleSubmit" :loading="submitting">保存</el-button>
           <el-button @click="goBack">取消</el-button>
@@ -82,11 +93,13 @@ const form = reactive<{
   title: string
   class_id?: number
   order?: number
+  week?: number
 }>({
   type: 'exam',
   title: '',
   class_id: undefined,
-  order: 0
+  order: 0,
+  week: 0
 })
 
 const rules: FormRules = {
@@ -116,6 +129,7 @@ const loadUnit = async () => {
     form.title = unitData.title || unitData.name || unitData.unit_name || ''
     form.class_id = unitData.class_id
     form.order = unitData.order || 0
+    form.week = unitData.week ?? 0
   } catch (error: any) {
     console.error('加载任务失败', error)
     ElMessage.error(error.message || '加载任务失败')
@@ -145,7 +159,8 @@ const handleSubmit = async () => {
         await updateUnit(id, {
           title: form.title,
           class_id: form.class_id,
-          order: form.order
+          order: form.order,
+          week: form.week
         })
         ElMessage.success('更新成功')
         router.push(`/teacher/units/${id}`)

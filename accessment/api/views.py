@@ -294,6 +294,19 @@ class ExamPageAnswersSaveView(APIView):
         if not serializer.is_valid():
             return Result.bad_request(message='Invalid data', data=serializer.errors)
         
+        # 保存剩余时间（倒计时）
+        remaining_time = serializer.validated_data.get('remaining_time')
+        if remaining_time is not None:
+            from accessment.models import StudentPageRecord
+            try:
+                pr = StudentPageRecord.objects.get(id=page_record_id)
+                pr.remaining_time = remaining_time
+                if remaining_time <= 0:
+                    pr.is_expired = True
+                pr.save()
+            except StudentPageRecord.DoesNotExist:
+                pass
+
         # 保存每个答案
         saved_answers = []
         for answer_data in serializer.validated_data['answers']:

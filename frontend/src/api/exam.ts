@@ -48,9 +48,18 @@ export function getExamPage(examId: number, pageOrder: number): Promise<any> {
  * 保存答案
  * @param pageRecordId 页面记录ID（不是页面ID）
  * @param answers 答案数组
+ * @param remainingTime 剩余时间（秒），可选，用于倒计时
  */
-export function saveAnswers(pageRecordId: number, answers: Array<{ sub_question_id: number; text: string }>): Promise<any> {
-  return request.post(`/exams/pages/${pageRecordId}/answers/`, { answers })
+export function saveAnswers(
+  pageRecordId: number,
+  answers: Array<{ sub_question_id: number; text: string; index?: number; type?: string }>,
+  remainingTime?: number
+): Promise<any> {
+  const body: { answers: typeof answers; remaining_time?: number } = { answers }
+  if (remainingTime !== undefined && remainingTime !== null) {
+    body.remaining_time = remainingTime
+  }
+  return request.post(`/exams/pages/${pageRecordId}/answers/`, body)
 }
 
 /**

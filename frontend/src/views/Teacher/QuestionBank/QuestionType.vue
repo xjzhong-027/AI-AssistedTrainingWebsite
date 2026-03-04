@@ -9,6 +9,10 @@
       </template>
       <p class="tip">请选择要添加的题目类型：</p>
       <div class="type-options">
+        <el-card class="type-card batch-card" shadow="hover" @click="goBatchImport">
+          <span class="type-label">批量导入选择题</span>
+          <p class="type-desc">按格式批量导入多道选择题</p>
+        </el-card>
         <el-card class="type-card" shadow="hover" @click="goEdit('choice')">
           <span class="type-label">选择题</span>
           <p class="type-desc">单选题、多选题等</p>
@@ -20,6 +24,10 @@
         <el-card class="type-card" shadow="hover" @click="goEdit('correction')">
           <span class="type-label">改错题</span>
           <p class="type-desc">改错、填空等</p>
+        </el-card>
+        <el-card class="type-card" shadow="hover" @click="goEdit('comprehension')">
+          <span class="type-label">主观题</span>
+          <p class="type-desc">简答题、理解题、总结题（主旨题）</p>
         </el-card>
       </div>
     </el-card>
@@ -40,6 +48,13 @@ const goEdit = (type: string) => {
   router.push({
     name: 'QuestionEditByType',
     params: { materialId: route.params.materialId, type }
+  })
+}
+
+const goBatchImport = () => {
+  router.push({
+    name: 'BatchImport',
+    params: { materialId: route.params.materialId }
   })
 }
 </script>

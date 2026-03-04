@@ -70,7 +70,7 @@ export interface AIConversationResponse {
 
 export const scoringApi = {
   subjective: (data: AIScoringRequest) => {
-    return request.post<AIScoringResponse>('/scoring/subjective/', data)
+    return request.post<AIScoringResponse>('/scoring/subjective/', data, { timeout: 60000 })
   },
 
   explanation: (data: AIExplanationRequest) => {

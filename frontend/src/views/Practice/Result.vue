@@ -38,8 +38,11 @@
         <!-- 总分（提交后显示） -->
         <el-card v-if="result.submitted" class="score-summary-card">
           <div class="total-score-row">
-            <span class="label">本次得分（提交后不可修改答案）</span>
-            <span class="total-score">{{ result.score != null ? result.score : 0 }} 分</span>
+            <span class="label">{{ canModifyAnyPage ? '本次得分' : '本次得分（提交后不可修改答案）' }}</span>
+            <div class="total-score-actions">
+              <span class="total-score">{{ result.score != null ? result.score : 0 }} 分</span>
+              <el-button v-if="canModifyAnyPage" type="primary" size="small" @click="goModify">修改答案</el-button>
+            </div>
           </div>
         </el-card>
 
@@ -101,7 +104,18 @@
                   </span>
                 </template>
               </el-table-column>
+              <el-table-column v-if="hasAnyAiFeedback" label="AI反馈" width="100" align="center">
+                <template #default="{ row }">
+                  <span v-if="row.ai_feedback" class="has-feedback">有</span>
+                  <span v-else>—</span>
+                </template>
+              </el-table-column>
             </el-table>
+            <!-- AI反馈详情（有反馈的题目展示） -->
+            <div v-for="(ans, aIdx) in (pageRecord.answers || [])" :key="aIdx" v-show="ans.ai_feedback" class="ai-feedback-block">
+              <div class="ai-feedback-question">第 {{ aIdx + 1 }} 题 · {{ ans.sub_question_text || '题目' }}</div>
+              <ScoringFeedbackDisplay v-if="ans.ai_feedback" :feedback="ans.ai_feedback" />
+            </div>
           </div>
         </el-card>
 
@@ -128,17 +142,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getExamResult } from '@/api/exam'
 import AIWindow from '@/components/common/AIWindow/index.vue'
+import ScoringFeedbackDisplay from '@/components/common/ScoringFeedbackDisplay.vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const loading = ref(false)
 const result = ref<any>(null)
+
+// 是否有任意页面允许修改答案
+const canModifyAnyPage = computed(() => {
+  const records = result.value?.page_records || []
+  return records.some((p: any) => p.can_modify)
+})
+
+// 是否有任意答案包含AI反馈
+const hasAnyAiFeedback = computed(() => {
+  const records = result.value?.page_records || []
+  return records.some((p: any) => (p.answers || []).some((a: any) => a.ai_feedback))
+})
 
 // 格式化日期
 const formatDate = (dateStr: string): string => {
@@ -154,20 +181,14 @@ const formatDate = (dateStr: string): string => {
   })
 }
 
-// 查看页面详情
+// 查看页面详情（跳转到答题页指定页面查看）
 const viewPageDetail = (pageRecord: any) => {
-  // 跳转到页面详情，显示题目和答案
   const practiceId = Number(route.params.id)
   if (practiceId && pageRecord.page_order !== undefined) {
-    // 跳转到详情页面，传递practiceId和pageOrder
     router.push({
-      name: 'PracticeDetail',
+      name: 'PracticeTake',
       params: { id: practiceId },
-      query: { 
-        page: pageRecord.page_order + 1,
-        viewMode: 'result',
-        pageRecordId: pageRecord.id
-      }
+      query: { page: String(pageRecord.page_order + 1), viewMode: 'result' }
     })
   } else {
     ElMessage.warning('无法查看页面详情')
@@ -177,6 +198,14 @@ const viewPageDetail = (pageRecord: any) => {
 // 返回
 const goBack = () => {
   router.push('/practice/list')
+}
+
+// 修改答案（跳转到 Take 页面，带 mode=modify）
+const goModify = () => {
+  const practiceId = Number(route.params.id)
+  if (practiceId) {
+    router.push({ path: `/practice/${practiceId}/take`, query: { mode: 'modify' } })
+  }
 }
 
 // 加载结果
@@ -304,10 +333,32 @@ onMounted(() => {
   justify-content: space-between;
   font-size: 18px;
 }
+.score-summary-card .total-score-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
 .score-summary-card .total-score {
   font-weight: bold;
   font-size: 24px;
   color: #99B6B4;
+}
+.has-feedback {
+  color: #99B6B4;
+  font-weight: 500;
+}
+.ai-feedback-block {
+  margin-top: 16px;
+  padding: 16px;
+  background: #F9F8F3;
+  border-radius: 12px;
+  border: 1px solid rgba(186, 207, 206, 0.3);
+}
+.ai-feedback-question {
+  font-weight: 500;
+  color: #99B6B4;
+  margin-bottom: 12px;
+  font-size: 14px;
 }
 
 .pages-card,

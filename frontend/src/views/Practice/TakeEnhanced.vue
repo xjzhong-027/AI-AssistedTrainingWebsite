@@ -285,12 +285,8 @@ const requestAIScoring = async (subQuestion: any) => {
       transcript: subQuestion.main_question?.media_material?.transcript || ''
     })
 
-    if (response.data.success) {
-      scoringResults.value[subQuestion.id] = response.data.data
-      ElMessage.success('AI评分完成！')
-    } else {
-      throw new Error(response.data.message || 'AI评分失败')
-    }
+    scoringResults.value[subQuestion.id] = response
+    ElMessage.success('AI评分完成！')
   } catch (error: any) {
     console.error('AI评分失败:', error)
     ElMessage.error(error.message || 'AI评分失败，请稍后重试')
@@ -320,7 +316,8 @@ const getMediaUrl = (mainQuestion: any): string => {
     if (mainQuestion.media_material_url.startsWith('http')) {
       return mainQuestion.media_material_url
     }
-    return `${apiBaseUrl}${mainQuestion.media_material_url}`
+    const url = mainQuestion.media_material_url.startsWith('/') ? mainQuestion.media_material_url : `/${mainQuestion.media_material_url}`
+    return `${apiBaseUrl}${url}`
   }
   return ''
 }

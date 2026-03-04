@@ -60,6 +60,17 @@
           <div class="form-tip">数字越小越靠前</div>
         </el-form-item>
 
+        <el-form-item label="开放周次" prop="week">
+          <el-input-number
+            v-model="form.week"
+            :min="0"
+            :max="20"
+            placeholder="0 表示始终开放"
+            style="width: 100%"
+          />
+          <div class="form-tip">0=始终开放；1-20=第N周起学生可见可做</div>
+        </el-form-item>
+
         <el-form-item>
           <el-button type="primary" @click="handleSubmit" :loading="submitting">创建</el-button>
           <el-button @click="goBack">取消</el-button>
@@ -91,7 +102,8 @@ const form = reactive({
   type: 'exam' as 'exam' | 'practice',
   title: '',
   class_id: undefined as number | undefined,
-  order: 0
+  order: 0,
+  week: 0
 })
 
 const rules: FormRules = {
@@ -113,7 +125,6 @@ const loadClasses = async () => {
     // 如果是教师，传递 teacherId；否则获取所有班级
     const teacherId = userStore.userInfo?.id
     const data = await getAllClasses(teacherId)
-    console.log('获取到的班级数据:', data)
     classes.value = Array.isArray(data) ? data : []
     if (classes.value.length === 0) {
       ElMessage.warning('暂无班级数据，请先创建班级')
@@ -139,7 +150,8 @@ const handleSubmit = async () => {
           class_id: form.class_id!,
           title: form.title,
           type: form.type,
-          order: form.order
+          order: form.order,
+          week: form.week
         })
         ElMessage.success('任务包创建成功')
         router.push({

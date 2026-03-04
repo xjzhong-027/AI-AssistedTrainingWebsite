@@ -6,16 +6,17 @@
           <h3>{{ practice?.unit_name }}</h3>
           <div class="practice-info">
             <span>当前页面：第 {{ currentPageOrder + 1 }} 页 / 共 {{ totalPages }} 页</span>
-            <span v-if="pageRecord?.remaining_time !== undefined">
+            <span v-if="displayRemainingTime !== null">
               剩余时间：
               <el-tag :type="timeLeftType" size="small">
-                {{ formatTime(pageRecord.remaining_time) }}
+                {{ formatTime(displayRemainingTime) }}
               </el-tag>
             </span>
           </div>
         </div>
         <div>
           <el-button @click="savePage" :loading="saving">保存当前页</el-button>
+          <el-button v-if="!isFirstPage" @click="prevPage">上一页</el-button>
           <el-button v-if="isLastPage" type="success" @click="handleSubmit" :disabled="submitting">
             提交练习
           </el-button>
@@ -24,45 +25,48 @@
       </div>
 
       <div v-if="mainQuestions.length > 0" class="practice-content">
-        <div v-for="(mainQuestion, mainIndex) in mainQuestions" :key="mainQuestion.id" class="main-question">
-          <div class="main-question-header">
-            <h4>{{ mainIndex + 1 }}. {{ mainQuestion.question_text }}</h4>
-            <el-tag>{{ getQuestionTypeText(mainQuestion.question_type) }}</el-tag>
-          </div>
-
-          <!-- 媒体播放器 -->
-          <div v-if="mainQuestion.media_material_id" class="media-player">
-            <template v-if="hasMediaUrl(mainQuestion)">
+        <!-- 左侧：整页共用一个视频/音频 -->
+        <div v-if="pageMedia" class="page-media-column">
+          <div class="media-player">
+            <template v-if="hasMediaUrl(pageMedia)">
               <video
-                v-if="isVideoUrl(mainQuestion)"
-                :ref="el => setAudioRef(el, mainQuestion.id)"
-                :src="getMediaUrl(mainQuestion)"
+                v-if="isVideoUrl(pageMedia)"
+                :ref="el => setAudioRef(el, pageMedia.id)"
+                :src="getMediaUrl(pageMedia)"
                 controls
                 playsinline
                 class="media-element"
-                @play="handlePlay(mainQuestion)"
-                @pause="handlePause(mainQuestion)"
-                @error="onMediaError(mainQuestion.id)"
+                @play="handlePlay(pageMedia)"
+                @pause="handlePause(pageMedia)"
+                @error="onMediaError(pageMedia.id)"
               ></video>
               <audio
                 v-else
-                :ref="el => setAudioRef(el, mainQuestion.id)"
-                :src="getMediaUrl(mainQuestion)"
+                :ref="el => setAudioRef(el, pageMedia.id)"
+                :src="getMediaUrl(pageMedia)"
                 controls
                 class="media-element"
-                @play="handlePlay(mainQuestion)"
-                @pause="handlePause(mainQuestion)"
-                @error="onMediaError(mainQuestion.id)"
+                @play="handlePlay(pageMedia)"
+                @pause="handlePause(pageMedia)"
+                @error="onMediaError(pageMedia.id)"
               ></audio>
               <div class="play-info">
-                <span>最多播放次数：{{ mainQuestion.maximum_play || '无限制' }}</span>
-                <span>已播放：{{ getPlayCount(mainQuestion.id) }} 次</span>
+                <span>最多播放次数：{{ pageMedia.maximum_play || '无限制' }}</span>
+                <span>已播放：{{ getPlayCount(pageMedia.id) }} 次</span>
               </div>
             </template>
             <div v-else class="no-media-tip">
               <span>暂无音频/视频</span>
               <p class="tip-desc">请在「题库管理」中为该素材填写或上传媒体文件地址后即可播放。</p>
             </div>
+          </div>
+        </div>
+        <!-- 右侧：题目列表 -->
+        <div class="questions-column">
+        <div v-for="(mainQuestion, mainIndex) in mainQuestions" :key="mainQuestion.id" class="main-question">
+          <div class="main-question-header">
+            <h4>{{ mainIndex + 1 }}. {{ mainQuestion.question_text }}</h4>
+            <el-tag>{{ getQuestionTypeText(mainQuestion.question_type) }}</el-tag>
           </div>
 
           <!-- 小题列表 -->
@@ -186,28 +190,32 @@
                 <!-- AI评分结果 -->
                 <div v-if="scoringResults[subQuestion.id]" class="ai-feedback" style="margin-top: 15px;">
                   <el-alert
-                    :type="scoringResults[subQuestion.id].score >= 60 ? 'success' : 'warning'"
+                    :type="(scoringResults[subQuestion.id].total_score ?? 0) >= 60 ? 'success' : 'warning'"
                     :closable="false"
                   >
                     <template #title>
                       <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span>AI评分结果</span>
-                        <el-tag :type="scoringResults[subQuestion.id].score >= 60 ? 'success' : 'warning'">
-                          得分: {{ scoringResults[subQuestion.id].score }}
+                        <el-tag :type="(scoringResults[subQuestion.id].total_score ?? 0) >= 60 ? 'success' : 'warning'">
+                          得分: {{ scoringResults[subQuestion.id].total_score ?? 0 }}
                         </el-tag>
                       </div>
                     </template>
                     <div style="margin-top: 10px;">
                       <p><strong>反馈:</strong> {{ scoringResults[subQuestion.id].feedback }}</p>
-                      <p v-if="scoringResults[subQuestion.id].suggestions">
-                        <strong>建议:</strong> {{ scoringResults[subQuestion.id].suggestions }}
-                      </p>
+                      <div v-if="scoringResults[subQuestion.id].suggestions?.length">
+                        <strong>建议:</strong>
+                        <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                          <li v-for="(s, i) in scoringResults[subQuestion.id].suggestions" :key="i">{{ s }}</li>
+                        </ul>
+                      </div>
                     </div>
                   </el-alert>
                 </div>
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
 
@@ -250,6 +258,13 @@ const playCounts = ref<Record<number, number>>({})
 const pauseTimes = ref<Record<number, number>>({})
 const practiceRecordId = ref<number | null>(null)
 
+// 倒计时相关
+const countdownSeconds = ref<number | null>(null)
+let countdownTimer: ReturnType<typeof setInterval> | null = null
+
+// 是否为修改模式（从结果页点击「修改答案」进入）
+const isModifyMode = computed(() => route.query.mode === 'modify')
+
 // AI评分相关状态
 const aiScoring = ref<Record<number, boolean>>({})
 const scoringResults = ref<Record<number, any>>({})
@@ -260,6 +275,9 @@ const hintResults = ref<Record<number, { content: string; level: number; request
 
 const totalPages = computed(() => pages.value.length)
 const isLastPage = computed(() => currentPageOrder.value === totalPages.value - 1)
+const isFirstPage = computed(() => currentPageOrder.value === 0)
+/** 页面级媒体：取第一个有媒体的题目，整页只显示一个视频/音频 */
+const pageMedia = computed(() => mainQuestions.value.find((q) => q.media_material_id && hasMediaUrl(q)) || null)
 
 // 设置音频引用
 const setAudioRef = (el: any, questionId: number) => {
@@ -292,6 +310,11 @@ const getMediaUrl = (mainQuestion: any): string => {
       }
     }
     
+    // 如果已包含 media_material（如 media_material/media/xxx），直接拼接，避免重复
+    if (mainQuestion.media_material_url.startsWith('media_material/')) {
+      return `${apiBaseUrl}/${mainQuestion.media_material_url}`
+    }
+    
     // 如果是以 media/ 开头（相对路径），需要添加 /media_material/ 前缀
     if (mainQuestion.media_material_url.startsWith('media/')) {
       return `${apiBaseUrl}/media_material/${mainQuestion.media_material_url}`
@@ -299,7 +322,6 @@ const getMediaUrl = (mainQuestion: any): string => {
     
     // 如果是其他相对路径（如 /xxx.mp3），添加 /media_material/media/ 前缀
     if (mainQuestion.media_material_url.startsWith('/')) {
-      // 检查是否已经包含 media_material
       if (!mainQuestion.media_material_url.includes('media_material')) {
         return `${apiBaseUrl}/media_material/media${mainQuestion.media_material_url}`
       } else {
@@ -307,7 +329,7 @@ const getMediaUrl = (mainQuestion: any): string => {
       }
     }
     
-    // 如果是文件名（如 xxx.mp3），添加完整路径
+    // 如果是纯文件名（如 xxx.mp3），添加完整路径
     return `${apiBaseUrl}/media_material/media/${mainQuestion.media_material_url}`
   }
   
@@ -552,13 +574,47 @@ const formatTime = (seconds: number): string => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 }
 
+const displayRemainingTime = computed(() => {
+  if (countdownSeconds.value !== null) return countdownSeconds.value
+  return pageRecord.value?.remaining_time ?? null
+})
+
 const timeLeftType = computed(() => {
-  if (!pageRecord.value?.remaining_time) return 'info'
-  const time = pageRecord.value.remaining_time
+  const time = displayRemainingTime.value
+  if (time == null || time <= 0) return 'info'
   if (time <= 300) return 'danger' // 5分钟
   if (time <= 600) return 'warning' // 10分钟
   return 'success'
 })
+
+const startCountdown = () => {
+  stopCountdown()
+  const raw = pageRecord.value?.remaining_time
+  if (raw == null || raw <= 0) return
+  countdownSeconds.value = Math.floor(Number(raw))
+  countdownTimer = setInterval(() => {
+    if (countdownSeconds.value == null || countdownSeconds.value <= 0) {
+      stopCountdown()
+      ElMessage.warning('时间到，请保存或提交')
+      return
+    }
+    countdownSeconds.value!--
+  }, 1000)
+}
+
+const stopCountdown = () => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+}
+
+const getCurrentRemainingTime = (): number | undefined => {
+  if (countdownSeconds.value !== null) return countdownSeconds.value
+  const raw = pageRecord.value?.remaining_time
+  if (raw != null && raw > 0) return Math.floor(Number(raw))
+  return undefined
+}
 
 // 答案变化
 const onAnswerChange = (subQuestionId: number) => {
@@ -585,7 +641,7 @@ const requestAIScoring = async (subQuestion: any) => {
       transcript: mainQuestion?.media_material?.transcript || ''
     })
 
-    scoringResults.value[subQuestion.id] = response.data.data
+    scoringResults.value[subQuestion.id] = response
     ElMessage.success('AI评分完成')
   } catch (error: any) {
     console.error('AI评分失败', error)
@@ -650,7 +706,8 @@ const savePage = async () => {
       }
     }
 
-    await saveAnswers(pageRecord.value.id, answerList)
+    const remaining = getCurrentRemainingTime()
+    await saveAnswers(pageRecord.value.id, answerList, remaining)
     ElMessage.success('答案已保存')
   } catch (error: any) {
     console.error('保存失败', error)
@@ -660,8 +717,19 @@ const savePage = async () => {
   }
 }
 
+// 上一页
+const prevPage = async () => {
+  stopCountdown()
+  await savePage()
+  if (currentPageOrder.value > 0) {
+    currentPageOrder.value--
+    await loadPage()
+  }
+}
+
 // 下一页
 const nextPage = async () => {
+  stopCountdown()
   // 先保存当前页
   await savePage()
 
@@ -676,12 +744,16 @@ const handleSubmit = async () => {
   if (!pageRecord.value) return
 
   try {
-    await ElMessageBox.confirm('确定要提交吗？提交后将无法修改答案，并立即显示得分与正确答案。', '提交确认', {
+    const confirmMsg = isModifyMode.value
+      ? '确定要重新提交吗？修改后的答案将覆盖原有答案。'
+      : '确定要提交吗？提交后将无法修改答案，并立即显示得分与正确答案。'
+    await ElMessageBox.confirm(confirmMsg, '提交确认', {
       confirmButtonText: '确定提交',
       cancelButtonText: '取消',
       type: 'warning'
     })
 
+    stopCountdown()
     // 先保存当前页
     await savePage()
 
@@ -710,17 +782,43 @@ const loadPage = async () => {
     return
   }
 
+  // 支持从结果页「查看答题详情」跳转时指定页面
+  const pageFromQuery = route.query.page
+  if (pageFromQuery) {
+    const p = parseInt(String(pageFromQuery), 10)
+    if (!isNaN(p) && p >= 1) {
+      currentPageOrder.value = p - 1
+    }
+  }
+
   loading.value = true
   try {
-    // 已提交则直接进入结果页，不可再作答
-    try {
-      const res = await getExamResult(practiceId)
-      if (res && res.submitted) {
+    // 已提交则直接进入结果页，不可再作答（修改模式除外）
+    if (!isModifyMode.value) {
+      try {
+        const res = await getExamResult(practiceId)
+        if (res && res.submitted) {
+          router.replace(`/practice/${practiceId}/result`)
+          return
+        }
+      } catch {
+        // 无记录或未提交，继续答题流程
+      }
+    } else {
+      // 修改模式：检查是否允许修改
+      try {
+        const res = await getExamResult(practiceId)
+        const canModify = res?.page_records?.some((p: any) => p.can_modify)
+        if (!canModify) {
+          ElMessage.warning('该练习不允许修改答案')
+          router.replace(`/practice/${practiceId}/result`)
+          return
+        }
+      } catch {
+        ElMessage.error('无法加载练习结果')
         router.replace(`/practice/${practiceId}/result`)
         return
       }
-    } catch {
-      // 无记录或未提交，继续答题流程
     }
 
     // 获取单元信息
@@ -737,6 +835,11 @@ const loadPage = async () => {
       ElMessage.error('该练习暂无页面')
       router.push('/practice/list')
       return
+    }
+
+    // 确保当前页序号在有效范围内
+    if (currentPageOrder.value < 0 || currentPageOrder.value >= pages.value.length) {
+      currentPageOrder.value = 0
     }
 
     // 获取当前页面
@@ -783,6 +886,9 @@ const loadPage = async () => {
         }
       }
     }
+
+    // 启动倒计时（有剩余时间时）
+    startCountdown()
   } catch (error: any) {
     console.error('加载失败', error)
     ElMessage.error(error.message || '加载失败')
@@ -795,8 +901,9 @@ onMounted(() => {
   loadPage()
 })
 
-// 页面卸载前保存
+// 页面卸载前保存并停止倒计时
 onBeforeUnmount(() => {
+  stopCountdown()
   savePage()
 })
 </script>
@@ -870,6 +977,21 @@ onBeforeUnmount(() => {
 
 .practice-content {
   margin-top: 20px;
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.page-media-column {
+  flex-shrink: 0;
+  width: 360px;
+  position: sticky;
+  top: 20px;
+}
+
+.questions-column {
+  flex: 1;
+  min-width: 0;
 }
 
 .main-question {

@@ -52,7 +52,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">{{ statistics.trend }}</div>
-            <div class="stat-label">进步趋势</div>
+            <div class="stat-label">进步趋势（暂不统计）</div>
           </div>
         </div>
       </div>
@@ -272,13 +272,22 @@ const loadStatistics = async () => {
     })
     const completedRecords = records.filter((r: ExamRecord) => r.status === 'completed' && r.total_score != null)
     const averageScore = completedRecords.length > 0
-      ? completedRecords.reduce((sum: number, r: ExamRecord) => sum + (r.total_score || 0), 0) / completedRecords.length
+      ? completedRecords.reduce((sum: number, r: ExamRecord) => sum + (parseFloat(String(r.total_score)) || 0), 0) / completedRecords.length
       : 0
+    // 学习时长：本周已完成记录的总时长（开始到提交的分钟数之和）
+    const studyMinutes = completedThisWeek.reduce((sum: number, r: ExamRecord) => {
+      const start = r.start_time ? new Date(r.start_time).getTime() : 0
+      const end = r.submit_time ? new Date(r.submit_time).getTime() : 0
+      return sum + (end > start ? Math.round((end - start) / 60000) : 0)
+    }, 0)
+    const studyHours = Math.floor(studyMinutes / 60)
+    const studyMins = studyMinutes % 60
+    const studyTimeStr = studyHours > 0 ? `${studyHours}h${studyMins}min` : `${studyMins}min`
     statistics.value = {
       completedCount: completedThisWeek.length,
       averageScore: Math.round(averageScore * 10) / 10,
-      studyTime: `${completedRecords.length}h`,
-      trend: completedRecords.length > 0 ? '+10%' : '0%'
+      studyTime: studyTimeStr,
+      trend: '—'
     }
     history.value = completedRecords
       .sort((a: ExamRecord, b: ExamRecord) => (b.submit_time || '').localeCompare(a.submit_time || ''))
@@ -288,7 +297,7 @@ const loadStatistics = async () => {
         unitId: r.unit_id,
         name: r.unit_name || `练习 ${r.unit_id}`,
         completedAt: r.submit_time || '',
-        score: r.total_score || 0
+        score: parseFloat(String(r.total_score)) || 0
       }))
   } catch (error) {
     console.error('加载统计数据失败', error)

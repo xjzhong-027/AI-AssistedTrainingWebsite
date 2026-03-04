@@ -38,6 +38,23 @@
             :rows="6"
             placeholder="选填。填写后 AI 提示可结合材料给出具体词汇与逻辑提示"
           />
+          <div class="ai-actions">
+            <el-button
+              type="success"
+              :loading="transcribing"
+              @click="handleTranscribe"
+            >
+              语音识别（提取 Transcript）
+            </el-button>
+            <el-button
+              type="primary"
+              :loading="analyzing"
+              :disabled="!form.transcript?.trim()"
+              @click="handleAnalyze"
+            >
+              AI 智能分析素材
+            </el-button>
+          </div>
         </el-form-item>
 
         <el-form-item label="媒体文件" prop="media_url">
@@ -85,13 +102,15 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
-import { createMediaMaterial, uploadMediaFile, uploadMaterialImage } from '@/api/content'
+import { createMediaMaterial, uploadMediaFile, uploadMaterialImage, transcribeMedia, analyzeMaterial } from '@/api/content'
 
 const router = useRouter()
 const loading = ref(false)
 const submitting = ref(false)
 const uploadingMedia = ref(false)
 const uploadingImage = ref(false)
+const transcribing = ref(false)
+const analyzing = ref(false)
 const formRef = ref<FormInstance>()
 
 const form = reactive({
@@ -119,6 +138,49 @@ const handleUploadMedia = async (options: UploadRequestOptions) => {
     ElMessage.error(e?.message || '媒体文件上传失败')
   } finally {
     uploadingMedia.value = false
+  }
+}
+
+const handleTranscribe = () => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'audio/*,video/*,.mp3,.mp4,.wav,.m4a,.webm'
+  input.onchange = async (e: Event) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    transcribing.value = true
+    try {
+      const res = await transcribeMedia(file)
+      form.transcript = res.transcript || ''
+      form.media_url = res.media_url || ''
+      ElMessage.success('语音识别完成')
+    } catch (err: any) {
+      ElMessage.error(err?.message || '语音识别失败')
+    } finally {
+      transcribing.value = false
+    }
+  }
+  input.click()
+}
+
+const handleAnalyze = async () => {
+  const t = form.transcript?.trim()
+  if (!t) {
+    ElMessage.warning('请先填写 transcript 或使用语音识别')
+    return
+  }
+  analyzing.value = true
+  try {
+    const res = await analyzeMaterial(t)
+    if (res.title) form.title = res.title
+    if (res.theme) form.theme = res.theme
+    if (res.abstract) form.abstract = res.abstract
+    if (res.keywords) form.keywords = res.keywords
+    ElMessage.success('AI 分析完成')
+  } catch (err: any) {
+    ElMessage.error(err?.message || 'AI 分析失败')
+  } finally {
+    analyzing.value = false
   }
 }
 
@@ -183,5 +245,10 @@ onMounted(() => {})
   font-size: 12px;
   color: #67c23a;
   margin-top: 6px;
+}
+.ai-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
 }
 </style>

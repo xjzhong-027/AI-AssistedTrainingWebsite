@@ -63,9 +63,55 @@
         </el-form-item>
       </el-form>
 
+      <!-- 主观题表单（简答题、理解题、总结题） -->
+      <el-form
+        v-else-if="type === 'comprehension'"
+        :model="formComprehension"
+        :rules="rulesComprehension"
+        ref="formComprehensionRef"
+        label-width="140px"
+        class="edit-form"
+      >
+        <el-form-item label="大题题干" prop="question_text">
+          <el-input
+            v-model="formComprehension.question_text"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入听录音/阅读后的题目说明，如：听录音后回答问题、总结主旨大意"
+          />
+        </el-form-item>
+        <el-form-item label="最多播放次数">
+          <el-input-number v-model="formComprehension.maximum_play" :min="0" :max="99" />
+        </el-form-item>
+        <el-divider>小题 1</el-divider>
+        <el-form-item label="小题题干" prop="sub_question_text">
+          <el-input
+            v-model="formComprehension.sub_question_text"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入问题内容，如：请总结本文主旨、请简要回答"
+          />
+        </el-form-item>
+        <el-form-item label="参考答案" prop="answer">
+          <el-input
+            v-model="formComprehension.answer"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入参考答案供 AI 评分参考（学生不可见）"
+          />
+        </el-form-item>
+        <el-form-item label="小题分数">
+          <el-input-number v-model="formComprehension.score" :min="0" :max="100" :step="0.5" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSubmitComprehension" :loading="submitting">创建题目</el-button>
+          <el-button @click="goBack">取消</el-button>
+        </el-form-item>
+      </el-form>
+
       <!-- 连线题/改错题：暂保留占位，可后续扩展 -->
       <div v-else class="placeholder-content">
-        <p><strong>{{ typeLabel }}</strong> 新建功能已支持选择题，请先使用「选择题」添加题目。</p>
+        <p><strong>{{ typeLabel }}</strong> 新建功能已支持选择题和主观题，请先使用「选择题」或「主观题」添加题目。</p>
         <p class="desc">连线题、改错题的表单与 API 已就绪，如需在页面上直接新建可后续扩展。</p>
         <el-button type="primary" @click="goBack">返回题库</el-button>
       </div>
@@ -86,6 +132,21 @@ const route = useRoute()
 const loading = ref(false)
 const submitting = ref(false)
 const formRef = ref<FormInstance>()
+const formComprehensionRef = ref<FormInstance>()
+
+const formComprehension = reactive({
+  question_text: '',
+  maximum_play: 3,
+  sub_question_text: '',
+  answer: '',
+  score: 5
+})
+
+const rulesComprehension: FormRules = {
+  question_text: [{ required: true, message: '请输入大题题干', trigger: 'blur' }],
+  sub_question_text: [{ required: true, message: '请输入小题题干', trigger: 'blur' }],
+  answer: [{ required: true, message: '请输入参考答案', trigger: 'blur' }]
+}
 
 const type = computed(() => (route.params.type as string) || 'choice')
 const materialId = computed(() => Number(route.params.materialId))
@@ -94,7 +155,8 @@ const typeLabel = computed(() => {
   const map: Record<string, string> = {
     choice: '选择题',
     matching: '连线题',
-    correction: '改错题'
+    correction: '改错题',
+    comprehension: '主观题'
   }
   return map[type.value] || type.value
 })
@@ -162,6 +224,38 @@ const handleSubmit = async () => {
     submitting.value = true
     try {
       await createMaterialQuestion(materialId.value, buildPayload())
+      ElMessage.success('题目创建成功')
+      router.push({ name: 'QuestionBank' })
+    } catch (e: any) {
+      ElMessage.error(e?.message || '创建失败')
+    } finally {
+      submitting.value = false
+    }
+  })
+}
+
+const handleSubmitComprehension = async () => {
+  if (!formComprehensionRef.value || type.value !== 'comprehension') return
+  await formComprehensionRef.value.validate(async (valid) => {
+    if (!valid) return
+    if (!materialId.value) {
+      ElMessage.error('素材 ID 无效')
+      return
+    }
+    submitting.value = true
+    try {
+      await createMaterialQuestion(materialId.value, {
+        question_type: 'comprehension',
+        question_text: formComprehension.question_text.trim(),
+        maximum_play: formComprehension.maximum_play,
+        sub_questions: [
+          {
+            question_text: formComprehension.sub_question_text.trim(),
+            answer: formComprehension.answer.trim(),
+            score: formComprehension.score
+          }
+        ]
+      })
       ElMessage.success('题目创建成功')
       router.push({ name: 'QuestionBank' })
     } catch (e: any) {

@@ -323,6 +323,150 @@ class MediaMaterialMediaView(APIView):
 
 
 @extend_schema(tags=['内容管理'])
+class TranscribeMediaView(APIView):
+    """
+    使用 Whisper 将音频/视频转为文字（transcript）。
+    POST /api/v1/content/transcribe-media/
+    Content-Type: multipart/form-data, file: 媒体文件
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='语音识别提取 transcript',
+        description='上传音频/视频文件，使用 Whisper 转为文字。需安装 openai-whisper 和 FFmpeg。',
+        request={'multipart/form-data': {'type': 'object', 'properties': {'file': {'type': 'string', 'format': 'binary'}}}},
+        responses={
+            200: {'description': '成功', 'content': {'application/json': {'example': {'code': 200, 'message': 'success', 'data': {'transcript': '...'}}}}},
+            400: {'description': '未选择文件'}, 500: {'description': '识别失败'}
+        }
+    )
+    def post(self, request):
+        from ELW.services.file_service_impl import FileServiceImpl
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Result.error(message='请选择媒体文件', code=400)
+        try:
+            file_path, file_url = FileServiceImpl.upload_media_file(file_obj, file_type='media')
+            relative = os.path.relpath(file_path, settings.MEDIA_ROOT).replace('\\', '/')
+            from AI_module.ASR_from_Whisper import ASR_from_Whisper
+            asr = ASR_from_Whisper()
+            transcript = asr.transcribe_audio(file_path, language='en')
+            return Result.success(data={'transcript': transcript, 'media_url': relative}, message='语音识别完成')
+        except ImportError as e:
+            return Result.error(message=f'请安装 openai-whisper: pip install openai-whisper', code=500)
+        except Exception as e:
+            return Result.error(message=f'语音识别失败: {str(e)}', code=500)
+
+
+@extend_schema(tags=['内容管理'])
+class AnalyzeMaterialView(APIView):
+    """
+    根据 transcript 解析 title、theme、abstract、keywords。
+    POST /api/v1/content/analyze-material/
+    Body: { "transcript": "..." }
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='AI 智能分析素材',
+        description='根据 transcript 解析标题、主题、摘要、关键词',
+        request={'application/json': {'schema': {'type': 'object', 'properties': {'transcript': {'type': 'string'}}, 'required': ['transcript']}}},
+        responses={
+            200: {'description': '成功', 'content': {'application/json': {'example': {'code': 200, 'data': {'title': '...', 'theme': '...', 'abstract': '...', 'keywords': '...'}}}}},
+            400: {'description': 'transcript 为空'}, 500: {'description': '分析失败'}
+        }
+    )
+    def post(self, request):
+        transcript = (request.data.get('transcript') or '').strip()
+        if not transcript:
+            return Result.error(message='请提供 transcript 内容', code=400)
+        try:
+            from AI_module.Get_from_AI import Get_from_AI
+            import json
+            import re
+            ai = Get_from_AI()
+            ai.set_prompt_variables(my_key='transcript', my_value=transcript, mode='update')
+            prompt = ai.get_prompt('素材分析')
+            raw = ai.get_answer(prompt)
+            # 解析 JSON 输出
+            match = re.search(r'\{[^{}]*\}', raw, re.DOTALL)
+            if match:
+                data = json.loads(match.group())
+            else:
+                data = json.loads(raw)
+            return Result.success(data={
+                'title': data.get('title', ''),
+                'theme': data.get('theme', ''),
+                'abstract': data.get('abstract', ''),
+                'keywords': data.get('keywords', ''),
+            }, message='分析完成')
+        except json.JSONDecodeError as e:
+            return Result.error(message=f'AI 返回格式解析失败: {str(e)}', code=500)
+        except Exception as e:
+            return Result.error(message=f'分析失败: {str(e)}', code=500)
+
+
+@extend_schema(tags=['内容管理'])
+class BatchImportChoicesView(APIView):
+    """
+    批量导入选择题到指定素材。
+    POST /api/v1/content/media-materials/{material_id}/batch-import-choices/
+    Body: { "questions": [{ "question_text", "option_A", "option_B", "option_C", "option_D", "correct_answer", "score" }] }
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='批量导入选择题',
+        description='按格式批量导入选择题到素材，每道题一个大题。Body: { "questions": [{ "question_text", "option_A", "option_B", "option_C", "option_D", "correct_answer", "score" }] }',
+        request={'application/json': {'schema': {'type': 'object', 'properties': {'questions': {'type': 'array', 'items': {'type': 'object'}}}, 'required': ['questions']}}},
+        responses={
+            200: {'description': '成功'}, 400: {'description': '参数错误'}, 404: {'description': '素材不存在'}
+        }
+    )
+    def post(self, request, material_id):
+        from ELW.models import MainQuestion, SubQuestion, ChoiceOption
+        material = ContentServiceImpl.get_media_material_by_id(material_id)
+        if not material:
+            return Result.not_found(message='素材不存在')
+        questions = request.data.get('questions') or []
+        if not questions:
+            return Result.error(message='请提供 questions 数组', code=400)
+        created = 0
+        for q in questions:
+            qt = (q.get('question_text') or '').strip()
+            oa, ob, oc, od = (q.get('option_A') or '').strip(), (q.get('option_B') or '').strip(), (q.get('option_C') or '').strip(), (q.get('option_D') or '').strip()
+            ans = (q.get('correct_answer') or 'A').strip().upper()
+            if ans not in ('A', 'B', 'C', 'D'):
+                ans = 'A'
+            sc = float(q.get('score', 1.0))
+            if not qt or not all([oa, ob, oc, od]):
+                continue
+            main = ContentServiceImpl.create_main_question(material_id, {
+                'question_type': 'choice',
+                'question_text': qt,
+                'maximum_play': 3,
+                'minimum_play': 0,
+                'no_media': False,
+            })
+            sub = ContentServiceImpl.create_sub_question(main.id, {
+                'question_text': qt,
+                'answer': ans,
+                'score': sc,
+                'tips': '',
+                'analysis': '',
+            })
+            for label, content in [('A', oa), ('B', ob), ('C', oc), ('D', od)]:
+                ChoiceOption.objects.create(
+                    sub_question=sub,
+                    option_label=label,
+                    option_content=content,
+                    is_answer=(label == ans),
+                )
+            created += 1
+        return Result.success(data={'count': created}, message=f'成功导入 {created} 道选择题')
+
+
+@extend_schema(tags=['内容管理'])
 class MainQuestionDetailView(APIView):
     """
     获取大题详情 API
@@ -431,14 +575,51 @@ class UnitListView(APIView):
     
     def get(self, request):
         """获取单元列表"""
+        from ELW.models import Unit, TimeManagement
+        from datetime import datetime, date
+        from Account.models import Students
+
         class_id = request.query_params.get('class_id')
-        
+        unit_type = request.query_params.get('unit_type')
+
         if class_id:
             units = ContentServiceImpl.get_units_by_class(int(class_id))
         else:
-            from ELW.models import Unit
             units = Unit.objects.all().order_by('order', 'id')
-        
+
+        if unit_type:
+            units = units.filter(type=unit_type)
+
+        # 学生端按开放周次过滤
+        student = None
+        if hasattr(request, 'user') and hasattr(request.user, 'students'):
+            try:
+                student = request.user.students
+            except Students.DoesNotExist:
+                pass
+        if not student and hasattr(request, 'user') and request.user:
+            student = Students.objects.filter(user=request.user).first()
+
+        if student and student.class_instance_id and unit_type == 'practice':
+            if not class_id:
+                units = units.filter(class_instance_id=student.class_instance_id)
+            class_obj = student.class_instance
+            start_date_str = getattr(class_obj, 'start_date', None) or ''
+            current_week = None
+            if start_date_str:
+                try:
+                    start_date = datetime.strptime(start_date_str[:10], '%Y-%m-%d').date()
+                    today = date.today()
+                    current_week = max(1, (today - start_date).days // 7 + 1)
+                except (ValueError, TypeError):
+                    pass
+            if current_week is not None:
+                unit_ids_future = set(
+                    TimeManagement.objects.filter(unit__in=units, week__gt=current_week)
+                    .values_list('unit_id', flat=True)
+                )
+                units = units.exclude(id__in=unit_ids_future)
+
         serializer = UnitSerializer(units, many=True)
         return Result.success(data=serializer.data, message='success')
     

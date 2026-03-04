@@ -7,7 +7,7 @@ to content (questions, media materials, units, etc.).
 from typing import Optional, List, Dict
 from common.services.content_service import ContentService
 from ELW.models import (
-    Unit, PaperPage, MainQuestion, SubQuestion, MediaMaterial, PageMainQuestion
+    Unit, PaperPage, MainQuestion, SubQuestion, MediaMaterial, PageMainQuestion, TimeManagement
 )
 
 
@@ -319,20 +319,28 @@ class ContentServiceImpl(ContentService):
             except OverdueDeductionRule.DoesNotExist:
                 pass
         
-        return Unit.objects.create(
+        unit = Unit.objects.create(
             class_instance=class_instance,
             order=data.get('order', 1),
             title=data.get('title', ''),
             type=data.get('type', 'practice'),
             overdue_rule=overdue_rule
         )
+        # 开放周次：0=始终开放，1-20=第N周起开放
+        week = data.get('week')
+        if week is not None:
+            TimeManagement.objects.create(unit=unit, week=int(week))
+        return unit
     
     @staticmethod
     def update_unit(unit_id: int, data: Dict) -> Optional[Unit]:
         """更新单元"""
         try:
             unit = Unit.objects.get(id=unit_id)
+            week = data.get('week')
             for key, value in data.items():
+                if key == 'week':
+                    continue
                 if key == 'overdue_rule_id':
                     from Query.models import OverdueDeductionRule
                     if value:
@@ -345,6 +353,14 @@ class ContentServiceImpl(ContentService):
                 elif hasattr(unit, key):
                     setattr(unit, key, value)
             unit.save()
+            # 开放周次
+            if week is not None:
+                time_mgmt = TimeManagement.objects.filter(unit=unit).first()
+                if time_mgmt:
+                    time_mgmt.week = int(week)
+                    time_mgmt.save()
+                else:
+                    TimeManagement.objects.create(unit=unit, week=int(week))
             return unit
         except Unit.DoesNotExist:
             return None

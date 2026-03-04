@@ -191,7 +191,7 @@ const loadUnits = async () => {
     units.value = data.map((unit: any) => ({
       id: unit.id,
       type: unit.unit_type || unit.type || 'exam',
-      title: unit.unit_name || unit.name || '未命名',
+      title: unit.title || unit.unit_name || unit.name || '未命名',
       class_id: unit.class_id
     }))
   } catch (error) {

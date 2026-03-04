@@ -106,6 +106,13 @@ export function getPagesByUnit(unitId: number): Promise<any[]> {
 }
 
 /**
+ * 根据 ID 获取试卷页面详情
+ */
+export function getPageById(pageId: number): Promise<any> {
+  return request.get(`/content/pages/${pageId}/`)
+}
+
+/**
  * 获取页面的所有大题（包含小题）
  */
 export function getPageQuestions(pageId: number): Promise<any[]> {
@@ -133,6 +140,7 @@ export function updateUnit(id: number, data: {
   title?: string
   class_id?: number
   order?: number
+  week?: number
 }): Promise<Unit> {
   return request.put(`/content/units/${id}/`, data)
 }
@@ -145,6 +153,7 @@ export function createUnit(data: {
   title: string
   type: 'exam' | 'practice'
   order?: number
+  week?: number
 }): Promise<Unit> {
   return request.post('/content/units/', data)
 }
@@ -154,6 +163,40 @@ export function createUnit(data: {
  */
 export function getMaterialQuestions(materialId: number): Promise<any[]> {
   return request.get(`/content/media-materials/${materialId}/questions/`)
+}
+
+/**
+ * 语音识别：上传媒体文件，提取 transcript（同时保存文件，返回 media_url）
+ */
+export function transcribeMedia(file: File): Promise<{ transcript: string; media_url: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/content/transcribe-media/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000
+  })
+}
+
+/**
+ * AI 智能分析素材：根据 transcript 解析 title、theme、abstract、keywords
+ */
+export function analyzeMaterial(transcript: string): Promise<{ title: string; theme: string; abstract: string; keywords: string }> {
+  return request.post('/content/analyze-material/', { transcript }, { timeout: 60000 })
+}
+
+/**
+ * 批量导入选择题
+ */
+export function batchImportChoices(materialId: number, questions: Array<{
+  question_text: string
+  option_A: string
+  option_B: string
+  option_C: string
+  option_D: string
+  correct_answer: string
+  score: number
+}>): Promise<{ count: number }> {
+  return request.post(`/content/media-materials/${materialId}/batch-import-choices/`, { questions })
 }
 
 /**
