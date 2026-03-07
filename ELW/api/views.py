@@ -652,6 +652,8 @@ class UnitListView(APIView):
     )
     def post(self, request):
         """创建单元（任务包）"""
+        import logging
+        logger = logging.getLogger(__name__)
         try:
             data = request.data
             class_id = data.get('class_id')
@@ -662,6 +664,7 @@ class UnitListView(APIView):
             serializer = UnitSerializer(unit)
             return Result.success(data=serializer.data, message='Unit created successfully')
         except Exception as e:
+            logger.exception('POST /api/v1/content/units/ 500: %s', e)
             return Result.error(message=f'Failed to create unit: {str(e)}', code=500)
 
 

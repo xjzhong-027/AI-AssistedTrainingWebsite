@@ -109,9 +109,82 @@
         </el-form-item>
       </el-form>
 
-      <!-- 连线题/改错题：暂保留占位，可后续扩展 -->
+      <!-- 填空题表单 -->
+      <div v-else-if="type === 'fill-blank'" class="fill-blank-form">
+        <div class="fill-blank-section">
+          <h3>填空题设置</h3>
+          <div class="text-input-section">
+            <h4>请输入完整文本：</h4>
+            <el-input
+              v-model="fillBlankForm.fullText"
+              type="textarea"
+              :rows="12"
+              placeholder="请输入一段完整的文本，然后双击需要删除的单词生成填空..."
+              class="text-input"
+              @input="processText"
+            />
+            <p class="tip">提示：双击文本中的单词将其标记为填空，再次双击标记的填空将恢复为原单词</p>
+          </div>
+        </div>
+
+        <div class="fill-blank-section">
+          <h3 class="section-title-green">生成的填空题：</h3>
+          <div class="generated-text-preview" v-if="processedWords.length > 0">
+            <span
+              v-for="(word, index) in processedWords"
+              :key="index"
+              :class="['word-item', { 'blank-word': word.isBlank }]"
+              @dblclick="toggleBlank(index)"
+            >
+              {{ word.isBlank ? '______' : word.content }}
+            </span>
+          </div>
+          <div v-else class="placeholder-box">
+            双击上方文本中的单词生成填空
+          </div>
+        </div>
+
+        <div class="fill-blank-section">
+          <h3 class="section-title-green">填空题答案：</h3>
+          <div class="answers-preview" v-if="blankAnswers.length > 0">
+            <ul>
+              <li v-for="(answer, index) in blankAnswers" :key="index">
+                <strong>填空 {{ index + 1 }}:</strong> {{ answer }} ({{ blankScores[index] || 1 }}分)
+              </li>
+            </ul>
+          </div>
+          <div v-else class="placeholder-box">
+            生成填空后，答案将自动显示在这里
+          </div>
+        </div>
+
+        <div class="fill-blank-section">
+          <el-form label-width="140px" class="score-form">
+            <el-form-item label="每个填空的分值：">
+              <el-input-number v-model="fillBlankForm.defaultScore" :min="0.5" :max="100" :step="0.5" />
+            </el-form-item>
+            <el-form-item label="大题题干：">
+              <el-input
+                v-model="fillBlankForm.questionText"
+                type="textarea"
+                :rows="2"
+                placeholder="请输入大题题干，如：阅读下面的短文，根据上下文填空"
+              />
+            </el-form-item>
+            <el-form-item label="最多播放次数：">
+              <el-input-number v-model="fillBlankForm.maximumPlay" :min="0" :max="99" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="handleSubmitFillBlank" :loading="submitting">创建题目</el-button>
+              <el-button @click="goBack">取消</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+      </div>
+
+      <!-- 连线题、改错题：暂保留占位，可后续扩展 -->
       <div v-else class="placeholder-content">
-        <p><strong>{{ typeLabel }}</strong> 新建功能已支持选择题和主观题，请先使用「选择题」或「主观题」添加题目。</p>
+        <p><strong>{{ typeLabel }}</strong> 新建功能已支持选择题、主观题和填空题，请先使用对应题型添加题目。</p>
         <p class="desc">连线题、改错题的表单与 API 已就绪，如需在页面上直接新建可后续扩展。</p>
         <el-button type="primary" @click="goBack">返回题库</el-button>
       </div>
@@ -156,6 +229,7 @@ const typeLabel = computed(() => {
     choice: '选择题',
     matching: '连线题',
     correction: '改错题',
+    'fill-blank': '填空题',
     comprehension: '主观题'
   }
   return map[type.value] || type.value
@@ -269,6 +343,100 @@ const handleSubmitComprehension = async () => {
 const goBack = () => {
   router.push({ name: 'QuestionBank' })
 }
+
+// 填空题
+interface WordItem {
+  content: string
+  isBlank: boolean
+}
+
+const fillBlankForm = reactive({
+  fullText: '',
+  questionText: '阅读下面的短文，根据上下文填空',
+  defaultScore: 1,
+  maximumPlay: 3
+})
+
+const processedWords = ref<WordItem[]>([])
+const blankAnswers = ref<string[]>([])
+const blankScores = ref<number[]>([])
+
+const processText = () => {
+  if (!fillBlankForm.fullText) {
+    processedWords.value = []
+    return
+  }
+  const words = fillBlankForm.fullText.split(/(\s+)/)
+  const newWords: WordItem[] = []
+  const oldBlanks = new Map<number, boolean>()
+  processedWords.value.forEach((word, index) => {
+    if (word.isBlank) oldBlanks.set(index, true)
+  })
+  words.forEach((word, index) => {
+    if (word.trim()) {
+      newWords.push({ content: word, isBlank: oldBlanks.has(index) || false })
+    } else if (word) {
+      newWords.push({ content: word, isBlank: false })
+    }
+  })
+  processedWords.value = newWords
+  updateAnswers()
+}
+
+const toggleBlank = (index: number) => {
+  processedWords.value[index].isBlank = !processedWords.value[index].isBlank
+  updateAnswers()
+}
+
+const updateAnswers = () => {
+  blankAnswers.value = []
+  blankScores.value = []
+  processedWords.value.forEach((word) => {
+    if (word.isBlank) {
+      blankAnswers.value.push(word.content.trim())
+      blankScores.value.push(fillBlankForm.defaultScore)
+    }
+  })
+}
+
+const handleSubmitFillBlank = async () => {
+  if (!fillBlankForm.fullText) {
+    ElMessage.warning('请输入完整文本')
+    return
+  }
+  if (blankAnswers.value.length === 0) {
+    ElMessage.warning('请至少标记一个填空')
+    return
+  }
+  if (!materialId.value) {
+    ElMessage.error('素材 ID 无效')
+    return
+  }
+  submitting.value = true
+  try {
+    const questionText = fillBlankForm.questionText || '阅读下面的短文，根据上下文填空'
+    const subQuestions = blankAnswers.value.map((answer, index) => ({
+      question_text: `填空 ${index + 1}`,
+      answer: answer,
+      score: blankScores.value[index] || fillBlankForm.defaultScore
+    }))
+    const processedText = processedWords.value
+      .map((word) => (word.isBlank ? '______' : word.content))
+      .join('')
+    await createMaterialQuestion(materialId.value, {
+      question_type: 'text',
+      question_text: `${questionText}\n\n${processedText}`,
+      maximum_play: fillBlankForm.maximumPlay,
+      sub_questions: subQuestions
+    })
+    ElMessage.success('题目创建成功')
+    router.push({ name: 'QuestionBank' })
+  } catch (e: any) {
+    ElMessage.error(e?.message || '创建失败')
+  } finally {
+    submitting.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -313,5 +481,99 @@ const goBack = () => {
   font-size: 14px;
   color: #909399;
   margin-bottom: 24px;
+}
+
+.fill-blank-form {
+  max-width: 900px;
+}
+
+.fill-blank-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.fill-blank-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #303133;
+}
+
+.section-title-green {
+  color: #67c23a !important;
+}
+
+.text-input-section h4 {
+  margin-bottom: 10px;
+  color: #606266;
+}
+
+.text-input {
+  margin-bottom: 10px;
+}
+
+.fill-blank-form .tip {
+  font-size: 12px;
+  color: #909399;
+  margin: 0;
+}
+
+.generated-text-preview {
+  background-color: #f0f9ff;
+  padding: 20px;
+  border-radius: 6px;
+  line-height: 2;
+  font-size: 16px;
+  border: 1px solid #d9ecff;
+}
+
+.word-item {
+  display: inline-block;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.word-item:hover {
+  background-color: #e6f7ff;
+}
+
+.blank-word {
+  color: #409eff;
+  font-weight: 600;
+  background-color: #ecf5ff !important;
+}
+
+.answers-preview {
+  background-color: #f0f9ff;
+  padding: 20px;
+  border-radius: 6px;
+  border: 1px solid #d9ecff;
+}
+
+.answers-preview ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.answers-preview li {
+  margin-bottom: 10px;
+  color: #303133;
+}
+
+.placeholder-box {
+  background-color: #f0f9ff;
+  padding: 40px;
+  border-radius: 6px;
+  text-align: center;
+  color: #909399;
+  font-size: 16px;
+  border: 1px solid #d9ecff;
+}
+
+.score-form {
+  margin-top: 20px;
 }
 </style>

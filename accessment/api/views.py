@@ -358,7 +358,9 @@ class ExamSubmitView(APIView):
         if not exam_record:
             return Result.not_found(message='Exam record not found')
         
-        # 提交考试：先逐页批改（选择题等直接出分，主观题走 AI 异步评分），再标记已提交
+        # 提交考试：先逐页批改（选择题/填空题等直接出分，主观题走 AI 异步评分），再标记已提交
+        import logging
+        logger = logging.getLogger(__name__)
         try:
             page_records = ExamServiceImpl.get_page_records_by_exam(exam_record.id)
             for pr in page_records:
@@ -370,6 +372,7 @@ class ExamSubmitView(APIView):
             serializer = StudentExamRecordSerializer(exam_record)
             return Result.success(data=serializer.data, message='Exam submitted successfully')
         except Exception as e:
+            logger.exception('POST /api/v1/exams/%s/submit/ 500: %s', exam_id, e)
             return Result.error(message=f'Failed to submit exam: {str(e)}', code=500)
     
     def _get_user_role(self, request):

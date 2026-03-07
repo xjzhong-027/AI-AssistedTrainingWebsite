@@ -306,11 +306,13 @@ class ExamServiceImpl(ExamService):
                 else:
                     score = 0
                 feedback.append(f"第{sub_question.id}题: 你的答案是 {student_answer.text}, 正确答案是 {correct_answer}")
-            elif question_type == 'blank':
+            elif question_type == 'blank' or question_type == 'text':
+                # text：教师端填空题（题干为短文+填空），与 blank 同样按文本比对给分
                 if student_answer.text == correct_answer:
                     score = sub_question.score
                 else:
                     score = 0
+                feedback.append(f"第{sub_question.id}题: 你的答案是 {student_answer.text}, 正确答案是 {correct_answer}")
             elif question_type == 'matching':
                 if student_answer.text == correct_answer:
                     score = sub_question.score

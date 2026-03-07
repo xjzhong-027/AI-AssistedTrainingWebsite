@@ -25,6 +25,10 @@
           <span class="type-label">改错题</span>
           <p class="type-desc">改错、填空等</p>
         </el-card>
+        <el-card class="type-card" shadow="hover" @click="goEdit('fill-blank')">
+          <span class="type-label">填空题</span>
+          <p class="type-desc">输入文本后双击单词生成填空</p>
+        </el-card>
         <el-card class="type-card" shadow="hover" @click="goEdit('comprehension')">
           <span class="type-label">主观题</span>
           <p class="type-desc">简答题、理解题、总结题（主旨题）</p>
