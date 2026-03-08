@@ -233,7 +233,7 @@ const playPulse = (event: MouseEvent) => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/duolingo-design-system.scss';
+@use '@/styles/duolingo-design-system.scss' as *;
 
 .design-system-demo {
   min-height: 100vh;

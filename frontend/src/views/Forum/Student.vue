@@ -1,7 +1,19 @@
 <template>
   <div class="forum-page">
-      <div class="container card">
-        <h1>论坛</h1>
+    <div class="forum-content">
+      <div class="forum-card card">
+        <!-- 返回首页按钮 -->
+        <button class="back-button" @click="goToDashboard">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          返回首页
+        </button>
+        
+        <div class="forum-header">
+          <h1 class="forum-title">论坛</h1>
+          <p class="forum-subtitle">参与讨论，分享学习心得</p>
+        </div>
         
         <!-- 搜索和筛选 -->
         <div class="filter-section">
@@ -85,6 +97,7 @@
         <AIWindow :show-grade-button="false" />
       </div>
     </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -192,79 +205,167 @@ const submitPost = async () => {
 onMounted(() => {
   loadPosts()
 })
+
+const goToDashboard = () => {
+  router.push('/dashboard')
+}
 </script>
 
 <style scoped>
 .forum-page {
-  width: 100%;
-  padding: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #FAFBFC 0%, #F5F7FA 100%);
+  padding: 24px 32px;
 }
 
-.container {
-  max-width: 1000px;
-  margin: 30px auto;
-  padding: 40px;
-}
-
-h1 {
-  text-align: center;
-  color: #1A1A1A;
-  margin-bottom: 30px;
-  font-size: 36px;
-  font-weight: 700;
-  position: relative;
-  z-index: 1;
-}
-
-h1::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 4px;
-  background: linear-gradient(90deg, #99B6B4, #D48982);
-  border-radius: 2px;
-}
-
-.filter-section {
-  margin-bottom: 30px;
+/* 页面内容 */
+.forum-content {
+  max-width: 100%;
+  margin: 0 auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
 }
 
+/* 论坛卡片 */
+.forum-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8F9FF 100%);
+  border-radius: 24px;
+  padding: 40px 50px;
+  margin-bottom: 32px;
+  box-shadow: 0 8px 32px rgba(140, 124, 240, 0.12);
+  position: relative;
+  overflow: hidden;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+}
+
+.forum-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #8C7CF0, #C6B9FF, #A8D5BA);
+}
+
+/* 返回按钮 */
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background-color: #FFFFFF;
+  color: #8C7CF0;
+  border: 2px solid #E8E4FF;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1);
+  margin-bottom: 24px;
+  align-self: flex-start;
+}
+
+.back-button:hover {
+  background-color: #E8E4FF;
+  border-color: #8C7CF0;
+  transform: translateX(-4px);
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.2);
+}
+
+/* 论坛标题 */
+.forum-header {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.forum-title {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1A202C;
+  margin: 0 0 12px 0;
+  background: linear-gradient(135deg, #8C7CF0 0%, #6B5DD3 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.forum-subtitle {
+  font-size: 16px;
+  color: #8B9BB4;
+  margin: 0;
+}
+
+/* 搜索和筛选 */
+.filter-section {
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 帖子列表 */
 .posts-list {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
 }
 
+/* 帖子卡片 */
 .post-card {
+  background: linear-gradient(135deg, #FAFBFC 0%, #FFFFFF 100%);
+  border-radius: 16px;
+  padding: 24px;
+  border: 2px solid #F0F2F5;
   cursor: pointer;
   transition: all 0.3s ease;
-  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.post-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #8C7CF0 0%, #C6B9FF 100%);
+  border-radius: 4px 0 0 4px;
 }
 
 .post-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+  border-color: #E8E4FF;
+  box-shadow: 0 8px 24px rgba(140, 124, 240, 0.15);
 }
 
 .post-card.selected {
-  background-color: #1A1A1A;
+  background: linear-gradient(135deg, #1A202C 0%, #2D3748 100%);
   color: #FFFFFF;
+  border-color: #4A5568;
+}
+
+.post-card.selected::before {
+  background: linear-gradient(180deg, #A8D5BA 0%, #8BC4A8 100%);
 }
 
 .post-card.selected * {
   color: #FFFFFF;
 }
 
+/* 帖子头部 */
 .post-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .post-header h3 {
@@ -272,38 +373,43 @@ h1::after {
   font-weight: 600;
   margin: 0;
   color: inherit;
+  flex: 1;
+  margin-right: 16px;
 }
 
+/* 帖子状态 */
 .post-status {
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 20px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .post-status.public {
-  background-color: rgba(153, 182, 180, 0.2);
-  color: #1A1A1A;
+  background: linear-gradient(135deg, #A8D5BA 0%, #8BC4A8 100%);
+  color: #FFFFFF;
 }
 
 .post-card.selected .post-status.public {
-  background-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #C6B9FF 0%, #8C7CF0 100%);
   color: #FFFFFF;
 }
 
 .post-status.private {
-  background-color: rgba(223, 177, 153, 0.2);
-  color: #1A1A1A;
-}
-
-.post-card.selected .post-status.private {
-  background-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #FFB74D 0%, #FFA726 100%);
   color: #FFFFFF;
 }
 
+.post-card.selected .post-status.private {
+  background: linear-gradient(135deg, #FFE082 0%, #FFB74D 100%);
+  color: #1A202C;
+}
+
+/* 帖子内容 */
 .post-content {
-  color: #666;
-  margin: 0 0 12px 0;
+  color: #4A5568;
+  margin: 0 0 16px 0;
   line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -315,11 +421,13 @@ h1::after {
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* 帖子底部 */
 .post-footer {
   display: flex;
-  gap: 20px;
-  font-size: 12px;
-  color: #999;
+  gap: 24px;
+  font-size: 14px;
+  color: #8B9BB4;
+  align-items: center;
 }
 
 .post-card.selected .post-footer {
@@ -330,12 +438,71 @@ h1::after {
 .post-time,
 .post-comments {
   color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
+/* 无帖子状态 */
 .no-posts {
   text-align: center;
-  padding: 40px;
-  color: #666;
+  padding: 60px 20px;
+  background: linear-gradient(135deg, #FAFBFC 0%, #F5F7FA 100%);
+  border-radius: 16px;
+  border: 2px dashed #E8E4FF;
+}
+
+.no-posts p {
+  font-size: 18px;
+  font-weight: 600;
+  color: #8B9BB4;
+  margin: 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .forum-page {
+    padding: 16px;
+  }
+  
+  .forum-card {
+    width: 95%;
+    padding: 30px 24px;
+  }
+  
+  .forum-title {
+    font-size: 28px;
+  }
+  
+  .filter-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-section .el-input {
+    width: 100% !important;
+  }
+  
+  .filter-section .el-button {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+  
+  .post-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .post-status {
+    align-self: flex-start;
+  }
+  
+  .post-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
 }
 </style>
 

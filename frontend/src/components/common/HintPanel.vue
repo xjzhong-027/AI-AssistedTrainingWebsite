@@ -46,7 +46,7 @@ const levelVariant = computed(() => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/duolingo-design-system.scss';
+@use '@/styles/duolingo-design-system.scss' as *;
 
 .hint-panel {
   margin-top: $duo-spacing-3;

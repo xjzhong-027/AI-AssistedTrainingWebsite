@@ -1,80 +1,146 @@
 <template>
   <div class="container">
-    <!-- 侧边栏 -->
-    <aside class="sidebar">
+    <!-- 顶部导航栏 - 仅在首页显示 -->
+    <header v-if="isDashboardPage" class="top-nav">
+      <div class="top-nav-content">
+        <div class="top-nav-left">
+          <span class="logo">AI-AssistedTrainingWebsite</span>
+        </div>
+        <div class="top-nav-right">
+          <router-link v-if="userStore.isStudent()" to="/profile/change-password" class="top-nav-item">
+            <svg class="top-nav-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span>修改密码</span>
+          </router-link>
+          <a @click="handleLogout" class="top-nav-item">
+            <svg class="top-nav-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span>退出登录</span>
+          </a>
+          <span class="user-name">{{ userStore.userInfo?.realName || '用户' }}</span>
+          <div class="user-avatar">
+            {{ userStore.userInfo?.realName?.charAt(0) || 'U' }}
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 侧边栏 - 仅在首页显示 -->
+    <aside v-if="isDashboardPage" class="sidebar">
       <ul>
         <!-- 学生端菜单 -->
         <template v-if="userStore.isStudent()">
           <li>
-            <router-link to="/dashboard">首页</router-link>
+            <router-link to="/dashboard" class="nav-item">
+              <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+              <span>首页</span>
+            </router-link>
           </li>
           <li>
-            <router-link to="/student/dashboard">个人信息</router-link>
+            <router-link to="/student/dashboard" class="nav-item">
+              <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+              <span>学习行为评估</span>
+            </router-link>
           </li>
           <li>
-            <router-link to="/practice/list">练习</router-link>
+            <router-link to="/practice/list" class="nav-item">
+              <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10,9 9,9 8,9"></polyline>
+              </svg>
+              <span>练习</span>
+            </router-link>
           </li>
           <li>
-            <router-link to="/exams">考试</router-link>
+            <router-link to="/exams" class="nav-item">
+              <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span>考试</span>
+            </router-link>
           </li>
           <li>
-            <router-link to="/forum">论坛</router-link>
+            <router-link to="/forum" class="nav-item">
+              <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>论坛</span>
+            </router-link>
           </li>
           <li>
-            <router-link to="/announcements">公告栏</router-link>
+            <router-link to="/announcements" class="nav-item">
+              <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span>公告栏</span>
+            </router-link>
           </li>
           <li>
-            <router-link to="/messages">消息箱</router-link>
-          </li>
-          <li>
-            <router-link to="/profile/change-password">修改密码</router-link>
+            <router-link to="/messages" class="nav-item">
+              <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              <span>消息箱</span>
+            </router-link>
           </li>
         </template>
         <!-- 教师端菜单 -->
         <template v-else-if="userStore.isTeacher()">
           <li>
-            <router-link to="/teacher/week-task">周任务</router-link>
+            <router-link to="/teacher/week-task" class="nav-item">周任务</router-link>
           </li>
           <li>
-            <router-link to="/teacher/question-bank">题库管理</router-link>
+            <router-link to="/teacher/question-bank" class="nav-item">题库管理</router-link>
           </li>
           <li>
-            <router-link to="/teacher/exam-bank">任务管理</router-link>
+            <router-link to="/teacher/exam-bank" class="nav-item">任务管理</router-link>
           </li>
           <li>
-            <router-link to="/teacher/course">课程管理</router-link>
+            <router-link to="/teacher/course" class="nav-item">课程管理</router-link>
           </li>
           <li>
-            <router-link to="/teacher/class">班级管理</router-link>
+            <router-link to="/teacher/class" class="nav-item">班级管理</router-link>
           </li>
           <li>
-            <router-link to="/teacher/forum">论坛管理</router-link>
+            <router-link to="/teacher/forum" class="nav-item">论坛管理</router-link>
           </li>
           <li>
-            <router-link to="/announce/announcements">公告管理</router-link>
+            <router-link to="/announce/announcements" class="nav-item">公告管理</router-link>
           </li>
           <li>
-            <router-link to="/announce/messages">消息箱</router-link>
+            <router-link to="/announce/messages" class="nav-item">消息箱</router-link>
           </li>
           <li>
-            <router-link to="/query">检索面板</router-link>
+            <router-link to="/query" class="nav-item">检索面板</router-link>
           </li>
           <li>
-            <router-link to="/teacher/index">附件下载</router-link>
-          </li>
-          <li>
-            <router-link to="/profile/change-password">修改密码</router-link>
+            <router-link to="/teacher/index" class="nav-item">附件下载</router-link>
           </li>
         </template>
-        <!-- 退出登录 -->
-        <li>
-          <a @click="handleLogout">退出登录</a>
-        </li>
       </ul>
     </aside>
 
     <!-- 内容区域 -->
-    <main class="content">
+    <main class="content" :class="{ 'has-sidebar': isDashboardPage }">
       <!-- 显示消息 -->
       <div v-if="messages.length > 0" class="messages">
         <div
@@ -95,13 +161,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+
+// 判断是否为首页
+const isDashboardPage = computed(() => {
+  return route.path === '/dashboard' || route.path === '/' || route.path === '/student/index'
+})
 
 // 消息提示（可以从 store 或全局状态管理获取）
 const messages = ref<Array<{ type: string; text: string }>>([])
@@ -128,18 +200,102 @@ const handleLogout = () => {
   position: relative;
 }
 
-/* 侧边栏样式 - 新设计 */
-.sidebar {
-  width: 180px;
+/* 顶部导航栏 */
+.top-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
   background-color: #FFFFFF;
-  padding: 20px;
+  z-index: 100;
+  border-bottom: 1px solid #F0F2F5;
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1);
+}
+
+.top-nav-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  padding: 0 32px;
+}
+
+.top-nav-left .logo {
+  font-size: 20px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.top-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.top-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #4A5568;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.top-nav-item:hover {
+  background-color: #F5F7FA;
+  color: #8C7CF0;
+}
+
+.top-nav-icon {
+  width: 20px;
+  height: 20px;
+  color: #8B9BB4;
+  flex-shrink: 0;
+}
+
+.top-nav-item:hover .top-nav-icon {
+  color: #8C7CF0;
+}
+
+.user-name {
+  font-size: 14px;
+  color: #4A5568;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* 侧边栏样式 - Modern Soft-Neo UI */
+.sidebar {
+  width: 240px;
+  background-color: #FFFFFF;
+  padding: 24px 16px;
   position: fixed;
   left: 0;
-  top: 0;
-  height: 100vh;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
-  border-right: 1px solid rgba(0, 0, 0, 0.1);
-  z-index: 100;
+  top: 64px;
+  height: calc(100vh - 64px);
+  box-shadow: 0 0 20px rgba(140, 124, 240, 0.1);
+  border-right: 1px solid #F0F2F5;
+  z-index: 99;
   overflow-y: auto;
   box-sizing: border-box;
 }
@@ -151,41 +307,68 @@ const handleLogout = () => {
 }
 
 .sidebar ul li {
-  margin-bottom: 15px;
+  margin-bottom: 4px;
 }
 
-.sidebar ul li a {
-  color: #1A1A1A;
+.nav-item {
+  color: #4A5568;
   text-decoration: none;
-  font-size: 16px;
-  display: block;
-  padding: 10px;
-  border-radius: 6px;
-  transition: all 0.3s ease;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 
-.sidebar ul li a:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: #1A1A1A;
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  color: #8B9BB4;
+  flex-shrink: 0;
 }
 
-/* 选中状态的侧边栏链接 - 深色背景 */
-.sidebar ul li a.router-link-active,
-.sidebar ul li a.router-link-exact-active {
-  background-color: #1A1A1A;
-  color: #FFFFFF;
+.nav-item:hover {
+  background-color: #F5F7FA;
+  color: #8C7CF0;
+}
+
+.nav-item:hover .nav-icon {
+  color: #8C7CF0;
+}
+
+/* 选中状态的侧边栏链接 - Modern Soft-Neo UI */
+.nav-item.router-link-active,
+.nav-item.router-link-exact-active {
+  background: linear-gradient(135deg, #E8E4FF, #F5F3FF);
+  color: #8C7CF0;
+}
+
+.nav-item.router-link-active .nav-icon,
+.nav-item.router-link-exact-active .nav-icon {
+  color: #8C7CF0;
 }
 
 /* 主要内容区域样式 */
 .content {
   flex-grow: 1;
-  padding: 30px;
-  background-color: #F9F8F3;
-  margin-left: 180px;
+  padding: 32px;
+  background-color: #FAFBFC;
+  margin-left: 0;
+  margin-top: 0;
   min-height: 100vh;
-  width: calc(100% - 180px);
+  width: 100%;
   box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.content.has-sidebar {
+  margin-left: 240px;
+  width: calc(100% - 240px);
+  margin-top: 64px;
 }
 
 /* 消息提示区域 */

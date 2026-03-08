@@ -31,7 +31,7 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/duolingo-design-system.scss';
+@use '@/styles/duolingo-design-system.scss' as *;
 
 .duo-badge {
   display: inline-flex;

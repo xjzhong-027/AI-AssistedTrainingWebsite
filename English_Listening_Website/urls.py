@@ -92,6 +92,8 @@ urlpatterns = [
         ])),
     ])),
     path('api/v1/content/', include([
+        path('transcribe-media/', content_views.TranscribeMediaView.as_view(), name='api_transcribe_media'),
+        path('analyze-material/', content_views.AnalyzeMaterialView.as_view(), name='api_analyze_material'),
         path('media-materials/', include([
             path('', content_views.MediaMaterialListView.as_view(), name='api_media_material_list'),
             path('upload-media/', content_views.MediaMaterialUploadMediaView.as_view(), name='api_media_material_upload_media'),
@@ -99,6 +101,7 @@ urlpatterns = [
             path('<int:material_id>/', content_views.MediaMaterialDetailView.as_view(), name='api_media_material_detail'),
             path('<int:material_id>/media/', content_views.MediaMaterialMediaView.as_view(), name='api_media_material_media'),
             path('<int:material_id>/questions/', content_views.MediaMaterialQuestionsView.as_view(), name='api_media_material_questions'),
+            path('<int:material_id>/batch-import-choices/', content_views.BatchImportChoicesView.as_view(), name='api_batch_import_choices'),
         ])),
         path('main-questions/', include([
             path('<int:question_id>/', content_views.MainQuestionDetailView.as_view(), name='api_main_question_detail'),

@@ -1,12 +1,15 @@
 <template>
   <div class="change-password-page">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <router-link to="/profile" class="back-link">← 返回个人中心</router-link>
-          <span>修改密码</span>
-        </div>
-      </template>
+    <div class="container card">
+      <!-- 返回首页按钮 -->
+      <button class="back-button" @click="goToDashboard">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        返回首页
+      </button>
+
+      <h1>修改密码</h1>
 
       <el-form
         ref="formRef"
@@ -44,13 +47,13 @@
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">
+          <el-button type="primary" :loading="submitting" @click="handleSubmit" class="submit-button">
             确定
           </el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button @click="handleReset" class="reset-button">重置</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -121,30 +124,154 @@ const handleSubmit = async () => {
     }
   })
 }
+
+const goToDashboard = () => {
+  router.push('/dashboard')
+}
 </script>
 
 <style scoped>
 .change-password-page {
-  padding: 20px;
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #FAFBFC 0%, #F5F7FA 100%);
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.card-header {
+.container {
+  width: 90%;
+  max-width: 600px;
+  padding: 32px;
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card {
+  background-color: #FFFFFF;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #8C7CF0, #C6B9FF);
+}
+
+.back-button {
   display: flex;
   align-items: center;
-  gap: 16px;
-}
-
-.back-link {
-  color: var(--el-color-primary);
-  text-decoration: none;
+  gap: 8px;
+  padding: 12px 20px;
+  background-color: #FFFFFF;
+  color: #8C7CF0;
+  border: 2px solid #E8E4FF;
+  border-radius: 12px;
   font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1);
+  margin-bottom: 24px;
+  align-self: flex-start;
 }
 
-.back-link:hover {
-  text-decoration: underline;
+.back-button:hover {
+  background-color: #E8E4FF;
+  border-color: #8C7CF0;
+  transform: translateX(-4px);
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.2);
+}
+
+h1 {
+  text-align: center;
+  color: #1A202C;
+  margin-bottom: 32px;
+  font-size: 28px;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
 }
 
 .password-form {
+  width: 100%;
   max-width: 400px;
+  align-self: center;
+}
+
+:deep(.el-form-item__label) {
+  color: #4A5568;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+:deep(.el-input__wrapper) {
+  border-radius: 12px;
+  border: 1px solid #F0F2F5;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-input__wrapper:hover) {
+  border-color: #E8E4FF;
+  box-shadow: 0 0 0 2px rgba(140, 124, 240, 0.1);
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  border-color: #8C7CF0;
+  box-shadow: 0 0 0 2px rgba(140, 124, 240, 0.2);
+}
+
+:deep(.el-button) {
+  border-radius: 12px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.submit-button {
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  margin-right: 12px;
+}
+
+.submit-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.3) !important;
+}
+
+.reset-button {
+  background-color: #FFFFFF !important;
+  border: 2px solid #E8E4FF !important;
+  color: #8C7CF0 !important;
+}
+
+.reset-button:hover {
+  background-color: #E8E4FF !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.1) !important;
+}
+
+:deep(.el-form-item) {
+  margin-bottom: 20px;
+}
+
+:deep(.el-form-item__error) {
+  font-size: 12px;
+  color: #F56C6C;
 }
 </style>

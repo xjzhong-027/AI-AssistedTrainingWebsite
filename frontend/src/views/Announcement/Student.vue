@@ -1,6 +1,13 @@
 <template>
   <div class="announcement-page">
-      <div class="container card">
+    <div class="container card">
+      <!-- 返回首页按钮 -->
+      <button class="back-button" @click="goToDashboard">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        返回首页
+      </button>
         <h1>公告栏</h1>
 
         <!-- 加载状态 -->
@@ -34,7 +41,7 @@
         </div>
 
         <!-- 分页 -->
-        <div class="pagination">
+        <div v-if="announcements.length > 0" class="pagination">
           <el-pagination
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
@@ -114,40 +121,116 @@ const loadAnnouncements = async () => {
 onMounted(() => {
   loadAnnouncements()
 })
+
+const goToDashboard = () => {
+  router.push('/dashboard')
+}
 </script>
 
 <style scoped>
 .announcement-page {
   width: 100%;
-  padding: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #FAFBFC 0%, #F5F7FA 100%);
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background-color: #FFFFFF;
+  color: #8C7CF0;
+  border: 2px solid #E8E4FF;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1);
+  margin-bottom: 24px;
+  align-self: flex-start;
+}
+
+.back-button:hover {
+  background-color: #E8E4FF;
+  border-color: #8C7CF0;
+  transform: translateX(-4px);
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.2);
 }
 
 .container {
-  max-width: 1000px;
-  margin: 30px auto;
-  padding: 40px;
+  width: 90%;
+  padding: 32px;
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card {
+  background-color: #FFFFFF;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
+  position: relative;
+  overflow: hidden;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #8C7CF0, #C6B9FF);
 }
 
 h1 {
   text-align: center;
-  color: #1A1A1A;
-  margin-bottom: 30px;
-  font-size: 36px;
+  color: #1A202C;
+  margin-bottom: 32px;
+  font-size: 28px;
   font-weight: 700;
   position: relative;
   z-index: 1;
 }
 
-h1::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 4px;
-  background: linear-gradient(90deg, #99B6B4, #D48982);
-  border-radius: 2px;
+.no-announcements {
+  text-align: center;
+  padding: 60px 20px;
+  color: #8B9BB4;
+}
+
+.pagination {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+  border-top: 1px solid #F0F2F5;
+}
+
+:deep(.el-pagination.is-background .el-pager li:not(.disabled).active) {
+  background-color: #8C7CF0;
+  color: #FFFFFF;
+}
+
+:deep(.el-pagination__sizes .el-input .el-input__inner) {
+  border-color: #F0F2F5;
+  border-radius: 8px;
+}
+
+:deep(.el-pagination__sizes .el-input .el-input__inner:hover) {
+  border-color: #8C7CF0;
+}
+
+:deep(.el-pagination button:hover:not(:disabled)) {
+  color: #8C7CF0;
 }
 
 .announcements-list {
@@ -157,30 +240,30 @@ h1::after {
 }
 
 .announcement-item {
-  background-color: rgba(186, 207, 206, 0.1);
-  padding: 18px 20px;
+  background-color: #FAFBFC;
+  padding: 20px;
   border-radius: 12px;
-  border: 1px solid #BACFCE;
-  border-left: 4px solid #99B6B4;
+  border: 1px solid #F0F2F5;
   transition: all 0.3s ease;
   cursor: pointer;
+  margin-bottom: 12px;
 }
 
 .announcement-item:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(140, 124, 240, 0.12);
   transform: translateY(-3px);
-  background-color: rgba(186, 207, 206, 0.15);
-  border-left-color: #D48982;
+  background-color: #F5F7FA;
+  border-color: #E8E4FF;
 }
 
 .announcement-item.selected {
-  background-color: #1A1A1A;
-  color: #FFFFFF;
-  border-left-color: #D48982;
+  background-color: #E8E4FF;
+  color: #8C7CF0;
+  border-color: #8C7CF0;
 }
 
 .announcement-item.selected * {
-  color: #FFFFFF;
+  color: #8C7CF0;
 }
 
 .announcement-header {
@@ -194,38 +277,42 @@ h1::after {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
-  color: inherit;
+  color: #1A202C;
+}
+
+.announcement-item.selected .announcement-header h3 {
+  color: #8C7CF0;
 }
 
 .announcement-status {
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 4px 12px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
 }
 
 .announcement-status.read {
-  background-color: rgba(153, 182, 180, 0.2);
-  color: #1A1A1A;
+  background-color: #E8F5E9;
+  color: #4CAF50;
 }
 
 .announcement-item.selected .announcement-status.read {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #FFFFFF;
+  background-color: rgba(140, 124, 240, 0.2);
+  color: #8C7CF0;
 }
 
 .announcement-status.unread {
-  background-color: rgba(212, 137, 130, 0.2);
-  color: #1A1A1A;
+  background-color: #FFF3E0;
+  color: #FF9800;
 }
 
 .announcement-item.selected .announcement-status.unread {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #FFFFFF;
+  background-color: rgba(140, 124, 240, 0.2);
+  color: #8C7CF0;
 }
 
 .announcement-content {
-  color: #666;
+  color: #4A5568;
   margin: 0 0 12px 0;
   line-height: 1.6;
   display: -webkit-box;
@@ -235,18 +322,18 @@ h1::after {
 }
 
 .announcement-item.selected .announcement-content {
-  color: rgba(255, 255, 255, 0.8);
+  color: #8C7CF0;
 }
 
 .announcement-footer {
   display: flex;
   gap: 20px;
   font-size: 12px;
-  color: #999;
+  color: #8B9BB4;
 }
 
 .announcement-item.selected .announcement-footer {
-  color: rgba(255, 255, 255, 0.7);
+  color: #8C7CF0;
 }
 
 .announcement-time,

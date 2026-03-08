@@ -442,7 +442,7 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/duolingo-design-system.scss';
+@use '@/styles/duolingo-design-system.scss' as *;
 
 .practice-take-enhanced {
   min-height: 100vh;

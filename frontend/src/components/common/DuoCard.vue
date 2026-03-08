@@ -65,7 +65,7 @@ const handleClick = (event: MouseEvent) => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/duolingo-design-system.scss';
+@use '@/styles/duolingo-design-system.scss' as *;
 
 .duo-card {
   @include duo-card-base;

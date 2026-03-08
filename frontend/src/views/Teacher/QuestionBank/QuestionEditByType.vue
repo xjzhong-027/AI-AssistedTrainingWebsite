@@ -126,7 +126,6 @@
             <p class="tip">提示：双击文本中的单词将其标记为填空，再次双击标记的填空将恢复为原单词</p>
           </div>
         </div>
-
         <div class="fill-blank-section">
           <h3 class="section-title-green">生成的填空题：</h3>
           <div class="generated-text-preview" v-if="processedWords.length > 0">
@@ -139,11 +138,8 @@
               {{ word.isBlank ? '______' : word.content }}
             </span>
           </div>
-          <div v-else class="placeholder-box">
-            双击上方文本中的单词生成填空
-          </div>
+          <div v-else class="placeholder-box">双击上方文本中的单词生成填空</div>
         </div>
-
         <div class="fill-blank-section">
           <h3 class="section-title-green">填空题答案：</h3>
           <div class="answers-preview" v-if="blankAnswers.length > 0">
@@ -153,11 +149,8 @@
               </li>
             </ul>
           </div>
-          <div v-else class="placeholder-box">
-            生成填空后，答案将自动显示在这里
-          </div>
+          <div v-else class="placeholder-box">生成填空后，答案将自动显示在这里</div>
         </div>
-
         <div class="fill-blank-section">
           <el-form label-width="140px" class="score-form">
             <el-form-item label="每个填空的分值：">
@@ -181,7 +174,6 @@
           </el-form>
         </div>
       </div>
-
       <!-- 连线题、改错题：暂保留占位，可后续扩展 -->
       <div v-else class="placeholder-content">
         <p><strong>{{ typeLabel }}</strong> 新建功能已支持选择题、主观题和填空题，请先使用对应题型添加题目。</p>
@@ -486,39 +478,32 @@ const handleSubmitFillBlank = async () => {
 .fill-blank-form {
   max-width: 900px;
 }
-
 .fill-blank-section {
   margin-bottom: 30px;
   padding: 20px;
   background-color: #f9f9f9;
   border-radius: 8px;
 }
-
 .fill-blank-section h3 {
   margin-top: 0;
   margin-bottom: 15px;
   color: #303133;
 }
-
 .section-title-green {
   color: #67c23a !important;
 }
-
 .text-input-section h4 {
   margin-bottom: 10px;
   color: #606266;
 }
-
 .text-input {
   margin-bottom: 10px;
 }
-
 .fill-blank-form .tip {
   font-size: 12px;
   color: #909399;
   margin: 0;
 }
-
 .generated-text-preview {
   background-color: #f0f9ff;
   padding: 20px;
@@ -527,7 +512,6 @@ const handleSubmitFillBlank = async () => {
   font-size: 16px;
   border: 1px solid #d9ecff;
 }
-
 .word-item {
   display: inline-block;
   padding: 2px 4px;
@@ -535,34 +519,28 @@ const handleSubmitFillBlank = async () => {
   cursor: pointer;
   transition: all 0.2s;
 }
-
 .word-item:hover {
   background-color: #e6f7ff;
 }
-
 .blank-word {
   color: #409eff;
   font-weight: 600;
   background-color: #ecf5ff !important;
 }
-
 .answers-preview {
   background-color: #f0f9ff;
   padding: 20px;
   border-radius: 6px;
   border: 1px solid #d9ecff;
 }
-
 .answers-preview ul {
   margin: 0;
   padding-left: 20px;
 }
-
 .answers-preview li {
   margin-bottom: 10px;
   color: #303133;
 }
-
 .placeholder-box {
   background-color: #f0f9ff;
   padding: 40px;
@@ -572,7 +550,6 @@ const handleSubmitFillBlank = async () => {
   font-size: 16px;
   border: 1px solid #d9ecff;
 }
-
 .score-form {
   margin-top: 20px;
 }

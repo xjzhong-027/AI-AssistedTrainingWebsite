@@ -2,6 +2,14 @@
   <div class="practice-page">
     <!-- 练习统计卡片 -->
     <div class="statistics-card card">
+      <!-- 返回首页按钮 -->
+      <button class="back-button" @click="goToDashboard">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        返回首页
+      </button>
+
       <div class="card-header">
         <h2 class="card-title">练习统计</h2>
         <span class="card-subtitle">本周学习概况</span>
@@ -43,18 +51,6 @@
             <div class="stat-label">学习时长</div>
           </div>
         </div>
-        <div class="stat-item">
-          <div class="stat-icon trend">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-              <polyline points="17 6 23 6 23 12"></polyline>
-            </svg>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ statistics.trend }}</div>
-            <div class="stat-label">进步趋势（暂不统计）</div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -93,7 +89,6 @@
           v-for="practice in paginatedPractices"
           :key="practice.id"
           class="task-item"
-          @click="handleStartPractice(practice.id)"
         >
           <div class="task-info">
             <h3 class="task-name">{{ practice.unit_name }}</h3>
@@ -108,7 +103,25 @@
             </span>
           </div>
           <div class="task-action">
-            <button class="start-button">
+            <button 
+              v-if="practice.status === 'completed'" 
+              class="result-button"
+              @click="viewPracticeResult(practice.id)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              查看练习结果
+            </button>
+            <button 
+              v-else 
+              class="start-button"
+              @click="handleStartPractice(practice.id)"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
@@ -245,13 +258,26 @@ const viewHistoryDetail = (item: { unitId: number }) => {
   router.push(`/practice/${item.unitId}/result`)
 }
 
+const viewPracticeResult = (unitId: number) => {
+  router.push(`/practice/${unitId}/result`)
+}
+
+const goToDashboard = () => {
+  router.push('/dashboard')
+}
+
 const loadPractices = async () => {
   loading.value = true
   try {
     const practices = await getAllPractices()
-    practiceList.value = practices.map((p: Unit & { status?: string }) => ({
+    console.log('API返回的练习数据:', practices)
+    const records = await getStudentPracticeRecords()
+    const completedUnitIds = new Set(records.filter((r: ExamRecord) => r.status === 'completed').map((r: ExamRecord) => r.unit_id))
+    
+    practiceList.value = practices.map((p: any) => ({
       ...p,
-      status: p.status || 'pending'
+      status: completedUnitIds.has(p.id) ? 'completed' : 'pending',
+      unit_name: p.unit_name || p.name || p.title || p.title_name || '未命名练习'
     }))
   } catch (error) {
     console.error('加载练习列表失败', error)
@@ -295,7 +321,7 @@ const loadStatistics = async () => {
       .map((r: ExamRecord) => ({
         id: r.id,
         unitId: r.unit_id,
-        name: r.unit_name || `练习 ${r.unit_id}`,
+        name: r.unit_name || r.name || '未命名练习',
         completedAt: r.submit_time || '',
         score: parseFloat(String(r.total_score)) || 0
       }))
@@ -311,15 +337,58 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.practice-page { width: 100%; }
+.practice-page { 
+  width: 100%; 
+  min-height: 100vh;
+  background: linear-gradient(180deg, #FAFBFC 0%, #F5F7FA 100%);
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 练习统计卡片 */
+.statistics-card {
+  width: 90%;
+  margin-bottom: 32px;
+}
+
+/* 返回按钮 */
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background-color: #FFFFFF;
+  color: #8C7CF0;
+  border: 2px solid #E8E4FF;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1);
+  margin-bottom: 24px;
+  align-self: flex-start;
+}
+
+.back-button:hover {
+  background-color: #E8E4FF;
+  border-color: #8C7CF0;
+  transform: translateX(-4px);
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.2);
+}
 .card {
   background-color: #FFFFFF;
   border-radius: 20px;
   padding: 24px;
   box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   position: relative;
   overflow: hidden;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
 }
 .card::before {
   content: '';
@@ -451,6 +520,22 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 .start-button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(140, 124, 240, 0.3); }
+
+.result-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #A8D5BA, #8BC4A8);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.result-button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(168, 213, 186, 0.3); }
 .pagination {
   display: flex;
   align-items: center;

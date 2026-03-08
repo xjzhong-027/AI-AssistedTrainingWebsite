@@ -1,4 +1,4 @@
-﻿# Database
+# Database
 PyMySQL==1.1.1
 
 # Document processing
@@ -15,6 +15,9 @@ djangorestframework>=3.14.0
 djangorestframework-simplejwt>=5.3.0
 django-cors-headers>=4.3.0
 drf-spectacular>=0.27.0  # OpenAPI 3.0 schema generation
+
+# AI 语音识别（可选，用于素材 transcript 提取）
+openai-whisper>=20231117
 
 # Other dependencies
 faker>=20.0.0
