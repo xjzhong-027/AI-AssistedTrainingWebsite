@@ -40,6 +40,7 @@ from accessment.api import views as exam_views
 from Query.api import views as query_views
 from common.api import scoring_views
 from common.api import hint_views
+from common.api import behavior_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 
@@ -183,6 +184,11 @@ urlpatterns = [
     path('api/v1/hints/', include([
         path('request/', hint_views.HintRequestView.as_view(), name='api_hint_request'),
         path('log/', hint_views.HintLogView.as_view(), name='api_hint_log'),
+    ])),
+    # 学生行为统计 API
+    path('api/v1/behavior/', include([
+        path('student/summary/', behavior_views.StudentBehaviorSummaryView.as_view(), name='api_behavior_student_summary'),
+        path('teacher/class-summary/', behavior_views.ClassBehaviorSummaryView.as_view(), name='api_behavior_class_summary'),
     ])),
 
     # 分发路由

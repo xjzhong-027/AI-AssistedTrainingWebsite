@@ -1,23 +1,30 @@
 <template>
   <div class="unit-edit">
-    <el-card v-loading="loading">
-      <template #header>
-        <div class="card-header">
-          <span>编辑任务</span>
-          <el-button @click="goBack">返回</el-button>
+    <div class="unit-edit-card">
+      <div class="card-header">
+        <div class="header-left">
+          <div class="header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </div>
+          <h2>编辑任务</h2>
         </div>
-      </template>
+        <el-button @click="goBack" class="secondary-button">返回</el-button>
+      </div>
 
       <el-form
         v-if="form"
         :model="form"
         :rules="rules"
         ref="formRef"
-        label-width="120px"
+        label-width="140px"
         label-position="right"
+        class="modern-form"
       >
         <el-form-item label="任务类型" prop="type">
-          <el-select v-model="form.type" placeholder="请选择任务类型" disabled>
+          <el-select v-model="form.type" placeholder="请选择任务类型" disabled class="modern-select">
             <el-option label="考试" value="exam" />
             <el-option label="练习" value="practice" />
           </el-select>
@@ -25,11 +32,11 @@
         </el-form-item>
 
         <el-form-item label="任务标题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入任务标题" maxlength="200" show-word-limit />
+          <el-input v-model="form.title" placeholder="请输入任务标题" maxlength="200" show-word-limit class="modern-input" />
         </el-form-item>
 
         <el-form-item label="所属班级" prop="class_id">
-          <el-select v-model="form.class_id" placeholder="请选择班级" clearable>
+          <el-select v-model="form.class_id" placeholder="请选择班级" clearable class="modern-select">
             <el-option
               v-for="classItem in classes"
               :key="classItem.id"
@@ -46,6 +53,7 @@
             :max="999"
             placeholder="请输入排序值"
             style="width: 100%"
+            class="modern-input-number"
           />
           <div class="form-tip">数字越小越靠前</div>
         </el-form-item>
@@ -57,16 +65,17 @@
             :max="20"
             placeholder="0 表示始终开放"
             style="width: 100%"
+            class="modern-input-number"
           />
           <div class="form-tip">0=始终开放；1-20=第N周起学生可见可做</div>
         </el-form-item>
 
-        <el-form-item>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">保存</el-button>
-          <el-button @click="goBack">取消</el-button>
+        <el-form-item class="form-actions">
+          <el-button type="primary" @click="handleSubmit" :loading="submitting" class="primary-button">保存</el-button>
+          <el-button @click="goBack" class="secondary-button">取消</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -186,21 +195,164 @@ onMounted(() => {
 
 <style scoped>
 .unit-edit {
-  padding: 20px;
-  background-color: #F9F8F3;
+  padding: 32px;
+  background-color: #FAFBFC;
   min-height: 100vh;
 }
 
+/* 卡片样式 */
+.unit-edit-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: none;
+}
+
+.unit-edit-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+}
+
+/* 头部样式 */
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #F0F2F5;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.3);
+  animation: float 3s ease-in-out infinite;
+}
+
+.card-header h2 {
+  margin: 0;
+  color: #1A202C;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* 按钮样式 */
+.primary-button {
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+}
+
+.primary-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(140, 124, 240, 0.4) !important;
+}
+
+.secondary-button {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #4A5568 !important;
+  border-radius: 12px !important;
+  padding: 10px 24px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.secondary-button:hover {
+  border-color: #8C7CF0 !important;
+  color: #8C7CF0 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.2) !important;
+}
+
+/* 表单样式 */
+.modern-form {
+  width: 100%;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 30px;
+  padding-top: 16px;
+  border-top: 1px solid #F0F2F5;
+  justify-content: flex-end;
+}
+
+/* 输入框样式 */
+.modern-input,
+.modern-select {
+  border-radius: 12px !important;
+  border: 1px solid #E2E8F0 !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-input:focus,
+.modern-select:focus {
+  border-color: #8C7CF0 !important;
+  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1) !important;
+}
+
+.modern-input-number {
+  border-radius: 12px !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+/* 提示信息样式 */
 .form-tip {
   font-size: 12px;
-  color: #909399;
+  color: #718096;
   margin-top: 4px;
+  padding-left: 8px;
+  border-left: 3px solid #C6B9FF;
+}
+
+/* 动画效果 */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* 加载状态 */
+:deep(.el-loading-spinner .path) {
+  stroke: #8C7CF0 !important;
+}
+
+/* 表单标签样式 */
+:deep(.el-form-item__label) {
+  color: #4A5568 !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
 }
 </style>
 

@@ -1,12 +1,34 @@
 <template>
   <div class="question-edit-by-type">
-    <el-card v-loading="loading">
-      <template #header>
-        <div class="card-header">
-          <span>{{ typeLabel }} - 新建</span>
-          <el-button @click="goBack">返回</el-button>
+    <!-- 顶部插画 -->
+    <div class="illustration-header">
+      <div class="illustration-content">
+        <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" fill="#E8E4FF" stroke="#8C7CF0"/>
+          <line x1="16" y1="2" x2="16" y2="6" stroke="#8C7CF0"/>
+          <line x1="8" y1="2" x2="8" y2="6" stroke="#8C7CF0"/>
+          <line x1="3" y1="10" x2="21" y2="10" stroke="#8C7CF0"/>
+          <path d="M9 14h6" stroke="#8C7CF0"/>
+          <path d="M9 18h6" stroke="#8C7CF0"/>
+          <circle cx="12" cy="14" r="1" fill="#FFB347"/>
+          <circle cx="12" cy="18" r="1" fill="#FFB347"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="question-edit-card">
+      <div class="card-header">
+        <div class="header-left">
+          <div class="header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </div>
+          <h2>{{ typeLabel }} - 新建</h2>
         </div>
-      </template>
+        <el-button @click="goBack" type="default" class="secondary-button">返回</el-button>
+      </div>
 
       <!-- 选择题表单 -->
       <el-form
@@ -15,7 +37,7 @@
         :rules="rules"
         ref="formRef"
         label-width="140px"
-        class="edit-form"
+        class="modern-form"
       >
         <el-form-item label="大题题干" prop="question_text">
           <el-input
@@ -23,18 +45,20 @@
             type="textarea"
             :rows="3"
             placeholder="请输入听录音/阅读后的题目说明，如：听录音选答案"
+            class="modern-textarea"
           />
         </el-form-item>
         <el-form-item label="最多播放次数">
-          <el-input-number v-model="form.maximum_play" :min="0" :max="99" />
+          <el-input-number v-model="form.maximum_play" :min="0" :max="99" class="modern-input-number" />
         </el-form-item>
-        <el-divider>小题 1</el-divider>
+        <el-divider class="modern-divider">小题 1</el-divider>
         <el-form-item label="小题题干" prop="sub_questions.0.question_text">
           <el-input
             v-model="form.sub_questions[0].question_text"
             type="textarea"
             :rows="2"
             placeholder="请输入小题内容"
+            class="modern-textarea"
           />
         </el-form-item>
         <el-form-item label="选项" required>
@@ -44,22 +68,22 @@
               <el-input
                 v-model="opt.option_content"
                 :placeholder="`选项 ${optLabels[idx]} 内容`"
-                class="option-input"
+                class="option-input modern-input"
               />
             </div>
           </div>
         </el-form-item>
         <el-form-item label="正确答案">
-          <el-radio-group v-model="form.sub_questions[0].answer">
-            <el-radio v-for="l in optLabels" :key="l" :label="l">{{ l }}</el-radio>
+          <el-radio-group v-model="form.sub_questions[0].answer" class="modern-radio-group">
+            <el-radio v-for="l in optLabels" :key="l" :label="l" class="modern-radio">{{ l }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="小题分数">
-          <el-input-number v-model="form.sub_questions[0].score" :min="0" :max="100" :step="0.5" />
+          <el-input-number v-model="form.sub_questions[0].score" :min="0" :max="100" :step="0.5" class="modern-input-number" />
         </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">创建题目</el-button>
-          <el-button @click="goBack">取消</el-button>
+        <el-form-item class="form-actions">
+          <el-button type="primary" @click="handleSubmit" :loading="submitting" class="primary-button">创建题目</el-button>
+          <el-button @click="goBack" class="secondary-button">取消</el-button>
         </el-form-item>
       </el-form>
 
@@ -70,7 +94,7 @@
         :rules="rulesComprehension"
         ref="formComprehensionRef"
         label-width="140px"
-        class="edit-form"
+        class="modern-form"
       >
         <el-form-item label="大题题干" prop="question_text">
           <el-input
@@ -78,18 +102,20 @@
             type="textarea"
             :rows="3"
             placeholder="请输入听录音/阅读后的题目说明，如：听录音后回答问题、总结主旨大意"
+            class="modern-textarea"
           />
         </el-form-item>
         <el-form-item label="最多播放次数">
-          <el-input-number v-model="formComprehension.maximum_play" :min="0" :max="99" />
+          <el-input-number v-model="formComprehension.maximum_play" :min="0" :max="99" class="modern-input-number" />
         </el-form-item>
-        <el-divider>小题 1</el-divider>
+        <el-divider class="modern-divider">小题 1</el-divider>
         <el-form-item label="小题题干" prop="sub_question_text">
           <el-input
             v-model="formComprehension.sub_question_text"
             type="textarea"
             :rows="3"
             placeholder="请输入问题内容，如：请总结本文主旨、请简要回答"
+            class="modern-textarea"
           />
         </el-form-item>
         <el-form-item label="参考答案" prop="answer">
@@ -98,6 +124,7 @@
             type="textarea"
             :rows="4"
             placeholder="请输入参考答案供 AI 评分参考（学生不可见）"
+            class="modern-textarea"
           />
         </el-form-item>
         <el-form-item label="小题分数">
@@ -433,124 +460,355 @@ const handleSubmitFillBlank = async () => {
 
 <style scoped>
 .question-edit-by-type {
-  padding: 20px;
+  padding: 32px;
+  background-color: #FAFBFC;
+  min-height: 100vh;
 }
+
+/* 插画样式 */
+.illustration-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 32px;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.illustration-content {
+  position: relative;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* 卡片样式 */
+.question-edit-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.question-edit-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+}
+
+/* 头部样式 */
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #F0F2F5;
 }
-.edit-form {
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.3);
+  animation: float 3s ease-in-out infinite;
+}
+
+.card-header h2 {
+  margin: 0;
+  color: #1A202C;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* 按钮样式 */
+.primary-button {
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+}
+
+.primary-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(140, 124, 240, 0.4) !important;
+}
+
+.secondary-button {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #4A5568 !important;
+  border-radius: 12px !important;
+  padding: 10px 24px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.secondary-button:hover {
+  border-color: #8C7CF0 !important;
+  color: #8C7CF0 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.2) !important;
+}
+
+/* 表单样式 */
+.modern-form {
   max-width: 720px;
 }
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #F0F2F5;
+}
+
+/* 输入框样式 */
+.modern-input,
+.modern-textarea {
+  border-radius: 12px !important;
+  border: 1px solid #E2E8F0 !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-input:focus,
+.modern-textarea:focus {
+  border-color: #8C7CF0 !important;
+  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1) !important;
+}
+
+.modern-input-number {
+  border-radius: 12px !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+/* 选项样式 */
 .options-list {
   width: 100%;
 }
+
 .option-row {
   display: flex;
   align-items: center;
   margin-bottom: 12px;
-  gap: 8px;
+  gap: 12px;
 }
+
 .option-label {
-  width: 28px;
+  width: 32px;
   flex-shrink: 0;
-  font-weight: 500;
+  font-weight: 600;
+  color: #4A5568;
 }
+
 .option-row .option-input {
   flex: 1;
   max-width: 400px;
 }
-.placeholder-content {
-  padding: 40px 20px;
-  text-align: center;
+
+/* 单选框样式 */
+.modern-radio-group {
+  display: flex;
+  gap: 20px;
 }
+
+.modern-radio {
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-radio:hover {
+  background: rgba(140, 124, 240, 0.1) !important;
+}
+
+/* 分割线样式 */
+.modern-divider {
+  margin: 24px 0 !important;
+  border-color: #F0F2F5 !important;
+}
+
+/* 占位符样式 */
+.placeholder-content {
+  padding: 60px 40px;
+  text-align: center;
+  background: rgba(140, 124, 240, 0.05);
+  border-radius: 16px;
+  border: 2px dashed #C6B9FF;
+}
+
 .placeholder-content p {
   margin-bottom: 16px;
-  color: #606266;
+  color: #4A5568;
+  font-size: 16px;
 }
+
 .placeholder-content .desc {
   font-size: 14px;
-  color: #909399;
+  color: #8B9BB4;
   margin-bottom: 24px;
 }
 
+/* 填空题样式 */
 .fill-blank-form {
   max-width: 900px;
 }
+
 .fill-blank-section {
   margin-bottom: 30px;
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
+  padding: 24px;
+  background: linear-gradient(135deg, #F8F5FF, #F0ECFF);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1);
 }
+
 .fill-blank-section h3 {
   margin-top: 0;
-  margin-bottom: 15px;
-  color: #303133;
+  margin-bottom: 20px;
+  color: #4A5568;
+  font-size: 16px;
+  font-weight: 600;
 }
+
 .section-title-green {
   color: #67c23a !important;
 }
+
 .text-input-section h4 {
-  margin-bottom: 10px;
-  color: #606266;
+  margin-bottom: 12px;
+  color: #4A5568;
+  font-size: 14px;
+  font-weight: 600;
 }
+
 .text-input {
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
+
 .fill-blank-form .tip {
   font-size: 12px;
-  color: #909399;
-  margin: 0;
+  color: #8B9BB4;
+  margin: 0 0 16px 0;
+  padding-left: 8px;
+  border-left: 3px solid #C6B9FF;
 }
+
 .generated-text-preview {
-  background-color: #f0f9ff;
-  padding: 20px;
-  border-radius: 6px;
+  background: #FFFFFF;
+  padding: 24px;
+  border-radius: 12px;
   line-height: 2;
   font-size: 16px;
-  border: 1px solid #d9ecff;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1);
 }
+
 .word-item {
   display: inline-block;
-  padding: 2px 4px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  margin: 0 2px;
 }
+
 .word-item:hover {
-  background-color: #e6f7ff;
+  background: rgba(140, 124, 240, 0.1);
+  transform: translateY(-1px);
 }
+
 .blank-word {
-  color: #409eff;
+  color: #8C7CF0;
   font-weight: 600;
-  background-color: #ecf5ff !important;
+  background: rgba(140, 124, 240, 0.1) !important;
+  border: 2px solid #C6B9FF;
 }
+
 .answers-preview {
-  background-color: #f0f9ff;
-  padding: 20px;
-  border-radius: 6px;
-  border: 1px solid #d9ecff;
+  background: #FFFFFF;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1);
 }
+
+.answers-preview h4 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #4A5568;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .answers-preview ul {
   margin: 0;
   padding-left: 20px;
 }
+
 .answers-preview li {
-  margin-bottom: 10px;
-  color: #303133;
+  margin-bottom: 12px;
+  color: #4A5568;
+  font-size: 14px;
 }
+
 .placeholder-box {
-  background-color: #f0f9ff;
-  padding: 40px;
-  border-radius: 6px;
+  background: linear-gradient(135deg, #F8F5FF, #F0ECFF);
+  padding: 60px;
+  border-radius: 16px;
   text-align: center;
-  color: #909399;
+  color: #8B9BB4;
   font-size: 16px;
-  border: 1px solid #d9ecff;
+  border: 2px dashed #C6B9FF;
 }
+
 .score-form {
-  margin-top: 20px;
+  margin-top: 24px;
+  padding: 20px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1);
+}
+
+/* 加载状态 */
+:deep(.el-loading-spinner .path) {
+  stroke: #8C7CF0 !important;
 }
 </style>

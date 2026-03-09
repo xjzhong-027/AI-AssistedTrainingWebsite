@@ -1,83 +1,97 @@
 <template>
   <div class="question-bank">
-    <div class="header">
-      <button @click="goHome">返回首页</button>
-      <h2>Question Management</h2>
-      <div class="header-actions">
-        <button @click="goToNewMaterial" class="btn-primary">新建媒体素材</button>
-        <button @click="goToNewTaskPackage">新建任务包</button>
+
+    <div class="question-bank-card">
+      <div class="card-header">
+        <div class="header-left">
+          <div class="header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7,10 12,15 17,10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </div>
+          <h2>题库管理</h2>
+        </div>
+        <div class="header-actions">
+          <el-button @click="goHome" type="default" class="secondary-button">返回首页</el-button>
+          <el-button @click="goToNewMaterial" type="primary" class="primary-button">新建媒体素材</el-button>
+          <el-button @click="goToNewTaskPackage" type="default" class="secondary-button">新建任务包</el-button>
+        </div>
       </div>
-    </div>
 
-    <h1 style="text-align: center">媒体素材列表</h1>
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Title</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading">
-            <td colspan="3" style="text-align: center">加载中...</td>
-          </tr>
-          <tr v-else-if="paginatedMaterials.length === 0">
-            <td colspan="3" style="text-align: center">暂无媒体素材</td>
-          </tr>
-          <tr v-else v-for="(material, index) in paginatedMaterials" :key="material.id">
-            <td>
-              <a @click="viewMaterialDetail(material.id)">{{ (currentPage - 1) * pageSize + index + 1 }}</a>
-            </td>
-            <td>
-              <a @click="viewMaterialDetail(material.id)">{{ material.title }}</a>
-            </td>
-            <td>
-              <button @click="addQuestion(material.id)" class="btn-add">添加题目</button>
-              &nbsp;&nbsp;
-              <button @click="deleteMaterial(material.id)" class="btn-delete">删除</button>
-              &nbsp;&nbsp;
-              <button @click="createPage(material.id)" class="btn-create">组卷</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      <h3 class="section-title">媒体素材列表</h3>
+      
+      <el-table :data="paginatedMaterials" style="width: 100%" v-loading="loading" class="modern-table">
+        <el-table-column prop="id" label="#" width="80" />
+        <el-table-column prop="title" label="标题" min-width="300">
+          <template #default="{ row }">
+            <a @click="viewMaterialDetail(row.id)" class="material-title">{{ row.title }}</a>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="300" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="addQuestion(row.id)" class="text-button">添加题目</el-button>
+            <el-button size="small" @click="createPage(row.id)" class="secondary-button small">组卷</el-button>
+            <el-button size="small" type="danger" @click="deleteMaterial(row.id)" class="danger-button small">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
 
-    <!-- 分页控件 -->
-    <div class="pagination" v-if="totalPages > 1">
-      <button v-if="currentPage > 1" @click="goToPage(1)">首页</button>
-      <button v-if="currentPage > 1" @click="goToPage(currentPage - 1)">上一页</button>
-      <span
-        v-for="num in pageRange"
-        :key="num"
-        :class="['page-number', { active: num === currentPage }]"
-        @click="goToPage(num)"
+      <!-- 分页控件 -->
+      <div class="pagination" v-if="totalPages > 1">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="materials.length"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          class="modern-pagination"
+        />
+      </div>
+
+      <!-- 空状态 -->
+      <div v-if="!loading && materials.length === 0" class="empty-state">
+        <div class="empty-illustration">
+          <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" fill="#E8E4FF" stroke="none"/>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="#8C7CF0"/>
+            <line x1="9" y1="9" x2="9.01" y2="9" stroke="#8C7CF0" stroke-width="2"/>
+            <line x1="15" y1="9" x2="15.01" y2="9" stroke="#8C7CF0" stroke-width="2"/>
+            <path d="M12 2v4" stroke="#C6B9FF"/>
+            <path d="M12 18v4" stroke="#C6B9FF"/>
+            <path d="M4.93 4.93l2.83 2.83" stroke="#C6B9FF"/>
+            <path d="M16.24 16.24l2.83 2.83" stroke="#C6B9FF"/>
+            <path d="M2 12h4" stroke="#C6B9FF"/>
+            <path d="M18 12h4" stroke="#C6B9FF"/>
+            <path d="M4.93 19.07l2.83-2.83" stroke="#C6B9FF"/>
+            <path d="M16.24 7.76l2.83-2.83" stroke="#C6B9FF"/>
+          </svg>
+        </div>
+        <p class="empty-text">暂无媒体素材</p>
+        <p class="empty-subtext">点击"新建媒体素材"开始创建您的第一个素材</p>
+      </div>
+
+      <!-- 媒体素材详情对话框 -->
+      <el-dialog
+        v-model="detailDialogVisible"
+        title="媒体素材详情"
+        width="800px"
+        :close-on-click-modal="false"
+        custom-class="modern-dialog"
       >
-        {{ num }}
-      </span>
-      <button v-if="currentPage < totalPages" @click="goToPage(currentPage + 1)">下一页</button>
-      <button v-if="currentPage < totalPages" @click="goToPage(totalPages)">尾页</button>
-    </div>
-
-    <!-- 媒体素材详情对话框 -->
-    <el-dialog
-      v-model="detailDialogVisible"
-      title="媒体素材详情"
-      width="800px"
-      :close-on-click-modal="false"
-    >
-      <div v-loading="detailLoading" class="material-detail">
-        <div v-if="currentMaterial" class="detail-content">
-          <div class="detail-item">
-            <span class="label">标题：</span>
-            <span class="value">{{ currentMaterial.title }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="label">关联题目数：</span>
-            <span class="value">{{ questionCount }} 道大题</span>
-          </div>
+        <div v-loading="detailLoading" class="material-detail">
+          <div v-if="currentMaterial" class="detail-content">
+            <div class="detail-item">
+              <span class="label">标题：</span>
+              <span class="value">{{ currentMaterial.title }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">关联题目数：</span>
+              <span class="value">{{ questionCount }} 道大题</span>
+            </div>
           <div v-if="currentMaterial.theme" class="detail-item">
             <span class="label">主题：</span>
             <span class="value">{{ currentMaterial.theme }}</span>
@@ -122,6 +136,7 @@
         <el-button type="danger" @click="handleDetailDelete">删除</el-button>
       </template>
     </el-dialog>
+    </div>
   </div>
 </template>
 
@@ -159,7 +174,7 @@ const paginatedMaterials = computed(() => {
 })
 
 const goHome = () => {
-  router.push('/teacher/index')
+  router.push('/teacher/dashboard')
 }
 
 const goToNewTaskPackage = () => {
@@ -247,6 +262,15 @@ const goToPage = (page: number) => {
   currentPage.value = page
 }
 
+const handleSizeChange = (size: number) => {
+  pageSize.value = size
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (current: number) => {
+  currentPage.value = current
+}
+
 const loadMaterials = async () => {
   loading.value = true
   try {
@@ -290,18 +314,98 @@ onMounted(() => {
 
 <style scoped>
 .question-bank {
-  padding: 20px;
-  background-color: #F9F8F3;
+  padding: 32px;
+  background-color: #FAFBFC;
   min-height: 100vh;
 }
 
-.header {
+/* 插画样式 */
+.illustration-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 32px;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.illustration-content {
+  position: relative;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* 卡片样式 */
+.question-bank-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.question-bank-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+}
+
+/* 头部样式 */
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #F0F2F5;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.3);
+  animation: float 3s ease-in-out infinite;
+}
+
+.card-header h2 {
+  margin: 0;
+  color: #1A202C;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .header-actions {
@@ -309,197 +413,195 @@ onMounted(() => {
   gap: 12px;
 }
 
-.header-actions .btn-primary {
-  background-color: #99B6B4;
-  color: #fff;
+/* 按钮样式 */
+.primary-button {
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  padding: 10px 20px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
 }
 
-.header-actions .btn-primary:hover {
-  background-color: #7A9E9C;
+.primary-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(140, 124, 240, 0.4) !important;
 }
 
-.header h2 {
-  margin: 0;
-  color: #333;
-  font-size: 24px;
+.secondary-button {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #4A5568 !important;
+  border-radius: 12px !important;
+  padding: 10px 20px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.secondary-button:hover {
+  border-color: #8C7CF0 !important;
+  color: #8C7CF0 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.2) !important;
+}
+
+.secondary-button.small {
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+}
+
+.text-button {
+  background: transparent !important;
+  border: none !important;
+  color: #8C7CF0 !important;
+  padding: 6px 12px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.text-button:hover {
+  background: rgba(140, 124, 240, 0.1) !important;
+  border-radius: 6px !important;
+}
+
+.danger-button {
+  background: linear-gradient(135deg, #F56565, #F8B7B7) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+}
+
+.danger-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4) !important;
+}
+
+/* 标题样式 */
+.section-title {
+  font-size: 16px;
   font-weight: 600;
+  color: #4A5568;
+  margin-bottom: 16px;
+  padding-left: 8px;
+  border-left: 4px solid #8C7CF0;
 }
 
-.header button {
-  padding: 10px 20px;
-  background-color: #E8ECA;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
+/* 表格样式 */
+.modern-table {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 10px rgba(140, 124, 240, 0.1) !important;
+  margin-bottom: 24px !important;
 }
 
-.header button:hover {
-  background-color: #D8D8F6;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+.modern-table th {
+  background: #F0F2F5 !important;
+  color: #4A5568 !important;
+  font-weight: 600 !important;
+  padding: 16px !important;
+  font-size: 14px !important;
 }
 
-h1 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 20px;
+.modern-table td {
+  padding: 16px !important;
+  font-size: 14px !important;
+  color: #4A5568 !important;
+  border-bottom: 1px solid #F0F2F5 !important;
 }
 
-.table-container {
-  overflow-x: auto;
-  margin-bottom: 20px;
-  background-color: #FFFFFF;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  position: relative;
-  overflow: hidden;
+.modern-table tr:hover {
+  background: #F5F7FA !important;
 }
 
-.table-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
-  z-index: 1;
+.material-title {
+  color: #8C7CF0 !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: #fff;
+.material-title:hover {
+  color: #6A5AE0 !important;
+  text-decoration: underline !important;
 }
 
-thead {
-  background-color: rgba(186, 207, 206, 0.2);
-}
-
-th,
-td {
-  padding: 12px 15px;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-th {
-  font-weight: 600;
-  color: #555;
-}
-
-tbody tr:hover {
-  background-color: rgba(186, 207, 206, 0.1);
-}
-
-tbody a {
-  color: #007bff;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-tbody a:hover {
-  text-decoration: underline;
-}
-
-.btn-delete,
-.btn-create {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.btn-delete {
-  background-color: #D48982;
-  color: #fff;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-}
-
-.btn-delete:hover {
-  background-color: #C07770;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn-create {
-  background-color: #99B6B4;
-  color: #fff;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-}
-
-.btn-create:hover {
-  background-color: #7A9E9C;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn-add {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  background-color: #E8D5B7;
-  color: #333;
-  transition: all 0.3s ease;
-}
-
-.btn-add:hover {
-  background-color: #D4C4A0;
-}
-
+/* 分页样式 */
 .pagination {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.modern-pagination {
+  --el-pagination-fill: #8C7CF0 !important;
+  --el-pagination-hover-fill: #C6B9FF !important;
+}
+
+/* 空状态样式 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin-top: 20px;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
 }
 
-.pagination button {
-  padding: 8px 16px;
-  background-color: #fff;
-  color: #333;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
+.empty-illustration {
+  margin-bottom: 24px;
+  animation: pulse 2s ease-in-out infinite;
 }
 
-.pagination button:hover {
-  background-color: #f0f0f0;
-  border-color: #E8ECA;
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
-.page-number {
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-}
-
-.page-number:hover {
-  background-color: #f0f0f0;
-}
-
-.page-number.active {
-  background-color: #1A1A1A;
-  color: #fff;
+.empty-text {
+  font-size: 18px;
+  color: #1A202C;
   font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.empty-subtext {
+  font-size: 14px;
+  color: #8B9BB4;
+  margin-bottom: 24px;
 }
 
 /* 详情对话框样式 */
+.modern-dialog {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
+.modern-dialog .el-dialog__header {
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+  color: #FFFFFF;
+  padding: 20px 24px;
+  margin: 0 !important;
+}
+
+.modern-dialog .el-dialog__title {
+  color: #FFFFFF !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+
+.modern-dialog .el-dialog__body {
+  padding: 24px;
+}
+
 .material-detail {
   min-height: 200px;
 }
@@ -553,6 +655,11 @@ tbody a:hover {
   margin-bottom: 10px;
   border-radius: 4px;
   border: 1px solid #e4e7ed;
+}
+
+/* 加载状态 */
+:deep(.el-loading-spinner .path) {
+  stroke: #8C7CF0 !important;
 }
 </style>
 

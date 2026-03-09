@@ -149,6 +149,8 @@ import { getStudentPracticeScores, getStudentPracticeRecords } from '@/api/pract
 import AIWindow from '@/components/common/AIWindow/index.vue'
 import { getUserById, changePassword } from '@/api/user'
 import type { PracticeScore, ExamRecord } from '@/api/practice'
+import { getStudentBehaviorSummary } from '@/api/behavior'
+import type { StudentBehaviorSummary } from '@/api/behavior'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -164,6 +166,7 @@ const studentInfo = ref({
 })
 const practiceScores = ref<PracticeScore[]>([])
 const practiceRecordsRaw = ref<ExamRecord[]>([])
+const behaviorSummary = ref<StudentBehaviorSummary | null>(null)
 
 // 行为指标数据
 const metrics = ref({
@@ -190,8 +193,12 @@ const passwordForm = ref({
 // 计算综合评分
 const overallScore = computed(() => {
   if (practiceScores.value.length === 0) return 0
-  const totalScore = practiceScores.value.reduce((sum, item) => sum + (item.totalScore || 0), 0)
-  return Math.round(totalScore / practiceScores.value.length)
+  const totalScore = practiceScores.value.reduce((sum, item) => {
+    const v = Number(item.totalScore)
+    return sum + (isNaN(v) ? 0 : v)
+  }, 0)
+  const avg = totalScore / practiceScores.value.length
+  return isNaN(avg) ? 0 : Math.round(avg)
 })
 
 // 计算评分等级
@@ -341,12 +348,29 @@ const calculateMetrics = () => {
     return sum
   }, 0)
 
+  // 提示使用率：按「每次练习平均提示次数」简单归一化到 0-100 区间
+  let hintUsage = 0
+  let participation = completionRate
+  if (behaviorSummary.value) {
+    const { hint_count, login_count_last_7_days } = behaviorSummary.value
+    if (completedRecords.length > 0) {
+      const avgHintsPerPractice = hint_count / completedRecords.length
+      hintUsage = Math.max(0, Math.min(100, Math.round(avgHintsPerPractice * 20)))
+    }
+    // 参与度：结合最近登录次数与完成率的简易指标
+    const loginFactor = Math.min(1, login_count_last_7_days / 7)
+    participation = Math.max(
+      0,
+      Math.min(100, Math.round(completionRate * 0.6 + loginFactor * 40))
+    )
+  }
+
   metrics.value = {
     accuracy: Math.round(avgScore),
-    hintUsage: Math.round(avgScore * 0.8), // 模拟数据
+    hintUsage,
     studyTime: totalStudyTime,
     completionRate: completionRate,
-    participation: Math.min(100, completionRate + 10) // 模拟数据
+    participation
   }
 }
 
@@ -532,6 +556,9 @@ const loadStudentData = async () => {
     // 加载练习记录
     const records = await getStudentPracticeRecords(userStore.userInfo.id)
     practiceRecordsRaw.value = records
+
+    // 加载行为统计概览（提示次数、登录次数等）
+    behaviorSummary.value = await getStudentBehaviorSummary()
 
     // 计算行为指标
     calculateMetrics()

@@ -34,7 +34,8 @@ export interface Comment {
 export interface PostCreateDTO {
   title: string
   content: string
-  isPublic: boolean
+  is_public: boolean
+  is_top?: boolean
 }
 
 /**
@@ -62,6 +63,8 @@ export function getAllPosts(params?: {
   main_question_id?: number
   sub_question_id?: number
 }): Promise<Post[]> {
+  // 打印调试信息
+  console.log('获取帖子列表API调用:', params)
   return request.get('/forum/posts/', { params })
 }
 
@@ -76,6 +79,8 @@ export function getPostById(id: number): Promise<Post> {
  * 创建帖子
  */
 export function createPost(data: PostCreateDTO): Promise<Post> {
+  // 打印调试信息
+  console.log('创建帖子API调用:', data)
   return request.post('/forum/posts/create/', data)
 }
 

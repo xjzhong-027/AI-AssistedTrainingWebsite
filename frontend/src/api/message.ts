@@ -5,7 +5,6 @@ import request from '@/utils/request'
  */
 export interface Message {
   id: number
-  title: string
   content: string
   sender: string
   senderId: number
@@ -19,9 +18,8 @@ export interface Message {
  * 发送消息DTO
  */
 export interface MessageCreateDTO {
-  title: string
+  receiver: string
   content: string
-  receiverIds: number[]
 }
 
 /**
@@ -49,7 +47,7 @@ export function getMessageById(id: number): Promise<Message> {
  * 发送消息
  */
 export function sendMessage(data: MessageCreateDTO): Promise<Message> {
-  return request.post('/messages/send/', data)
+  return request.post('/messages/create/', data)
 }
 
 /**

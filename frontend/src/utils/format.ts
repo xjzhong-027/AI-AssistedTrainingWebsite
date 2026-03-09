@@ -5,9 +5,17 @@
 /**
  * 格式化日期时间
  */
-export function formatDateTime(date: string | Date, format = 'YYYY-MM-DD HH:mm:ss'): string {
+export function formatDateTime(
+  date: string | Date | null | undefined,
+  format = 'YYYY-MM-DD HH:mm:ss'
+): string {
+  if (!date) {
+    return ''
+  }
+
   const d = typeof date === 'string' ? new Date(date) : date
-  if (isNaN(d.getTime())) {
+
+  if (!(d instanceof Date) || isNaN(d.getTime())) {
     return ''
   }
 
@@ -30,14 +38,14 @@ export function formatDateTime(date: string | Date, format = 'YYYY-MM-DD HH:mm:s
 /**
  * 格式化日期
  */
-export function formatDate(date: string | Date): string {
+export function formatDate(date: string | Date | null | undefined): string {
   return formatDateTime(date, 'YYYY-MM-DD')
 }
 
 /**
  * 格式化时间
  */
-export function formatTime(date: string | Date): string {
+export function formatTime(date: string | Date | null | undefined): string {
   return formatDateTime(date, 'HH:mm:ss')
 }
 

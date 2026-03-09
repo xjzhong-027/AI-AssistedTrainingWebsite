@@ -1,71 +1,89 @@
 <template>
   <div class="exam-bank">
-    <div class="header">
-      <button @click="goHome">返回首页</button>
-      <select v-model="selectedClass" @change="filterUnits" id="selected_class">
-        <option value="All">全部班级</option>
-        <option v-for="classItem in classes" :key="classItem.id" :value="classItem.id">
-          {{ classItem.class_name }}
-        </option>
-      </select>
-      <button @click="goToManagement" class="btn-management">高级管理</button>
-    </div>
 
-    <div class="main">
-      <h1 style="text-align: center">任务列表</h1>
-      <div class="table-container">
-        <table id="unit_table">
-          <thead>
-            <tr>
-              <th style="display: none">unit_id</th>
-              <th>#</th>
-              <th>任务类型</th>
-              <th>任务标题</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="loading">
-              <td colspan="4" style="text-align: center">加载中...</td>
-            </tr>
-            <tr v-else-if="filteredUnits.length === 0">
-              <td colspan="4" style="text-align: center">暂无试题</td>
-            </tr>
-            <tr v-else v-for="(unit, index) in filteredUnits" :key="unit.id">
-              <td style="display: none">{{ unit.id }}</td>
-              <td>
-                <a @click="viewExamDetail(unit.id)">{{ (currentPage - 1) * pageSize + index + 1 }}</a>
-              </td>
-              <td>{{ unit.type === 'exam' ? '考试' : unit.type === 'practice' ? '练习' : unit.type }}</td>
-              <td>
-                <a @click="viewExamDetail(unit.id)">{{ unit.title }}</a>
-              </td>
-              <td>
-                <button @click="viewExamDetail(unit.id)" class="btn-view">查看</button>
-                &nbsp;&nbsp;&nbsp;&nbsp;
-                <button @click="editExam(unit.id)" class="btn-edit">编辑</button>
-                &nbsp;&nbsp;&nbsp;&nbsp;
-                <button @click="deleteExam(unit.id)" class="btn-delete">删除</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <div class="exam-bank-card">
+      <div class="card-header">
+        <div class="header-left">
+          <div class="header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </div>
+          <h2>任务管理</h2>
+        </div>
+        <div class="header-actions">
+          <button @click="goHome" class="secondary-button">返回首页</button>
+          <button @click="goToManagement" class="primary-button">高级管理</button>
+        </div>
+      </div>
+
+      <!-- 筛选和搜索区域 -->
+      <div class="filter-section">
+        <div class="filter-left">
+          <select v-model="selectedClass" @change="filterUnits" class="modern-select">
+            <option value="All">全部班级</option>
+            <option v-for="classItem in classes" :key="classItem.id" :value="classItem.id">
+              {{ classItem.class_name }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-right">
+          <el-input
+            v-model="searchQuery"
+            placeholder="搜索任务标题"
+            class="modern-input"
+            @input="handleSearch"
+          >
+            <template #prefix>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </template>
+          </el-input>
+        </div>
+      </div>
+
+      <!-- 任务列表 -->
+      <div class="table-section">
+        <el-table :data="filteredUnits" v-loading="loading" class="modern-table">
+          <el-table-column prop="id" label="#" width="80" />
+          <el-table-column label="任务类型" width="120">
+            <template #default="{ row }">
+              <el-tag :type="row.type === 'exam' ? 'danger' : 'success'" class="modern-tag">
+                {{ row.type === 'exam' ? '考试' : row.type === 'practice' ? '练习' : row.type }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="title" label="任务标题" min-width="300" />
+          <el-table-column label="操作" width="200">
+            <template #default="{ row }">
+              <el-button type="primary" link @click="viewExamDetail(row.id)" class="link-button">查看</el-button>
+              <el-button type="primary" link @click="editExam(row.id)" class="link-button">编辑</el-button>
+              <el-button type="danger" link @click="deleteExam(row.id)" class="link-button danger-link">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <!-- 空状态 -->
+        <el-empty v-if="!loading && filteredUnits.length === 0" description="暂无任务" class="modern-empty">
+          <el-button type="primary" @click="goToCreateUnit" class="primary-button">新建任务</el-button>
+        </el-empty>
       </div>
 
       <!-- 分页控件 -->
-      <div class="pagination" v-if="totalPages > 1">
-        <button v-if="currentPage > 1" @click="goToPage(1)">首页</button>
-        <button v-if="currentPage > 1" @click="goToPage(currentPage - 1)">上一页</button>
-        <span
-          v-for="num in pageRange"
-          :key="num"
-          :class="['page-number', { active: num === currentPage }]"
-          @click="goToPage(num)"
-        >
-          {{ num }}
-        </span>
-        <button v-if="currentPage < totalPages" @click="goToPage(currentPage + 1)">下一页</button>
-        <button v-if="currentPage < totalPages" @click="goToPage(totalPages)">尾页</button>
+      <div class="pagination-section" v-if="totalPages > 1">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="filteredUnits.length"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          class="modern-pagination"
+        />
       </div>
     </div>
   </div>
@@ -87,6 +105,7 @@ const userStore = useUserStore()
 const classes = ref<Class[]>([])
 const units = ref<Unit[]>([])
 const selectedClass = ref<string>('All')
+const searchQuery = ref('')
 const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -96,6 +115,10 @@ const filteredUnits = computed(() => {
   let filtered = units.value
   if (selectedClass.value !== 'All') {
     filtered = units.value.filter((unit) => unit.class_id === Number(selectedClass.value))
+  }
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter((unit) => unit.title.toLowerCase().includes(query))
   }
   totalPages.value = Math.ceil(filtered.length / pageSize.value)
   const start = (currentPage.value - 1) * pageSize.value
@@ -112,11 +135,15 @@ const pageRange = computed(() => {
 })
 
 const goHome = () => {
-  router.push('/teacher/index')
+  router.push('/teacher/dashboard')
 }
 
 const goToManagement = () => {
   router.push({ name: 'ExamBankManagement' })
+}
+
+const goToCreateUnit = () => {
+  router.push('/teacher/unit/create')
 }
 
 const filterUnits = () => {
@@ -168,7 +195,16 @@ const deleteExam = async (unitId: number) => {
   }
 }
 
-const goToPage = (page: number) => {
+const handleSearch = () => {
+  currentPage.value = 1
+}
+
+const handleSizeChange = (size: number) => {
+  pageSize.value = size
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (page: number) => {
   currentPage.value = page
 }
 
@@ -210,211 +246,256 @@ onMounted(() => {
 
 <style scoped>
 .exam-bank {
-  padding: 20px;
-  background-color: #F9F8F3;
+  padding: 32px;
+  background-color: #FAFBFC;
   min-height: 100vh;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #e0e0e0;
-}
 
-.header button {
-  padding: 10px 20px;
-  background-color: #E8ECA;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
 
-.header button:hover {
-  background-color: #D8D8F6;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.header select {
-  padding: 10px 15px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  background-color: #fff;
-}
-
-.main {
-  margin-top: 20px;
-}
-
-h1 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 20px;
-}
-
-.table-container {
-  overflow-x: auto;
-  margin-bottom: 20px;
-  background-color: #FFFFFF;
+/* 卡片样式 */
+.exam-bank-card {
+  background: #FFFFFF;
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
+  padding: 24px;
   position: relative;
   overflow: hidden;
+  width: 100%;
+  max-width: none;
 }
 
-.table-container::before {
+.exam-bank-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
-  z-index: 1;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: #fff;
-}
-
-thead {
-  background-color: rgba(186, 207, 206, 0.2);
-}
-
-th,
-td {
-  padding: 12px 15px;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-th {
-  font-weight: 600;
-  color: #555;
-}
-
-tbody tr:hover {
-  background-color: rgba(186, 207, 206, 0.1);
-}
-
-tbody a {
-  color: #007bff;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-tbody a:hover {
-  text-decoration: underline;
-}
-
-.btn-view,
-.btn-edit,
-.btn-delete {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.btn-view {
-  background-color: #007bff;
-  color: #fff;
-}
-
-.btn-view:hover {
-  background-color: #0056b3;
-}
-
-.btn-edit {
-  background-color: #ffc107;
-  color: #333;
-}
-
-.btn-edit:hover {
-  background-color: #e0a800;
-}
-
-.btn-delete {
-  background-color: #D48982;
-  color: #fff;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-}
-
-.btn-delete:hover {
-  background-color: #C07770;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn-management {
-  padding: 8px 16px;
-  background-color: #99B6B4;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.btn-management:hover {
-  background-color: #7A9E9C;
-}
-
-.pagination {
+/* 头部样式 */
+.card-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  margin-top: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #F0F2F5;
 }
 
-.pagination button {
-  padding: 8px 16px;
-  background-color: #fff;
-  color: #333;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.pagination button:hover {
-  background-color: #f0f0f0;
-  border-color: #E8ECA;
+.header-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.3);
+  animation: float 3s ease-in-out infinite;
 }
 
-.page-number {
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-}
-
-.page-number:hover {
-  background-color: #f0f0f0;
-}
-
-.page-number.active {
-  background-color: #1A1A1A;
-  color: #fff;
+.card-header h2 {
+  margin: 0;
+  color: #1A202C;
+  font-size: 18px;
   font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* 按钮样式 */
+.primary-button {
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  padding: 10px 24px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  cursor: pointer !important;
+}
+
+.primary-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(140, 124, 240, 0.4) !important;
+}
+
+.secondary-button {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #4A5568 !important;
+  border-radius: 12px !important;
+  padding: 10px 24px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  cursor: pointer !important;
+}
+
+.secondary-button:hover {
+  border-color: #8C7CF0 !important;
+  color: #8C7CF0 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.2) !important;
+}
+
+/* 筛选和搜索区域 */
+.filter-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #F8F5FF;
+  border-radius: 12px;
+}
+
+.filter-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modern-select {
+  padding: 10px 16px;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  background: #FFFFFF;
+  font-size: 14px;
+  color: #4A5568;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.modern-select:focus {
+  outline: none;
+  border-color: #8C7CF0;
+  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1);
+}
+
+.modern-input {
+  border-radius: 12px !important;
+  border: 1px solid #E2E8F0 !important;
+  transition: all 0.3s ease !important;
+  width: 300px;
+}
+
+.modern-input:focus {
+  border-color: #8C7CF0 !important;
+  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1) !important;
+}
+
+/* 表格区域 */
+.table-section {
+  margin-bottom: 24px;
+}
+
+.modern-table {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1) !important;
+}
+
+:deep(.el-table th) {
+  background: #F0F2F5 !important;
+  color: #4A5568 !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+}
+
+:deep(.el-table tr:hover > td) {
+  background: #F8F5FF !important;
+}
+
+:deep(.el-table__row:nth-child(even)) {
+  background: #FAFAFA !important;
+}
+
+/* 标签样式 */
+.modern-tag {
+  border-radius: 8px !important;
+  padding: 4px 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+/* 链接按钮 */
+.link-button {
+  color: #8C7CF0 !important;
+  font-weight: 500 !important;
+}
+
+.link-button:hover {
+  color: #6A5AE0 !important;
+}
+
+.danger-link {
+  color: #F56C6C !important;
+}
+
+.danger-link:hover {
+  color: #E6A23C !important;
+}
+
+/* 空状态 */
+.modern-empty {
+  padding: 60px 0 !important;
+  margin-top: 24px;
+}
+
+/* 分页区域 */
+.pagination-section {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.modern-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+:deep(.el-pagination__item:hover) {
+  color: #8C7CF0 !important;
+}
+
+:deep(.el-pagination__item.is-active) {
+  background-color: #8C7CF0 !important;
+  border-color: #8C7CF0 !important;
+  color: #FFFFFF !important;
+}
+
+/* 动画效果 */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* 加载状态 */
+:deep(.el-loading-spinner .path) {
+  stroke: #8C7CF0 !important;
 }
 </style>
-

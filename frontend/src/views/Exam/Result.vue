@@ -191,8 +191,14 @@ const loadResult = async () => {
     result.value = await getExamResult(examId)
   } catch (error: any) {
     console.error('加载结果失败', error)
-    ElMessage.error(error.message || '加载结果失败')
-    router.push('/exams')
+    // 如果后端返回404，说明当前学生尚无考试记录，给出友好提示并停留在本页
+    if (error?.response?.status === 404) {
+      ElMessage.warning('尚未找到本次考试记录，请先参加考试')
+      result.value = null
+    } else {
+      ElMessage.error(error.message || '加载结果失败')
+      router.push('/exams')
+    }
   } finally {
     loading.value = false
   }

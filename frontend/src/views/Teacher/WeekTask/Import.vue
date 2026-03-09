@@ -1,22 +1,29 @@
 <template>
-  <div class="week-task-import">
-    <el-card v-loading="loading">
-      <template #header>
-        <div class="card-header">
-          <span>导入周任务 - {{ materialInfo?.title }}</span>
-          <el-button @click="goBack">返回</el-button>
+  <div class="week-task-import-container">
+    <div class="week-task-import-card">
+      <div class="card-header">
+        <div class="header-left">
+          <div class="header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17,8 12,3 7,8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <h2>导入周任务 - {{ materialInfo?.title }}</h2>
         </div>
-      </template>
+        <el-button @click="goBack" type="default" class="secondary-button">返回</el-button>
+      </div>
 
       <!-- 素材信息展示 -->
-      <el-descriptions v-if="materialInfo" :column="2" border class="material-info">
+      <el-descriptions v-if="materialInfo" :column="2" border class="material-info modern-descriptions">
         <el-descriptions-item label="任务标题">{{ materialInfo.title }}</el-descriptions-item>
         <el-descriptions-item label="主题">{{ materialInfo.theme }}</el-descriptions-item>
         <el-descriptions-item label="摘要" :span="2">{{ materialInfo.abstract }}</el-descriptions-item>
         <el-descriptions-item label="关键词" :span="2">{{ materialInfo.keywords }}</el-descriptions-item>
       </el-descriptions>
 
-      <el-divider />
+      <el-divider class="modern-divider" />
 
       <!-- 步骤1: 上传Word文档 -->
       <div v-if="currentStep === 1" class="step-content">
@@ -31,20 +38,21 @@
           :on-remove="handleFileRemove"
           accept=".docx"
           drag
+          class="modern-upload"
         >
-          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-          <div class="el-upload__text">
+          <el-icon class="upload-icon"><UploadFilled /></el-icon>
+          <div class="upload-text">
             将文件拖到此处，或<em>点击上传</em>
           </div>
           <template #tip>
-            <div class="el-upload__tip">
+            <div class="upload-tip">
               仅支持.docx格式的Word文档
             </div>
           </template>
         </el-upload>
 
         <div class="button-group">
-          <el-button type="primary" @click="handleUploadWord" :loading="uploading" :disabled="!wordFile">
+          <el-button type="primary" @click="handleUploadWord" :loading="uploading" :disabled="!wordFile" class="primary-button">
             解析文档
           </el-button>
         </div>
@@ -59,13 +67,14 @@
           :rules="taskRules"
           ref="taskFormRef"
           label-width="120px"
+          class="modern-form"
         >
           <el-form-item label="任务标题" prop="title">
-            <el-input v-model="taskForm.title" placeholder="请输入任务标题" />
+            <el-input v-model="taskForm.title" placeholder="请输入任务标题" class="modern-input" />
           </el-form-item>
 
           <el-form-item label="所属班级" prop="class_id">
-            <el-select v-model="taskForm.class_id" placeholder="请选择班级" style="width: 100%">
+            <el-select v-model="taskForm.class_id" placeholder="请选择班级" style="width: 100%" class="modern-select">
               <el-option
                 v-for="classItem in classes"
                 :key="classItem.id"
@@ -76,7 +85,7 @@
           </el-form-item>
 
           <el-form-item label="任务类型" prop="type">
-            <el-select v-model="taskForm.type" placeholder="请选择任务类型" style="width: 100%">
+            <el-select v-model="taskForm.type" placeholder="请选择任务类型" style="width: 100%" class="modern-select">
               <el-option label="作业" value="task" />
               <el-option label="练习" value="practice" />
               <el-option label="考试" value="exam" />
@@ -85,11 +94,11 @@
           </el-form-item>
 
           <el-form-item label="周次" prop="week">
-            <el-input-number v-model="taskForm.week" :min="1" :max="20" />
+            <el-input-number v-model="taskForm.week" :min="1" :max="20" class="modern-input-number" />
           </el-form-item>
 
           <el-form-item label="排序" prop="order">
-            <el-input-number v-model="taskForm.order" :min="0" :max="999" />
+            <el-input-number v-model="taskForm.order" :min="0" :max="999" class="modern-input-number" />
           </el-form-item>
 
           <!-- 考试特有字段 -->
@@ -100,6 +109,7 @@
                 type="date"
                 placeholder="选择日期"
                 style="width: 100%"
+                class="modern-date-picker"
               />
             </el-form-item>
 
@@ -108,6 +118,7 @@
                 v-model="taskForm.start_time"
                 placeholder="选择时间"
                 style="width: 100%"
+                class="modern-time-picker"
               />
             </el-form-item>
 
@@ -116,16 +127,17 @@
                 v-model="taskForm.end_time"
                 placeholder="选择时间"
                 style="width: 100%"
+                class="modern-time-picker"
               />
             </el-form-item>
 
             <el-form-item label="时长(分钟)" prop="duration">
-              <el-input-number v-model="taskForm.duration" :min="1" :max="300" />
+              <el-input-number v-model="taskForm.duration" :min="1" :max="300" class="modern-input-number" />
             </el-form-item>
           </template>
 
           <el-form-item label="逾期规则">
-            <el-select v-model="taskForm.overdue_rule_id" placeholder="请选择逾期规则" clearable style="width: 100%">
+            <el-select v-model="taskForm.overdue_rule_id" placeholder="请选择逾期规则" clearable style="width: 100%" class="modern-select">
               <el-option
                 v-for="rule in overdueRules"
                 :key="rule.id"
@@ -137,14 +149,15 @@
         </el-form>
 
         <!-- 题目预览 -->
-        <el-divider />
+        <el-divider class="modern-divider" />
         <h4>题目预览</h4>
         <div v-if="questionData && questionData.length > 0" class="question-preview">
-          <el-collapse>
+          <el-collapse class="modern-collapse">
             <el-collapse-item
               v-for="(page, pageIdx) in questionData"
               :key="pageIdx"
               :title="`第${pageIdx + 1}页 (${page.page_content?.length || 0}道大题)`"
+              class="modern-collapse-item"
             >
               <div v-for="(question, qIdx) in page.page_content" :key="qIdx" class="question-item">
                 <p><strong>大题{{ qIdx + 1 }}:</strong> {{ question.question_type }}</p>
@@ -154,16 +167,16 @@
             </el-collapse-item>
           </el-collapse>
         </div>
-        <el-empty v-else description="暂无题目数据" />
+        <el-empty v-else description="暂无题目数据" class="modern-empty" />
 
         <div class="button-group">
-          <el-button @click="currentStep = 1">上一步</el-button>
-          <el-button type="primary" @click="handleSaveTask" :loading="saving">
+          <el-button @click="currentStep = 1" class="secondary-button">上一步</el-button>
+          <el-button type="primary" @click="handleSaveTask" :loading="saving" class="primary-button">
             保存任务
           </el-button>
         </div>
       </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -215,7 +228,7 @@ const taskRules: FormRules = {
 }
 
 const goBack = () => {
-  router.back()
+  router.push('/teacher/dashboard')
 }
 
 const handleFileChange = (file: UploadFile) => {
@@ -322,56 +335,391 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.week-task-import {
-  padding: 20px;
+.week-task-import-container {
+  padding: 32px;
+  background-color: #FAFBFC;
+  min-height: 100vh;
+}
+
+.week-task-import-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.week-task-import-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #F0F2F5;
 }
 
-.material-info {
-  margin-bottom: 20px;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
+.header-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.3);
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.card-header h2 {
+  margin: 0;
+  color: #1A202C;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* 描述列表样式 */
+.modern-descriptions {
+  margin-bottom: 24px;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 10px rgba(140, 124, 240, 0.1) !important;
+}
+
+.modern-descriptions :deep(.el-descriptions__label) {
+  background: #F0F2F5 !important;
+  color: #4A5568 !important;
+  font-weight: 500 !important;
+  padding: 12px 16px !important;
+}
+
+.modern-descriptions :deep(.el-descriptions__content) {
+  padding: 12px 16px !important;
+  color: #4A5568 !important;
+}
+
+/* 分隔线样式 */
+.modern-divider {
+  margin: 24px 0 !important;
+  background: #F0F2F5 !important;
+}
+
+/* 步骤内容样式 */
 .step-content {
   padding: 20px 0;
 }
 
 .step-content h3 {
-  margin-bottom: 15px;
-  color: #333;
+  margin-bottom: 16px;
+  color: #1A202C;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.step-content h4 {
+  margin-bottom: 16px;
+  color: #4A5568;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .tip {
-  color: #909399;
+  color: #8B9BB4;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+/* 上传组件样式 */
+.modern-upload {
+  margin: 24px 0;
+  border-radius: 12px !important;
+  border: 2px dashed #F0F2F5 !important;
+  padding: 40px 20px !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-upload:hover {
+  border-color: #8C7CF0 !important;
+  background: rgba(140, 124, 240, 0.05) !important;
+}
+
+.upload-icon {
+  font-size: 48px !important;
+  color: #8C7CF0 !important;
+  margin-bottom: 16px !important;
+}
+
+.upload-text {
+  color: #8B9BB4 !important;
+  font-size: 16px !important;
+}
+
+.upload-text em {
+  color: #8C7CF0 !important;
+  font-style: normal !important;
+  cursor: pointer !important;
+}
+
+.upload-tip {
+  font-size: 12px !important;
+  color: #8B9BB4 !important;
+  margin-top: 12px !important;
+}
+
+/* 表单样式 */
+.modern-form {
+  margin-top: 20px;
+}
+
+.modern-form .el-form-item {
   margin-bottom: 20px;
 }
 
-.button-group {
-  margin-top: 30px;
-  text-align: center;
+.modern-form .el-form-item__label {
+  color: #4A5568;
+  font-weight: 500;
+  font-size: 14px;
 }
 
+/* 输入框样式 */
+.modern-input {
+  border-radius: 12px !important;
+  border: 2px solid #F0F2F5 !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-input:hover {
+  border-color: #8C7CF0 !important;
+}
+
+.modern-input:focus {
+  border-color: #8C7CF0 !important;
+  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1) !important;
+}
+
+/* 选择器样式 */
+.modern-select {
+  border-radius: 12px !important;
+  border: 2px solid #F0F2F5 !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-select:hover {
+  border-color: #8C7CF0 !important;
+}
+
+.modern-select:focus {
+  border-color: #8C7CF0 !important;
+  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1) !important;
+}
+
+/* 输入数字样式 */
+.modern-input-number {
+  border-radius: 12px !important;
+  border: 2px solid #F0F2F5 !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-input-number:hover {
+  border-color: #8C7CF0 !important;
+}
+
+.modern-input-number:focus-within {
+  border-color: #8C7CF0 !important;
+  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1) !important;
+}
+
+/* 日期选择器样式 */
+.modern-date-picker {
+  border-radius: 12px !important;
+  border: 2px solid #F0F2F5 !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-date-picker:hover {
+  border-color: #8C7CF0 !important;
+}
+
+.modern-date-picker:focus {
+  border-color: #8C7CF0 !important;
+  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1) !important;
+}
+
+/* 时间选择器样式 */
+.modern-time-picker {
+  border-radius: 12px !important;
+  border: 2px solid #F0F2F5 !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-time-picker:hover {
+  border-color: #8C7CF0 !important;
+}
+
+.modern-time-picker:focus {
+  border-color: #8C7CF0 !important;
+  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1) !important;
+}
+
+/* 折叠面板样式 */
+.modern-collapse {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 10px rgba(140, 124, 240, 0.1) !important;
+}
+
+.modern-collapse-item {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+.modern-collapse :deep(.el-collapse-item__header) {
+  background: #F5F7FA !important;
+  color: #4A5568 !important;
+  font-weight: 500 !important;
+  padding: 16px 20px !important;
+  border-bottom: 1px solid #F0F2F5 !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-collapse :deep(.el-collapse-item__header:hover) {
+  background: #E8E4FF !important;
+  color: #8C7CF0 !important;
+}
+
+.modern-collapse :deep(.el-collapse-item__content) {
+  padding: 20px !important;
+  background: #FFFFFF !important;
+}
+
+/* 题目预览样式 */
 .question-preview {
-  margin-top: 15px;
+  margin-top: 20px;
 }
 
 .question-item {
-  padding: 10px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-  margin-bottom: 10px;
+  padding: 16px;
+  background-color: #F5F7FA;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(140, 124, 240, 0.05);
 }
 
 .question-item p {
-  margin: 5px 0;
+  margin: 8px 0;
+  color: #4A5568;
+  line-height: 1.6;
 }
 
 .sub-count {
-  color: #909399;
+  color: #8B9BB4;
   font-size: 12px;
+  margin-top: 12px;
+}
+
+/* 按钮样式 */
+.primary-button {
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  padding: 12px 24px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+.primary-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(140, 124, 240, 0.4) !important;
+}
+
+.secondary-button {
+  background: #FFFFFF !important;
+  border: 2px solid #8C7CF0 !important;
+  color: #8C7CF0 !important;
+  border-radius: 12px !important;
+  padding: 12px 24px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.secondary-button:hover {
+  background: #E8E4FF !important;
+}
+
+/* 按钮组样式 */
+.button-group {
+  margin-top: 32px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding-top: 20px;
+  border-top: 1px solid #F0F2F5;
+}
+
+/* 空状态样式 */
+.modern-empty :deep(.el-empty__description) {
+  color: #8B9BB4 !important;
+  font-size: 14px !important;
+}
+
+/* 加载动画样式 */
+:deep(.el-loading-spinner) {
+  font-size: 16px !important;
+  color: #8C7CF0 !important;
+}
+
+:deep(.el-loading-spinner .path) {
+  stroke: #8C7CF0 !important;
+}
+
+/* 拖拽上传样式 */
+:deep(.el-upload-dragger) {
+  border-radius: 12px !important;
+  border: 2px dashed #F0F2F5 !important;
+  padding: 40px 20px !important;
+  transition: all 0.3s ease !important;
+}
+
+:deep(.el-upload-dragger:hover) {
+  border-color: #8C7CF0 !important;
+  background: rgba(140, 124, 240, 0.05) !important;
 }
 </style>

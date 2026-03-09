@@ -190,6 +190,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '编辑帖子' }
       },
       {
+        path: 'forum/create',
+        name: 'ForumCreate',
+        component: () => import('@/views/Forum/Create.vue'),
+        meta: { title: '发论坛', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
         path: 'announcements',
         name: 'AnnouncementsStudent',
         component: () => import('@/views/Announcement/Student.vue'),
@@ -208,6 +214,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '消息箱', roles: ['STUDENT'] }
       },
       {
+        path: 'messages/send',
+        name: 'MessageSend',
+        component: () => import('@/views/Message/Send.vue'),
+        meta: { title: '发送消息', roles: ['STUDENT'] }
+      },
+      {
         path: 'messages/:id',
         name: 'MessageDetail',
         component: () => import('@/views/Message/Detail.vue'),
@@ -218,6 +230,12 @@ const routes: RouteRecordRaw[] = [
         name: 'TeacherIndex',
         component: () => import('@/views/Teacher/Index.vue'),
         meta: { title: '附件下载', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/dashboard',
+        name: 'TeacherDashboard',
+        component: () => import('@/views/Teacher/Dashboard.vue'),
+        meta: { title: '首页', roles: ['TEACHER', 'ADMIN'] }
       },
       {
         path: 'teacher/week-task',
@@ -340,16 +358,52 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '论坛管理', roles: ['TEACHER', 'ADMIN'] }
       },
       {
-        path: 'announce/announcements',
+        path: 'teacher/announcements',
         name: 'AnnouncementsTeacher',
-        component: () => import('@/views/Announcement/Student.vue'),
+        component: () => import('@/views/Teacher/Announcement/index.vue'),
         meta: { title: '公告管理', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/announcements/create',
+        name: 'AnnouncementCreate',
+        component: () => import('@/views/Teacher/Announcement/Create.vue'),
+        meta: { title: '发布公告', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'teacher/announcements/edit/:id',
+        name: 'AnnouncementEdit',
+        component: () => import('@/views/Teacher/Announcement/Edit.vue'),
+        meta: { title: '编辑公告', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'announcements',
+        name: 'AnnouncementsStudent',
+        component: () => import('@/views/Announcement/Student.vue'),
+        meta: { title: '公告栏' }
+      },
+      {
+        path: 'announcements/:id',
+        name: 'AnnouncementDetail',
+        component: () => import('@/views/Announcement/Detail.vue'),
+        meta: { title: '公告详情' }
       },
       {
         path: 'announce/messages',
         name: 'MessagesTeacher',
         component: () => import('@/views/Message/List.vue'),
         meta: { title: '消息箱', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'announce/messages/send',
+        name: 'MessageSendTeacher',
+        component: () => import('@/views/Message/Send.vue'),
+        meta: { title: '发送消息', roles: ['TEACHER', 'ADMIN'] }
+      },
+      {
+        path: 'announce/messages/:id',
+        name: 'MessageDetailTeacher',
+        component: () => import('@/views/Message/Detail.vue'),
+        meta: { title: '消息详情', roles: ['TEACHER', 'ADMIN'] }
       },
       {
         path: 'query',
@@ -416,9 +470,23 @@ router.beforeEach((to, from, next) => {
     if (to.meta.roles) {
       if (!to.meta.roles.includes(userInfo.role)) {
         ElMessage.warning('您没有权限访问此页面')
-        next({ name: 'Dashboard' })
+        // 根据用户角色重定向到对应首页
+        if (userInfo.role === 'TEACHER' || userInfo.role === 'ADMIN') {
+          next({ name: 'TeacherDashboard' })
+        } else {
+          next({ name: 'Dashboard' })
+        }
         return
       }
+    }
+  }
+
+  // 处理根路径重定向
+  if (to.path === '/' || to.path === '/dashboard') {
+    const userInfo = storage.get<User>('userInfo')
+    if (userInfo && (userInfo.role === 'TEACHER' || userInfo.role === 'ADMIN')) {
+      next({ name: 'TeacherDashboard' })
+      return
     }
   }
 

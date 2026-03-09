@@ -1,29 +1,37 @@
 <template>
   <div class="unit-create">
-    <el-card v-loading="loading">
-      <template #header>
-        <div class="card-header">
-          <span>新建任务包</span>
-          <el-button @click="goBack">返回</el-button>
+    <div class="unit-create-card">
+      <div class="card-header">
+        <div class="header-left">
+          <div class="header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <h2>新建任务包</h2>
         </div>
-      </template>
+        <el-button @click="goBack" class="secondary-button">返回</el-button>
+      </div>
 
       <el-form
         :model="form"
         :rules="rules"
         ref="formRef"
-        label-width="120px"
+        label-width="140px"
         label-position="right"
+        class="modern-form"
       >
         <el-form-item label="任务类型" prop="type">
-          <el-select v-model="form.type" placeholder="请选择任务类型" style="width: 100%">
+          <el-select v-model="form.type" placeholder="请选择任务类型" style="width: 100%" class="modern-select">
             <el-option label="考试" value="exam" />
             <el-option label="练习" value="practice" />
           </el-select>
         </el-form-item>
 
         <el-form-item label="任务标题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入任务标题" maxlength="200" show-word-limit />
+          <el-input v-model="form.title" placeholder="请输入任务标题" maxlength="200" show-word-limit class="modern-input" />
         </el-form-item>
 
         <el-form-item label="所属班级" prop="class_id">
@@ -35,6 +43,7 @@
             :loading="loading"
             :disabled="loading"
             filterable
+            class="modern-select"
           >
             <el-option
               v-for="classItem in classes"
@@ -44,7 +53,7 @@
             />
             <el-option v-if="classes.length === 0 && !loading" label="暂无班级数据" value="" disabled />
           </el-select>
-          <div v-if="classes.length === 0 && !loading" class="form-tip" style="color: #f56c6c; margin-top: 8px">
+          <div v-if="classes.length === 0 && !loading" class="form-tip error-tip">
             ⚠️ 暂无班级数据，请联系管理员创建班级
           </div>
         </el-form-item>
@@ -56,6 +65,7 @@
             :max="999"
             placeholder="请输入排序值"
             style="width: 100%"
+            class="modern-input-number"
           />
           <div class="form-tip">数字越小越靠前</div>
         </el-form-item>
@@ -67,16 +77,17 @@
             :max="20"
             placeholder="0 表示始终开放"
             style="width: 100%"
+            class="modern-input-number"
           />
           <div class="form-tip">0=始终开放；1-20=第N周起学生可见可做</div>
         </el-form-item>
 
-        <el-form-item>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">创建</el-button>
-          <el-button @click="goBack">取消</el-button>
+        <el-form-item class="form-actions">
+          <el-button type="primary" @click="handleSubmit" :loading="submitting" class="primary-button">创建</el-button>
+          <el-button @click="goBack" class="secondary-button">取消</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -179,21 +190,167 @@ onMounted(() => {
 
 <style scoped>
 .unit-create {
-  padding: 20px;
-  background-color: #F9F8F3;
+  padding: 32px;
+  background-color: #FAFBFC;
   min-height: 100vh;
 }
 
+/* 卡片样式 */
+.unit-create-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.unit-create-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+}
+
+/* 头部样式 */
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #F0F2F5;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.3);
+  animation: float 3s ease-in-out infinite;
+}
+
+.card-header h2 {
+  margin: 0;
+  color: #1A202C;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* 按钮样式 */
+.primary-button {
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+}
+
+.primary-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(140, 124, 240, 0.4) !important;
+}
+
+.secondary-button {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #4A5568 !important;
+  border-radius: 12px !important;
+  padding: 10px 24px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.secondary-button:hover {
+  border-color: #8C7CF0 !important;
+  color: #8C7CF0 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.2) !important;
+}
+
+/* 表单样式 */
+.modern-form {
+  max-width: 800px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 30px;
+  padding-top: 16px;
+  border-top: 1px solid #F0F2F5;
+  justify-content: flex-end;
+}
+
+/* 输入框样式 */
+.modern-input,
+.modern-select {
+  border-radius: 12px !important;
+  border: 1px solid #E2E8F0 !important;
+  transition: all 0.3s ease !important;
+}
+
+.modern-input:focus,
+.modern-select:focus {
+  border-color: #8C7CF0 !important;
+  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1) !important;
+}
+
+.modern-input-number {
+  border-radius: 12px !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+/* 提示信息样式 */
 .form-tip {
   font-size: 12px;
-  color: #909399;
+  color: #718096;
   margin-top: 4px;
+  padding-left: 8px;
+  border-left: 3px solid #C6B9FF;
+}
+
+.error-tip {
+  color: #E53E3E !important;
+  border-left-color: #E53E3E !important;
+}
+
+/* 动画效果 */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* 加载状态 */
+:deep(.el-loading-spinner .path) {
+  stroke: #8C7CF0 !important;
+}
+
+/* 表单标签样式 */
+:deep(.el-form-item__label) {
+  color: #4A5568 !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
 }
 </style>
 

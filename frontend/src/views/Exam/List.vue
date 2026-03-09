@@ -145,12 +145,12 @@
         </div>
 
         <div v-if="upcomingExams.length > 0" class="exam-cards">
-          <div v-for="exam in upcomingExams" :key="exam.id" class="exam-card">
+          <div v-for="exam in upcomingExams" :key="exam.task.id" class="exam-card">
             <div class="card-decoration"></div>
             <div class="exam-card-content">
               <div class="exam-info">
-                <h3 class="exam-title">{{ exam.title }}</h3>
-                <p class="exam-description">{{ exam.description || '暂无描述' }}</p>
+                <h3 class="exam-title">{{ exam.task.title }}</h3>
+                <p class="exam-description">{{ exam.task.description || '暂无描述' }}</p>
                 <div class="exam-meta">
                   <div class="meta-item">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -159,17 +159,17 @@
                       <line x1="8" y1="2" x2="8" y2="6"></line>
                       <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
-                    <span>{{ formatDateTime(exam.startTime) }}</span>
+                    <span>{{ formatDateTime(exam.task.startTime || exam.record?.startedAt) }}</span>
                   </div>
                   <div class="meta-item">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <circle cx="12" cy="12" r="10"></circle>
                       <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
-                    <span>{{ exam.duration }} 分钟</span>
+                    <span>{{ exam.task.duration != null ? exam.task.duration + ' 分钟' : '时长未设置' }}</span>
                   </div>
                 </div>
-                <div v-if="isUrgent(exam.startTime)" class="urgent-badge">
+                <div v-if="isUrgent(exam.task.startTime || exam.record?.startedAt)" class="urgent-badge">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                     <line x1="12" y1="9" x2="12" y2="13"></line>
@@ -182,14 +182,14 @@
                 <button 
                   v-if="canTakeExam(exam)" 
                   class="btn-primary"
-                  @click="takeExam(exam.id)"
+                  @click="takeExam(exam.task.id)"
                 >
                   进入考试
                 </button>
                 <button 
                   v-else
                   class="btn-secondary"
-                  @click="viewDetail(exam.id)"
+                  @click="viewDetail(exam.task.id)"
                 >
                   查看详情
                 </button>
@@ -230,27 +230,27 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="exam in completedExams" :key="exam.id">
+              <tr v-for="exam in completedExams" :key="exam.task.id">
                 <td>
                   <div class="exam-name-cell">
-                    <div class="exam-name">{{ exam.title }}</div>
-                    <div class="exam-desc">{{ exam.description || '暂无描述' }}</div>
+                    <div class="exam-name">{{ exam.task.title }}</div>
+                    <div class="exam-desc">{{ exam.task.description || '暂无描述' }}</div>
                   </div>
                 </td>
-                <td>{{ formatDateTime(exam.endTime || exam.startTime) }}</td>
+                <td>{{ formatDateTime(exam.record?.finishedAt || exam.record?.startedAt) }}</td>
                 <td>
                   <div class="score-cell">
-                    <span class="score-value" :class="getScoreClass(exam.score)">{{ exam.score || '-' }}</span>
-                    <span v-if="exam.score" class="score-total">/ 100</span>
+                    <span class="score-value" :class="getScoreClass(exam.record?.score)">{{ exam.record?.score || '-' }}</span>
+                    <span v-if="exam.record?.score != null" class="score-total">/ 100</span>
                   </div>
                 </td>
                 <td>
-                  <span class="status-badge" :class="getScoreStatusClass(exam.score)">
-                    {{ getScoreStatusText(exam.score) }}
+                  <span class="status-badge" :class="getScoreStatusClass(exam.record?.score)">
+                    {{ getScoreStatusText(exam.record?.score) }}
                   </span>
                 </td>
                 <td>
-                  <button class="btn-text" @click="viewDetail(exam.id)">查看详情</button>
+                  <button class="btn-text" @click="viewDetail(exam.task.id)">查看详情</button>
                 </td>
               </tr>
             </tbody>
@@ -272,38 +272,28 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { getAllExams } from '@/api/exam'
+import { getAllUnits } from '@/api/content'
 import { formatDateTime } from '@/utils/format'
+import { canEnterExam, mapUnitToExamTask } from '@/utils/exam-utils'
+import type { ExamListItem, ExamTask, ExamRecordSummary, ExamStatus } from '@/types/exam'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const loading = ref(false)
-const examList = ref<any[]>([])
+const examList = ref<ExamListItem[]>([])
 
 // 统计数据
+const upcomingExams = computed(() => examList.value.filter(item => !item.record?.submitted))
+const completedExams = computed(() => examList.value.filter(item => item.record?.submitted || item.record?.score != null))
+
 const upcomingCount = computed(() => upcomingExams.value.length)
 const completedCount = computed(() => completedExams.value.length)
 const averageScore = computed(() => {
-  const completed = completedExams.value.filter(e => e.score != null)
+  const completed = completedExams.value.filter(e => e.record?.score != null)
   if (completed.length === 0) return '-'
-  const total = completed.reduce((sum, e) => sum + (e.score || 0), 0)
+  const total = completed.reduce((sum, e) => sum + (e.record?.score || 0), 0)
   return Math.round(total / completed.length)
-})
-
-// 即将到来的考试
-const upcomingExams = computed(() => {
-  return examList.value.filter(exam => {
-    const status = exam.status || ''
-    return status === 'NOT_STARTED' || status === 'IN_PROGRESS'
-  })
-})
-
-// 已完成的考试
-const completedExams = computed(() => {
-  return examList.value.filter(exam => {
-    const status = exam.status || ''
-    return status === 'ENDED' || status === 'completed' || exam.score != null
-  })
 })
 
 // 加载考试列表
@@ -311,18 +301,64 @@ const loadExams = async () => {
   loading.value = true
   try {
     const studentId = userStore.userInfo?.id
-    const exams = await getAllExams(studentId, 'exam')
-    
-    examList.value = exams.map((exam: any) => ({
-      id: exam.id,
-      title: exam.unit_name || exam.title || '未命名考试',
-      description: exam.description || '',
-      startTime: exam.start_time || exam.startTime || '',
-      endTime: exam.submit_time || exam.endTime || '',
-      duration: exam.duration || 0,
-      status: exam.status || 'NOT_STARTED',
-      score: exam.total_score || exam.score || null
-    }))
+
+    // 1. 获取所有 exam 类型的单元（教师为班级创建的考试任务）
+    const units = await getAllUnits(undefined, 'exam')
+
+    // 2. 获取当前学生已有的考试记录（只会返回自己参加过/开始过的考试）
+    let records: any[] = []
+    try {
+      const exams = await getAllExams(studentId, 'exam')
+      records = exams as any[]
+    } catch (err) {
+      console.warn('获取学生考试记录失败，但不影响展示考试任务列表', err)
+    }
+
+    const recordMap = new Map<number, any>()
+    records.forEach((exam: any) => {
+      const unitId = exam.unit_id ?? exam.unitId ?? exam.id
+      if (!unitId) return
+      if (!recordMap.has(unitId)) {
+        recordMap.set(unitId, exam)
+      }
+    })
+
+    examList.value = units.map((unit: any) => {
+      const baseTask: ExamTask = mapUnitToExamTask(unit)
+      const rawRecord = recordMap.get(unit.id)
+
+      let record: ExamRecordSummary | undefined
+      if (rawRecord) {
+        const startedAt: string | undefined = rawRecord.started_at || rawRecord.startedAt || ''
+        const finishedAt: string | undefined =
+          rawRecord.finished_at || rawRecord.finishedAt || rawRecord.submit_time || ''
+        const rawScore: number | null =
+          (rawRecord.total_score !== undefined ? rawRecord.total_score : rawRecord.score) ?? null
+        record = {
+          examRecordId: rawRecord.id,
+          submitted: Boolean(rawRecord.submitted),
+          score: rawScore,
+          startedAt,
+          finishedAt
+        }
+
+        // 尽量补充任务上的时间与时长信息，便于前端展示
+        if (!baseTask.startTime && startedAt) {
+          baseTask.startTime = startedAt
+        }
+        if (!baseTask.endTime && finishedAt) {
+          baseTask.endTime = finishedAt
+        }
+        if (!baseTask.duration && rawRecord.duration) {
+          baseTask.duration = rawRecord.duration
+        }
+      }
+
+      return {
+        task: baseTask,
+        record
+      }
+    })
   } catch (error) {
     console.error('加载考试列表失败', error)
     ElMessage.error('加载考试列表失败')
@@ -332,7 +368,7 @@ const loadExams = async () => {
 }
 
 // 判断考试是否紧急（24小时内）
-const isUrgent = (startTime: string) => {
+const isUrgent = (startTime?: string) => {
   if (!startTime) return false
   const start = new Date(startTime).getTime()
   const now = Date.now()
@@ -340,13 +376,13 @@ const isUrgent = (startTime: string) => {
   return diff > 0 && diff < 24 * 60 * 60 * 1000
 }
 
-// 判断是否可以参加考试
-const canTakeExam = (exam: any) => {
-  return exam.status === 'IN_PROGRESS'
+// 判断是否可以参加考试（封装在工具函数中）
+const canTakeExam = (item: ExamListItem) => {
+  return canEnterExam(item, new Date())
 }
 
 // 获取分数样式类
-const getScoreClass = (score: number | null) => {
+const getScoreClass = (score: number | null | undefined) => {
   if (score == null) return ''
   if (score >= 90) return 'excellent'
   if (score >= 80) return 'good'
@@ -355,7 +391,7 @@ const getScoreClass = (score: number | null) => {
 }
 
 // 获取分数状态样式类
-const getScoreStatusClass = (score: number | null) => {
+const getScoreStatusClass = (score: number | null | undefined) => {
   if (score == null) return 'status-pending'
   if (score >= 90) return 'status-excellent'
   if (score >= 80) return 'status-good'
@@ -364,7 +400,7 @@ const getScoreStatusClass = (score: number | null) => {
 }
 
 // 获取分数状态文本
-const getScoreStatusText = (score: number | null) => {
+const getScoreStatusText = (score: number | null | undefined) => {
   if (score == null) return '待评分'
   if (score >= 90) return '优秀'
   if (score >= 80) return '良好'
@@ -373,13 +409,13 @@ const getScoreStatusText = (score: number | null) => {
 }
 
 // 查看详情
-const viewDetail = (id: number) => {
-  router.push(`/exams/${id}`)
+const viewDetail = (unitId: number) => {
+  router.push(`/exams/${unitId}`)
 }
 
 // 参加考试
-const takeExam = (id: number) => {
-  router.push(`/exams/${id}/take`)
+const takeExam = (unitId: number) => {
+  router.push(`/exams/${unitId}/take`)
 }
 
 // 返回首页

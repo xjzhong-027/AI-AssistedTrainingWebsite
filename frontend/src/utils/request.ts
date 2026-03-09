@@ -39,8 +39,8 @@ service.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
     const res = response.data
 
-    // 如果返回的状态码为200，说明接口请求成功
-    if (res.code === 200) {
+    // 如果返回的状态码为200或201，说明接口请求成功
+    if (res.code === 200 || res.code === 201) {
       return res.data
     } else {
       // 否则说明有错误，显示错误信息

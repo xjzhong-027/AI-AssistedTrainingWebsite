@@ -146,11 +146,11 @@ const handleLogin = async () => {
 const getDefaultRedirect = (role: string): string => {
   switch (role) {
     case 'teacher':
-      return '/teacher/index'
+      return '/teacher/dashboard'
     case 'student':
       return '/student/index'
     case 'admin':
-      return '/admin/index'
+      return '/teacher/dashboard'
     default:
       return '/dashboard'
   }

@@ -1,96 +1,65 @@
 <template>
-  <div class="forum-page">
-    <div class="forum-card">
+  <div class="announcement-page">
+    <div class="announcement-card">
       <div class="card-header">
         <div class="header-left">
           <div class="header-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
           </div>
-          <h2>论坛管理</h2>
+          <h2>公告管理</h2>
         </div>
         <div class="header-actions">
           <button @click="goHome" class="secondary-button">返回首页</button>
-          <button @click="createPost" class="primary-button">发论坛</button>
+          <button @click="createAnnouncement" class="primary-button">发布公告</button>
         </div>
       </div>
 
-      <!-- 筛选和搜索区域 -->
-      <div class="filter-section">
-        <div class="filter-right">
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索帖子"
-            class="modern-input"
-            @keyup.enter="loadPosts"
-            clearable
-          >
-            <template #prefix>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-            </template>
-          </el-input>
-          <el-button @click="loadPosts" class="primary-button" style="margin-left: 10px;">搜索</el-button>
-        </div>
-      </div>
-
-      <!-- 帖子列表 -->
+      <!-- 公告列表 -->
       <div v-if="loading" class="loading">
         <div class="loading-spinner"></div>
         <p>加载中...</p>
       </div>
-      <div v-else-if="posts.length === 0" class="no-posts">
+      <div v-else-if="announcements.length === 0" class="no-announcements">
         <div class="empty-icon">
           <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
         </div>
-        <h3>暂无帖子</h3>
-        <p>还没有任何帖子，开始创建第一个帖子吧！</p>
-        <button @click="createPost" class="primary-button">发论坛</button>
+        <h3>暂无公告</h3>
+        <p>还没有发布任何公告，开始创建第一个公告吧！</p>
+        <button @click="createAnnouncement" class="primary-button">发布公告</button>
       </div>
-      <div v-else class="posts-list">
+      <div v-else class="announcements-list">
         <div
-          v-for="(post, index) in posts"
-          :key="post.id"
-          class="post-card"
+          v-for="announcement in announcements"
+          :key="announcement.id"
+          class="announcement-item"
         >
-          <div class="post-header">
-            <div class="post-title-section">
-              <h3>{{ post.title }}</h3>
-              <div class="post-badges">
-                <el-tag v-if="post.isTop" type="danger" size="small" class="badge-top">置顶</el-tag>
-                <el-tag :type="post.isPublic ? 'success' : 'warning'" size="small" :class="post.isPublic ? 'badge-public' : 'badge-private'">
-                  {{ post.isPublic ? '公开' : '私密' }}
-                </el-tag>
-              </div>
+          <div class="announcement-header">
+            <h3>{{ announcement.a_title }}</h3>
+            <div class="announcement-badges">
+              <el-tag type="info" size="small">发布于: {{ formatDate(announcement.created_at) }}</el-tag>
             </div>
           </div>
-          <p class="post-content">{{ post.content }}</p>
-          <div class="post-footer">
-            <div class="post-meta">
-              <span class="post-author">作者: {{ post.author }}</span>
-              <span class="post-time">{{ formatDate(post.createdAt) }}</span>
-              <span class="post-comments">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
-                  <path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1z"></path>
-                  <line x1="18" y1="2" x2="18" y2="6"></line>
-                  <line x1="12" y1="2" x2="12" y2="6"></line>
-                  <line x1="6" y1="2" x2="6" y2="6"></line>
-                </svg>
-                {{ post.commentCount || 0 }}
+          <p class="announcement-content">{{ announcement.a_content }}</p>
+          <div class="announcement-footer">
+            <div class="announcement-meta">
+              <span class="announcement-sender">发布者: {{ announcement.sender_name || '未知' }}</span>
+              <span v-if="announcement.receivers" class="announcement-receivers">
+                接收者: {{ announcement.receivers.length }} 人
               </span>
             </div>
           </div>
-          <div class="post-actions">
-            <el-button size="small" @click="viewPost(post.id)" class="link-button">查看详情</el-button>
-            <el-button size="small" @click="toggleTop(post)" class="secondary-button small">
-              {{ post.isTop ? '取消置顶' : '置顶' }}
-            </el-button>
-            <el-button size="small" @click="handleDeletePost(post.id)" class="danger-button small">删除</el-button>
+          <div class="announcement-actions">
+            <el-button size="small" @click="viewAnnouncement(announcement.id)" class="link-button">查看详情</el-button>
+            <el-button size="small" @click="editAnnouncement(announcement.id)" class="secondary-button small">编辑</el-button>
+            <el-button size="small" @click="handleDeleteAnnouncement(announcement.id)" class="danger-button small">删除</el-button>
           </div>
         </div>
       </div>
@@ -102,26 +71,28 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
-import { getAllPosts, deletePost, togglePostTop } from '@/api/forum'
-import type { Post } from '@/api/forum'
+import { getTeacherAnnouncements, deleteAnnouncement } from '@/api/announcement'
+import type { Announcement } from '@/api/announcement'
 
 const router = useRouter()
 
 const loading = ref(false)
-const searchKeyword = ref('')
-const posts = ref<Post[]>([])
+const announcements = ref<Announcement[]>([])
 
 const goHome = () => {
   router.push('/teacher/dashboard')
 }
 
-const createPost = () => {
-  router.push('/forum/create')
+const createAnnouncement = () => {
+  router.push('/teacher/announcements/create')
 }
 
-const viewPost = (id: number) => {
-  router.push(`/forum/post/${id}`)
+const viewAnnouncement = (id: number) => {
+  router.push(`/announcements/${id}`)
+}
+
+const editAnnouncement = (id: number) => {
+  router.push(`/teacher/announcements/edit/${id}`)
 }
 
 const formatDate = (date: string) => {
@@ -136,39 +107,17 @@ const formatDate = (date: string) => {
   })
 }
 
-const toggleTop = async (post: any) => {
+const handleDeleteAnnouncement = async (id: number) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要${post.isTop ? '取消置顶' : '置顶'}这个帖子吗？`,
-      '提示',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-
-    // 直接更新本地状态，绕过可能有问题的API调用
-    post.isTop = !post.isTop
-    ElMessage.success(`${post.isTop ? '置顶' : '取消置顶'}成功`)
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.message || '操作失败')
-    }
-  }
-}
-
-const handleDeletePost = async (id: number) => {
-  try {
-    await ElMessageBox.confirm('确定要删除这个帖子吗？删除后无法恢复。', '提示', {
+    await ElMessageBox.confirm('确定要删除这个公告吗？删除后无法恢复。', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
 
-    await deletePost(id)
+    await deleteAnnouncement(id)
     ElMessage.success('删除成功')
-    await loadPosts()
+    await loadAnnouncements()
   } catch (error: any) {
     if (error !== 'cancel') {
       console.error('删除失败', error)
@@ -177,41 +126,26 @@ const handleDeletePost = async (id: number) => {
   }
 }
 
-const loadPosts = async () => {
+const loadAnnouncements = async () => {
   loading.value = true
   try {
-    console.log('开始加载帖子列表')
-    const params = searchKeyword.value ? { search: searchKeyword.value } : {}
-    const data = await getAllPosts(params)
-    console.log('获取帖子列表成功:', data)
-    posts.value = data.map((post: any) => ({
-      id: post.id,
-      title: post.title,
-      content: post.content,
-      author: post.author_name || post.author || '未知',
-      authorId: post.author_id || 0,
-      createdAt: post.created_at || post.createdAt,
-      updatedAt: post.updated_at || post.updatedAt,
-      isPublic: post.is_public !== false,
-      isTop: post.is_top || false,
-      commentCount: post.comment_count || 0
-    }))
-    console.log('处理后的帖子列表:', posts.value)
+    const data = await getTeacherAnnouncements()
+    announcements.value = data
   } catch (error) {
-    console.error('加载帖子列表失败', error)
-    ElMessage.error('加载帖子列表失败，请稍后重试')
+    console.error('加载公告列表失败', error)
+    ElMessage.error('加载公告列表失败，请稍后重试')
   } finally {
     loading.value = false
   }
 }
 
 onMounted(() => {
-  loadPosts()
+  loadAnnouncements()
 })
 </script>
 
 <style scoped>
-.forum-page {
+.announcement-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
   padding: 24px;
@@ -220,7 +154,7 @@ onMounted(() => {
   align-items: flex-start;
 }
 
-.forum-card {
+.announcement-card {
   background: #FFFFFF;
   border-radius: 20px;
   box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
@@ -231,7 +165,7 @@ onMounted(() => {
   max-width: 1200px;
 }
 
-.forum-card::before {
+.announcement-card::before {
   content: '';
   position: absolute;
   top: 0;
@@ -363,43 +297,14 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-/* 筛选区域 */
-.filter-section {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 24px;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.filter-right {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.modern-input {
-  border-radius: 12px;
-  border: 1px solid #E2E8F0;
-  padding: 8px 16px;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  width: 300px;
-}
-
-.modern-input:hover {
-  border-color: #8C7CF0;
-  box-shadow: 0 0 0 3px rgba(140, 124, 240, 0.1);
-}
-
-/* 帖子列表 */
-.posts-list {
+/* 公告列表 */
+.announcements-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.post-card {
+.announcement-item {
   background: #FFFFFF;
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(140, 124, 240, 0.1);
@@ -408,60 +313,30 @@ onMounted(() => {
   border: 1px solid #F0F2F5;
 }
 
-.post-card:hover {
+.announcement-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 16px rgba(140, 124, 240, 0.15);
   border-color: #E2E8F0;
 }
 
-.post-header {
+.announcement-header {
   margin-bottom: 12px;
 }
 
-.post-title-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.post-title-section h3 {
+.announcement-header h3 {
   font-size: 18px;
   font-weight: 600;
   color: #4A5568;
-  margin: 0;
-  flex: 1;
+  margin: 0 0 8px 0;
 }
 
-.post-badges {
+.announcement-badges {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.badge-top {
-  background: linear-gradient(135deg, #F56565, #FC8181);
-  border: none;
-  color: white;
-  border-radius: 6px;
-}
-
-.badge-public {
-  background: linear-gradient(135deg, #48BB78, #68D391);
-  border: none;
-  color: white;
-  border-radius: 6px;
-}
-
-.badge-private {
-  background: linear-gradient(135deg, #ED8936, #F6AD55);
-  border: none;
-  color: white;
-  border-radius: 6px;
-}
-
-.post-content {
+.announcement-content {
   color: #718096;
   margin: 0 0 16px 0;
   line-height: 1.6;
@@ -472,13 +347,13 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.post-footer {
+.announcement-footer {
   margin-bottom: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid #F0F2F5;
 }
 
-.post-meta {
+.announcement-meta {
   display: flex;
   gap: 20px;
   font-size: 12px;
@@ -486,12 +361,12 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.post-author, .post-time, .post-comments {
+.announcement-sender, .announcement-receivers {
   display: flex;
   align-items: center;
 }
 
-.post-actions {
+.announcement-actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
@@ -518,7 +393,7 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
-.no-posts {
+.no-announcements {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -541,14 +416,14 @@ onMounted(() => {
   animation: float 3s ease-in-out infinite;
 }
 
-.no-posts h3 {
+.no-announcements h3 {
   font-size: 18px;
   font-weight: 600;
   color: #4A5568;
   margin: 0 0 8px 0;
 }
 
-.no-posts p {
+.no-announcements p {
   margin: 0 0 24px 0;
   font-size: 14px;
 }
@@ -577,11 +452,11 @@ onMounted(() => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .forum-page {
+  .announcement-page {
     padding: 16px;
   }
 
-  .forum-card {
+  .announcement-card {
     padding: 16px;
   }
 
@@ -596,30 +471,11 @@ onMounted(() => {
     justify-content: space-between;
   }
 
-  .filter-section {
+  .announcement-actions {
     justify-content: flex-start;
   }
 
-  .modern-input {
-    width: 100%;
-  }
-
-  .filter-right {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .post-title-section {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .post-actions {
-    justify-content: flex-start;
-  }
-
-  .post-meta {
+  .announcement-meta {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;

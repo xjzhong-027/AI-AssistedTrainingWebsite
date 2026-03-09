@@ -7,42 +7,51 @@
           <div>
             <el-button @click="goBack">返回</el-button>
             <el-button
-              v-if="userStore.isTeacher() && exam?.creatorId === userStore.userInfo?.id"
+              v-if="userStore.isTeacher()"
               type="primary"
-              @click="editExam"
+              @click="goTeacherUnitDetail"
             >
-              编辑
+              查看任务
             </el-button>
             <el-button
-              v-if="userStore.isStudent() && exam?.status === 'IN_PROGRESS'"
+              v-if="userStore.isStudent() && canStartExam"
               type="success"
               @click="takeExam"
             >
-              参加考试
+              开始考试
+            </el-button>
+            <el-button
+              v-if="userStore.isStudent() && examRecord?.submitted"
+              type="primary"
+              @click="viewResult"
+            >
+              查看结果
             </el-button>
           </div>
         </div>
       </template>
 
-      <div v-if="exam" class="detail-content">
+      <div v-if="examTask" class="detail-content">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="考试ID">{{ exam.id }}</el-descriptions-item>
+          <el-descriptions-item label="考试ID">{{ examTask.id }}</el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="getStatusType(exam.status)">{{ getStatusText(exam.status) }}</el-tag>
+            <el-tag :type="getStatusType(examTask.status)">{{ getStatusText(examTask.status) }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="考试标题" :span="2">{{ exam.title }}</el-descriptions-item>
+          <el-descriptions-item label="考试标题" :span="2">{{ examTask.title }}</el-descriptions-item>
           <el-descriptions-item label="考试描述" :span="2">
-            {{ exam.description || '无' }}
+            {{ examTask.description || '无' }}
           </el-descriptions-item>
           <el-descriptions-item label="开始时间">
-            {{ formatDateTime(exam.startTime) }}
+            {{ examRecord?.startedAt ? formatDateTime(examRecord.startedAt) : '-' }}
           </el-descriptions-item>
           <el-descriptions-item label="结束时间">
-            {{ formatDateTime(exam.endTime) }}
+            {{ examRecord?.finishedAt ? formatDateTime(examRecord.finishedAt) : '-' }}
           </el-descriptions-item>
-          <el-descriptions-item label="考试时长">{{ exam.duration }} 分钟</el-descriptions-item>
-          <el-descriptions-item label="创建时间">
-            {{ formatDateTime(exam.createdAt) }}
+          <el-descriptions-item label="页数">
+            {{ examTask.pageCount ?? '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="本次得分">
+            {{ examRecord?.score != null ? examRecord.score + ' 分' : examRecord ? '未出分' : '-' }}
           </el-descriptions-item>
         </el-descriptions>
 
@@ -76,15 +85,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
-import { getExamById } from '@/api/exam'
+import { getExamResult } from '@/api/exam'
+import { getUnitById } from '@/api/content'
 import { getQuestionsByExamId } from '@/api/question'
 import { formatDateTime } from '@/utils/format'
-import type { Exam } from '@/types/exam'
+import { canEnterExam, mapUnitToExamTask } from '@/utils/exam-utils'
+import type { ExamTask, ExamRecordSummary, ExamListItem, ExamStatus } from '@/types/exam'
 import type { Question } from '@/types/question'
 
 const route = useRoute()
@@ -92,8 +103,18 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const loading = ref(false)
-const exam = ref<Exam | null>(null)
+const examTask = ref<ExamTask | null>(null)
+const examRecord = ref<ExamRecordSummary | null>(null)
 const questions = ref<Question[]>([])
+
+const canStartExam = computed(() => {
+  if (!examTask.value) return false
+  const item: ExamListItem = {
+    task: examTask.value,
+    record: examRecord.value || undefined
+  }
+  return canEnterExam(item)
+})
 
 // 加载考试详情
 const loadExam = async () => {
@@ -106,7 +127,27 @@ const loadExam = async () => {
 
   loading.value = true
   try {
-    exam.value = await getExamById(id)
+    // 任务信息（Unit）
+    const unit = await getUnitById(id)
+    examTask.value = mapUnitToExamTask(unit)
+
+    // 当前学生的考试记录（仅学生端可用）
+    if (userStore.isStudent()) {
+      try {
+        const result: any = await getExamResult(id)
+        examRecord.value = {
+          examRecordId: result.id,
+          submitted: Boolean(result.submitted),
+          score: result.score ?? null,
+          startedAt: result.started_at,
+          finishedAt: result.finished_at
+        }
+      } catch (error: any) {
+        // 没有记录时不报错，视为尚未开始考试
+        console.warn('当前学生尚无考试记录或无法获取结果', error)
+      }
+    }
+
     if (userStore.isTeacher()) {
       questions.value = await getQuestionsByExamId(id)
     }
@@ -121,7 +162,9 @@ const getStatusText = (status: string): string => {
   const statusMap: Record<string, string> = {
     NOT_STARTED: '未开始',
     IN_PROGRESS: '进行中',
-    ENDED: '已结束'
+    ENDED: '已结束',
+    PUBLISHED: '已发布',
+    UNKNOWN: '未知'
   }
   return statusMap[status] || status
 }
@@ -130,9 +173,12 @@ const getStatusType = (status: string): string => {
   const typeMap: Record<string, string> = {
     NOT_STARTED: 'info',
     IN_PROGRESS: 'success',
-    ENDED: 'warning'
+    ENDED: 'warning',
+    PUBLISHED: 'info',
+    UNKNOWN: 'info'
   }
-  return typeMap[status] || ''
+  // 默认用 'info'，避免传入空字符串导致 ElTag 报错
+  return typeMap[status] || 'info'
 }
 
 const getQuestionTypeText = (type: string): string => {
@@ -149,16 +195,24 @@ const goBack = () => {
   router.push('/exams')
 }
 
-const editExam = () => {
-  router.push(`/exams/${exam.value?.id}/edit`)
+const goTeacherUnitDetail = () => {
+  if (!examTask.value) return
+  router.push(`/teacher/units/${examTask.value.id}`)
 }
 
 const takeExam = () => {
-  router.push(`/exams/${exam.value?.id}/take`)
+  if (!examTask.value) return
+  router.push(`/exams/${examTask.value.id}/take`)
+}
+
+const viewResult = () => {
+  if (!examTask.value) return
+  router.push(`/exams/${examTask.value.id}/result`)
 }
 
 const goCreateQuestion = () => {
-  router.push(`/questions/create?examId=${exam.value?.id}`)
+  if (!examTask.value) return
+  router.push(`/questions/create?examId=${examTask.value.id}`)
 }
 
 const viewQuestion = (id: number) => {

@@ -113,7 +113,7 @@ export function getStudentPracticeScores(studentId?: number): Promise<PracticeSc
     return records.map(record => ({
       id: record.id,
       practice: record.unit_name || `练习 ${record.unit_id}`, // 从记录中获取单元名称
-      totalScore: record.total_score || 0,
+      totalScore: Number(record.total_score ?? 0) || 0,
       startedAt: record.start_time, // 使用start_time字段
       finishedAt: record.submit_time // 使用submit_time字段
     }))

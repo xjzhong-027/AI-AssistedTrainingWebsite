@@ -85,9 +85,16 @@ export function uploadMaterialImage(file: File): Promise<{ image_url: string }> 
 
 /**
  * 获取所有单元列表
+ * @param classId 可选，按班级筛选
+ * @param unitType 可选，按类型筛选（exam/practice/task/quiz）
  */
-export function getAllUnits(classId?: number): Promise<Unit[]> {
-  const params = classId ? { class_id: classId } : {}
+export function getAllUnits(
+  classId?: number,
+  unitType?: 'exam' | 'practice' | 'task' | 'quiz'
+): Promise<Unit[]> {
+  const params: any = {}
+  if (classId) params.class_id = classId
+  if (unitType) params.unit_type = unitType
   return request.get('/content/units/', { params })
 }
 

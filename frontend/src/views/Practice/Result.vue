@@ -119,18 +119,7 @@
           </div>
         </el-card>
 
-        <!-- 反馈信息 -->
-        <el-card v-if="result.page_records && result.page_records.some((p: any) => p.feedback)" class="feedback-card">
-          <template #header>
-            <div class="card-header-title">教师反馈</div>
-          </template>
-          <div v-for="(pageRecord, index) in result.page_records" :key="index">
-            <div v-if="pageRecord.feedback" class="feedback-item">
-              <div class="feedback-page">第 {{ pageRecord.page_order + 1 }} 页</div>
-              <div class="feedback-content">{{ pageRecord.feedback }}</div>
-            </div>
-          </div>
-        </el-card>
+
       </div>
 
       <div v-else-if="!loading" class="empty-state">
@@ -237,19 +226,21 @@ onMounted(() => {
 
 <style scoped>
 .practice-result-page {
-  padding: 20px;
-  background-color: #F9F8F3;
+  padding: 24px;
+  background-color: #FAFBFC;
   min-height: 100vh;
 }
 
-/* 卡片样式 - 符合UI设计规范 */
+/* 卡片样式 - Modern Soft-Neo UI */
 :deep(.el-card) {
   background-color: #FFFFFF;
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(140, 124, 240, 0.15);
   position: relative;
   overflow: hidden;
   animation: fadeInUp 0.5s ease-out;
+  border: none;
+  margin-bottom: 24px;
 }
 
 :deep(.el-card)::before {
@@ -259,12 +250,12 @@ onMounted(() => {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #99B6B4, #BACFCE, #D48982, #DFB199);
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
   z-index: 1;
 }
 
 :deep(.el-card__body) {
-  padding: 30px;
+  padding: 32px;
 }
 
 @keyframes fadeInUp {
@@ -282,187 +273,287 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #F0F2F5;
 }
 
 .card-header h2 {
   margin: 0;
-  color: #1A1A1A;
-  font-size: 24px;
-  font-weight: 500;
+  color: #1A202C;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .result-content {
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .summary-card {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .summary-info {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+  gap: 24px;
 }
 
 .summary-item {
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 .summary-item .label {
-  font-weight: 500;
-  color: #606266;
-  margin-right: 10px;
+  font-weight: 600;
+  color: #8B9BB4;
+  min-width: 80px;
+  font-size: 13px;
 }
 
 .summary-item .value {
-  color: #1A1A1A;
+  color: #4A5568;
+  font-size: 14px;
+  flex: 1;
 }
 
 .summary-item .value.score {
-  font-size: 28px;
-  font-weight: bold;
-  color: #99B6B4;
+  font-size: 32px;
+  font-weight: 700;
+  color: #8C7CF0;
+  text-shadow: 0 2px 4px rgba(140, 124, 240, 0.2);
 }
 
 .score-summary-card .total-score-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 18px;
+  font-size: 16px;
+  padding: 16px;
+  background: #F8F9FA;
+  border-radius: 12px;
 }
+
 .score-summary-card .total-score-actions {
   display: flex;
   align-items: center;
   gap: 16px;
 }
+
 .score-summary-card .total-score {
-  font-weight: bold;
-  font-size: 24px;
-  color: #99B6B4;
+  font-weight: 700;
+  font-size: 28px;
+  color: #8C7CF0;
+  text-shadow: 0 2px 4px rgba(140, 124, 240, 0.2);
 }
+
 .has-feedback {
-  color: #99B6B4;
-  font-weight: 500;
+  color: #8C7CF0;
+  font-weight: 600;
 }
+
 .ai-feedback-block {
   margin-top: 16px;
   padding: 16px;
-  background: #F9F8F3;
+  background: #E8E4FF;
   border-radius: 12px;
-  border: 1px solid rgba(186, 207, 206, 0.3);
+  border: 1px solid #C6B9FF;
+  box-shadow: 0 2px 10px rgba(140, 124, 240, 0.1);
 }
+
 .ai-feedback-question {
-  font-weight: 500;
-  color: #99B6B4;
+  font-weight: 600;
+  color: #8C7CF0;
   margin-bottom: 12px;
   font-size: 14px;
 }
 
 .pages-card,
-.feedback-card,
 .answers-card {
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .page-answers-block {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
+
 .page-answers-block:last-child {
   margin-bottom: 0;
 }
+
 .page-title {
-  font-weight: 500;
-  color: #99B6B4;
-  margin-bottom: 12px;
+  font-weight: 600;
+  color: #8C7CF0;
+  margin-bottom: 16px;
   font-size: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #E8E4FF;
 }
+
 .answers-table {
   margin-bottom: 0;
-}
-.score-ok {
-  color: #67c23a;
-  font-weight: 500;
-}
-.score-zero {
-  color: #909399;
-}
-
-.card-header-title {
-  font-weight: 500;
-  font-size: 18px;
-  color: #1A1A1A;
-}
-
-.score-highlight {
-  font-weight: bold;
-  color: #99B6B4;
-  font-size: 16px;
-}
-
-/* 表格样式优化 */
-:deep(.el-table) {
   border-radius: 12px;
   overflow: hidden;
 }
 
-:deep(.el-table thead) {
-  background-color: rgba(186, 207, 206, 0.2);
+.score-ok {
+  color: #A8D5BA;
+  font-weight: 600;
 }
 
-:deep(.el-table tbody tr:hover) {
-  background-color: rgba(186, 207, 206, 0.1);
+.score-zero {
+  color: #8B9BB4;
 }
 
-:deep(.el-button) {
-  border-radius: 6px;
-  transition: all 0.3s ease;
+.card-header-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1A202C;
 }
 
-:deep(.el-button--default) {
-  background-color: #99B6B4;
-  border-color: #99B6B4;
-  color: #FFFFFF;
-}
-
-:deep(.el-button--default:hover) {
-  background-color: #7A9E9C;
-  border-color: #7A9E9C;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.feedback-item {
-  margin-bottom: 20px;
-  padding: 20px;
-  background: #F9F8F3;
-  border-radius: 12px;
-  border: 1px solid rgba(186, 207, 206, 0.2);
-}
-
-.feedback-page {
-  font-weight: 500;
-  margin-bottom: 10px;
-  color: #99B6B4;
+.score-highlight {
+  font-weight: 700;
+  color: #8C7CF0;
   font-size: 16px;
 }
 
-.feedback-content {
-  color: #606266;
-  line-height: 1.8;
-  font-size: 15px;
+/* 表格样式优化 - Modern Soft-Neo UI */
+:deep(.el-table) {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #F0F2F5;
+}
+
+:deep(.el-table thead) {
+  background: linear-gradient(135deg, #FAFBFC, #F0F2F5);
+}
+
+:deep(.el-table thead th) {
+  background: transparent;
+  color: #4A5568;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 12px 8px;
+  border-bottom: 1px solid #F0F2F5;
+}
+
+:deep(.el-table tbody tr) {
+  transition: all 0.3s ease;
+}
+
+:deep(.el-table tbody tr:hover) {
+  background-color: rgba(140, 124, 240, 0.05);
+}
+
+:deep(.el-table td) {
+  color: #4A5568;
+  font-size: 13px;
+  padding: 12px 8px;
+  border-bottom: 1px solid #F0F2F5;
+}
+
+/* 按钮样式 - Modern Soft-Neo UI */
+:deep(.el-button) {
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+:deep(.el-button--primary) {
+  background: linear-gradient(135deg, #8C7CF0, #C6B9FF);
+  border: none;
+  color: white;
+}
+
+:deep(.el-button--primary:hover) {
+  background: linear-gradient(135deg, #7A6BD0, #B5A8EE);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(140, 124, 240, 0.3);
+}
+
+:deep(.el-button--default) {
+  background: #FFFFFF;
+  border: 1px solid #F0F2F5;
+  color: #4A5568;
+}
+
+:deep(.el-button--default:hover) {
+  background: #E8E4FF;
+  border-color: #C6B9FF;
+  color: #8C7CF0;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(140, 124, 240, 0.2);
 }
 
 .empty-state {
-  padding: 40px;
+  padding: 60px;
   text-align: center;
 }
 
-/* 标签样式 */
+:deep(.el-empty__description) {
+  color: #8B9BB4;
+  font-size: 14px;
+}
+
+/* 标签样式 - Modern Soft-Neo UI */
 :deep(.el-tag) {
-  border-radius: 6px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+}
+
+:deep(.el-tag--success) {
+  background: #E8F5E9;
+  border-color: #A8D5BA;
+  color: #4A7C59;
+}
+
+:deep(.el-tag--warning) {
+  background: #FFF8E1;
+  border-color: #FFE082;
+  color: #8B6914;
+}
+
+:deep(.el-tag--info) {
+  background: #E8E4FF;
+  border-color: #C6B9FF;
+  color: #8C7CF0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .practice-result-page {
+    padding: 16px;
+  }
+  
+  :deep(.el-card__body) {
+    padding: 20px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  
+  .summary-info {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .score-summary-card .total-score-row {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .total-score-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 </style>
 
