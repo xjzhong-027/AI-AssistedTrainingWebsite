@@ -41,6 +41,7 @@ from Query.api import views as query_views
 from common.api import scoring_views
 from common.api import hint_views
 from common.api import behavior_views
+from common.api import question_generation_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 
@@ -172,6 +173,14 @@ urlpatterns = [
         ])),
     ])),
 
+    # AI 自动出题 API
+    path('api/v1/question-generation/', include([
+        path('generate/', question_generation_views.AIQuestionGenerateView.as_view(), name='api_question_generate'),
+        path('status/<int:task_id>/', question_generation_views.AIQuestionStatusView.as_view(), name='api_question_status'),
+        path('chat/', question_generation_views.AIQuestionChatView.as_view(), name='api_question_chat'),
+        path('apply/', question_generation_views.AIQuestionApplyView.as_view(), name='api_question_apply'),
+    ])),
+
     # AI评分和对话 API
     path('api/v1/scoring/', include([
         path('subjective/', scoring_views.AIScoringView.as_view(), name='api_ai_scoring'),
@@ -188,7 +197,10 @@ urlpatterns = [
     # 学生行为统计 API
     path('api/v1/behavior/', include([
         path('student/summary/', behavior_views.StudentBehaviorSummaryView.as_view(), name='api_behavior_student_summary'),
+        path('student/score/', behavior_views.StudentBehaviorScoreView.as_view(), name='api_behavior_student_score'),
         path('teacher/class-summary/', behavior_views.ClassBehaviorSummaryView.as_view(), name='api_behavior_class_summary'),
+        path('class/ranking/', behavior_views.ClassBehaviorRankingView.as_view(), name='api_behavior_class_ranking'),
+        path('calculate-weekly/', behavior_views.CalculateWeeklyScoresView.as_view(), name='api_behavior_calculate_weekly'),
     ])),
 
     # 分发路由

@@ -1,6 +1,5 @@
 <template>
-  <Layout>
-    <div class="learning-record-page">
+  <div class="learning-record-page">
       <el-card>
         <template #header>
           <div class="card-header">
@@ -72,14 +71,12 @@
         <el-empty v-if="!loading && recordList.length === 0" description="暂无学习记录"></el-empty>
       </el-card>
     </div>
-  </Layout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import Layout from '@/components/Layout/index.vue'
 import { queryLearningRecords } from '@/api/query'
 import { getAllClasses, getStudentsByClass } from '@/api/user'
 import { formatDateTime } from '@/utils/format'

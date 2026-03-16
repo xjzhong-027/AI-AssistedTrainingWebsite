@@ -1,6 +1,5 @@
 <template>
-  <Layout>
-    <div class="overdue-rules-page">
+  <div class="overdue-rules-page">
       <el-card>
         <template #header>
           <div class="card-header">
@@ -11,7 +10,9 @@
 
         <!-- 规则列表 -->
         <el-table :data="rulesList" v-loading="loading" stripe border>
-          <el-table-column prop="name" label="规则名称" min-width="150"></el-table-column>
+          <el-table-column prop="rule_name" label="规则名称" min-width="150">
+            <template #default="{ row }">{{ row.rule_name || row.name }}</template>
+          </el-table-column>
           <el-table-column prop="description" label="规则描述" min-width="200"></el-table-column>
           <el-table-column prop="is_default" label="默认规则" width="100">
             <template #default="{ row }">
@@ -46,7 +47,7 @@
         <div v-if="currentRule" class="rule-detail">
           <div class="detail-item">
             <span class="label">规则名称：</span>
-            <span class="value">{{ currentRule.name }}</span>
+            <span class="value">{{ currentRule.rule_name || currentRule.name }}</span>
           </div>
           <div class="detail-item">
             <span class="label">规则描述：</span>
@@ -66,12 +67,12 @@
           <el-table :data="currentRule.periods" border style="margin-top: 10px">
             <el-table-column label="时间范围" min-width="150">
               <template #default="{ row }">
-                {{ row.start_hours }}h - {{ row.end_hours }}h
+                {{ row.min_days }}-{{ row.max_days ?? '∞' }} 天
               </template>
             </el-table-column>
             <el-table-column label="扣分比例" width="120">
               <template #default="{ row }">
-                <el-tag type="warning">{{ (row.deduction_rate * 100).toFixed(0) }}%</el-tag>
+                <el-tag type="warning">{{ ((1 - Number(row.deduction_rate)) * 100).toFixed(0) }}%</el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="description" label="说明" min-width="150"></el-table-column>
@@ -85,14 +86,12 @@
         </template>
       </el-dialog>
     </div>
-  </Layout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import Layout from '@/components/Layout/index.vue'
 import { getOverdueRules, getOverdueRuleDetail } from '@/api/query'
 import { formatDateTime } from '@/utils/format'
 import type { OverdueRule } from '@/types/query'

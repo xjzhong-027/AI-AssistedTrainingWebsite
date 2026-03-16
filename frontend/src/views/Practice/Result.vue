@@ -76,8 +76,8 @@
               </template>
             </el-table-column>
             <el-table-column label="操作" width="150" align="center">
-              <template #default="{ row }">
-                <el-button size="small" @click="viewPageDetail(row)">查看答题详情</el-button>
+              <template #default="{ row, $index }">
+                <el-button size="small" @click="viewPageDetail(row, $index)">查看答题详情</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -170,14 +170,20 @@ const formatDate = (dateStr: string): string => {
   })
 }
 
-// 查看页面详情（跳转到答题页指定页面查看）
-const viewPageDetail = (pageRecord: any) => {
+// 查看页面详情（跳转到答题详情页面）
+const viewPageDetail = (pageRecord: any, index: number) => {
   const practiceId = Number(route.params.id)
-  if (practiceId && pageRecord.page_order !== undefined) {
+
+  // 使用列表索引 + 1 作为页面顺序，和同事版本保持一致
+  const finalPageId = Number(index) + 1
+
+  if (practiceId && !isNaN(finalPageId)) {
     router.push({
-      name: 'PracticeTake',
-      params: { id: practiceId },
-      query: { page: String(pageRecord.page_order + 1), viewMode: 'result' }
+      name: 'PracticeDetail',
+      params: {
+        id: practiceId,
+        pageId: finalPageId
+      }
     })
   } else {
     ElMessage.warning('无法查看页面详情')

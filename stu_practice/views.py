@@ -3,6 +3,7 @@ import json
 import random
 import threading
 import time
+from functools import wraps
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.shortcuts import render, get_object_or_404, redirect
@@ -10,17 +11,16 @@ from django.http import JsonResponse, HttpResponseRedirect
 from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from django.utils import timezone
-from django.db.models import Avg, Max, Min,Sum
+from django.db.models import Avg, Max, Min, Sum
 from AI_module.Get_from_AI import Get_from_AI
 from django.http import HttpResponse
 from asgiref.sync import async_to_sync
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
 
-
-from accessment.models import StudentMediaPlayRecord, StudentAnswer, StudentPageRecord,StudentExamRecord
+from accessment.models import StudentMediaPlayRecord, StudentAnswer, StudentPageRecord, StudentExamRecord
 from ELW.models import (
     TimeManagement,
     Unit,
@@ -30,7 +30,9 @@ from ELW.models import (
     MainQuestion,
     PageMainQuestion,
     PageSubQuestion,
-    Correction, ChoiceOption, MatchingOption,
+    Correction,
+    ChoiceOption,
+    MatchingOption,
 )
 from Account.services.user_service_impl import UserServiceImpl
 from accessment.services.exam_service_impl import ExamServiceImpl
@@ -39,7 +41,7 @@ from accessment.services.exam_service_impl import ExamServiceImpl
 # We'll keep them as direct imports for now
 from Account.models import ClassScheduleAddition, ClassScheduleAdjustment, Class
 from ELW.services.content_service_impl import ContentServiceImpl
-# Note: PageMainQuestion, PageSubQuestion, TimeManagement, Correction, ChoiceOption, MatchingOption 
+# Note: PageMainQuestion, PageSubQuestion, TimeManagement, Correction, ChoiceOption, MatchingOption
 # are not in ContentService interface, keep direct import for now
 # Note: Unit, PaperPage, MainQuestion, SubQuestion, MediaMaterial are used for:
 # 1. QuerySet operations (filter, none, all) - needed for compatibility
@@ -53,17 +55,102 @@ from django.conf import settings
 from django.http import HttpResponseBadRequest
 from Account.services.auth_service_impl import AuthServiceImpl
 
-@AuthServiceImpl.require_login
+# JWT认证支持
+try:
+    from rest_framework_simplejwt.authentication import JWTAuthentication
+    from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFailed
+
+    JWT_AVAILABLE = True
+except ImportError:
+    JWT_AVAILABLE = False
+
+
+def get_user_from_jwt(request):
+    """从JWT Token中获取用户信息"""
+    if not JWT_AVAILABLE:
+        return None
+
+    auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    if not auth_header.startswith('Bearer '):
+        return None
+
+    try:
+        jwt_auth = JWTAuthentication()
+        validated_token = jwt_auth.get_validated_token(auth_header.split(' ')[1])
+        user = jwt_auth.get_user(validated_token)
+        return user
+    except (InvalidToken, AuthenticationFailed, Exception):
+        return None
+
+
+def is_json_request(request):
+    """检测是否是JSON API请求"""
+    # 检查Accept头部
+    accept = request.META.get('HTTP_ACCEPT', '')
+    if 'application/json' in accept:
+        return True
+    # 检查Content-Type头部
+    content_type = request.META.get('CONTENT_TYPE', '')
+    if 'application/json' in content_type:
+        return True
+    # 检查X-Requested-With头部（AJAX请求）
+    if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
+        return True
+    return False
+
+
+def api_login_required(view_func):
+    """
+    支持Session和JWT双重认证的装饰器
+    优先检查JWT Token，如果没有则检查Session
+    """
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        # 首先尝试JWT认证
+        user = get_user_from_jwt(request)
+        if user:
+            # JWT认证成功，设置request.user
+            request.user = user
+            # 尝试获取username并设置到session
+            if hasattr(user, 'username'):
+                request.session['username'] = user.username
+                request.session['is_login'] = True
+            return view_func(request, *args, **kwargs)
+
+        # JWT认证失败，尝试Session认证
+        if AuthServiceImpl.is_authenticated(request):
+            return view_func(request, *args, **kwargs)
+
+        # 两种认证都失败
+        # 检查是否是API请求
+        if 'application/json' in request.META.get('HTTP_ACCEPT', ''):
+            return JsonResponse({'error': '未授权，请先登录'}, status=401)
+        else:
+            return redirect(reverse('login'))
+
+    return wrapper
+
+
+@api_login_required
 def practice_list(request):
     """
     练习列表页面
-    
-    使用 @require_login 装饰器确保用户已登录。
+
+    使用 @api_login_required 装饰器确保用户已登录（支持Session和JWT）。
     """
 
+    # 优先从session获取username，如果没有则从request.user获取
     current_username = request.session.get('username')
+    if not current_username and hasattr(request, 'user') and hasattr(request.user, 'username'):
+        current_username = request.user.username
+
     if not current_username:
-        return redirect('login')
+        # 对于API请求返回401，对于页面请求重定向到登录页
+        if 'application/json' in request.META.get('HTTP_ACCEPT', ''):
+            return JsonResponse({'error': '无法获取用户信息'}, status=401)
+        else:
+            return redirect('login')
 
     student = UserServiceImpl.get_student_by_username(current_username)
     if not student:
@@ -133,16 +220,45 @@ def practice_list(request):
     # 过滤掉没有练习的项目
     practice_data_list = {k: v for k, v in practice_data_list.items() if v}
 
-    return render(request, 'practice/practice_list.html', {'practices': practice_data_list})
+    # 检查是否是API请求（接受JSON）
+    if is_json_request(request):
+        # 转换日期为字符串格式
+        for practice_type, practice_list in practice_data_list.items():
+            for practice in practice_list:
+                if isinstance(practice['start_date'], date):
+                    practice['start_date'] = practice['start_date'].isoformat()
+                if isinstance(practice['end_date'], date):
+                    practice['end_date'] = practice['end_date'].isoformat()
+        # 转换为前端期望的格式
+        flat_practices = []
+        for practice_type, practice_list in practice_data_list.items():
+            for practice in practice_list:
+                flat_practices.append({
+                    'id': practice['unit_id'],
+                    'unit_name': practice['title'],
+                    'unit_type': practice_type,
+                    'status': 'completed' if practice['page_status'] == '已提交' else 'pending',
+                    'start_date': practice['start_date'],
+                    'end_date': practice['end_date'],
+                })
+        return JsonResponse(flat_practices, safe=False)
+    else:
+        return render(request, 'practice/practice_list.html', {'practices': practice_data_list})
+
 
 def start_practice(request, practice_id):
     # Use ContentService to get unit by ID
     practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
     if not practice or practice.type not in ['practice', 'quiz', 'task']:
         from django.http import Http404
+
         raise Http404("Practice not found")
 
+    # 优先从session获取username，如果没有则从request.user获取
     username = request.session.get('username')
+    if not username and hasattr(request, 'user') and hasattr(request.user, 'username'):
+        username = request.user.username
+
     if not username:
         return JsonResponse({'status': 'error', 'message': 'You are not logged in.'}, status=403)
 
@@ -167,36 +283,82 @@ def start_practice(request, practice_id):
 
     return redirect('stu_practice:practice_page', practice_id=practice.id, order=first_page.order)
 
+
 # 使用 ExamService 加载答案
 def load_answers(student_page_record):
     return ExamServiceImpl.load_answers(student_page_record.id)
 
+
+@api_login_required
 def practice_page(request, practice_id, order):
     # Use ContentService to get unit and page
-    practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
+    try:
+        practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
+    except Exception as e:
+        if is_json_request(request):
+            return JsonResponse({'error': f'练习不存在: {str(e)}'}, status=404)
+        else:
+            from django.http import Http404
+
+            raise Http404("Practice not found")
+
     if not practice or practice.type not in ['practice', 'quiz', 'task']:
-        from django.http import Http404
-        raise Http404("Practice not found")
-    
+        if is_json_request(request):
+            return JsonResponse({'error': '练习不存在或类型错误'}, status=404)
+        else:
+            from django.http import Http404
+
+            raise Http404("Practice not found")
+
     # Get pages for this unit and find the one with matching order
-    pages = ContentServiceImpl.get_pages_by_unit(practice.id)
+    try:
+        pages = ContentServiceImpl.get_pages_by_unit(practice.id)
+    except Exception as e:
+        if is_json_request(request):
+            return JsonResponse({'error': f'获取页面列表失败: {str(e)}'}, status=500)
+        else:
+            return HttpResponse(f'获取页面列表失败: {str(e)}', status=500)
+
+    # 调试信息
+    print(f'[DEBUG] practice_page: practice_id={practice_id}, order={order}')
+    print(f'[DEBUG] pages count: {len(pages)}')
+    if pages:
+        print(f'[DEBUG] pages orders: {[p.order for p in pages]}')
+
     page = None
     for p in pages:
         if p.order == order:
             page = p
             break
+
     if not page:
-        from django.http import Http404
-        raise Http404("Page not found")
+        print(f'[DEBUG] Page not found for order={order}')
+        if is_json_request(request):
+            return JsonResponse({'error': f'页面不存在，order={order}，可用页面: {[p.order for p in pages]}'}, status=404)
+        else:
+            from django.http import Http404
+
+            raise Http404("Page not found")
+
+    # 优先从session获取username，如果没有则从request.user获取
     username = request.session.get('username')
+    if not username and hasattr(request, 'user') and hasattr(request.user, 'username'):
+        username = request.user.username
+
     if not username:
-        messages.error(request, "You are not logged in.")
-        return redirect('login')
+        if is_json_request(request):
+            return JsonResponse({'error': '无法获取用户信息'}, status=401)
+        else:
+            messages.error(request, "You are not logged in.")
+            return redirect('login')
 
     student = UserServiceImpl.get_student_by_username(username)
     if not student:
-        messages.error(request, "Student not found.")
-        return redirect('login')
+        if is_json_request(request):
+            return JsonResponse({'error': '学生信息不存在'}, status=404)
+        else:
+            messages.error(request, "Student not found.")
+            return redirect('login')
     student_practice_record = ExamServiceImpl.get_exam_record(student.id, practice.id)
     if not student_practice_record:
         student_practice_record = ExamServiceImpl.create_exam_record(student.id, practice.id)
@@ -207,32 +369,40 @@ def practice_page(request, practice_id, order):
 
     if page_record.submitted:
         is_submitted = True
-        # 未全部提交禁止访问前页
-        # all_related_submitted = True
-        # related_page_records = StudentPageRecord.objects.filter(student_practice_record=student_practice_record).all()
-        # related_pages = PaperPage.objects.filter(unit=practice).all()
-        #
-        # for rpr in related_page_records:
-        #     if not rpr.submitted:
-        #         all_related_submitted = False
-        #         break
-        #
-        # record_ids = [int(id) for id in related_page_records.values_list('page_id', flat=True)]
-        # related_pages_ids = [int(id) for id in related_pages.values_list('order', flat=True)]
-        # if len(record_ids) != len(related_pages_ids):
-        #     all_related_submitted = False
-        #
-        # if not all_related_submitted:
-        #     if page_record.page_id != max(record_ids):
-        #         return practice_page(request, practice_id, order+1)
     else:
         is_submitted = False
 
+    # 获取页面的大题
     page_main_questions = PageMainQuestion.objects.filter(page=page)
     main_questions = [pmq.main_question for pmq in page_main_questions]
+    print(f'[DEBUG] page_main_questions count: {page_main_questions.count()}')
+    print(f'[DEBUG] main_questions count: {len(main_questions)}')
 
+    # 如果没有通过PageMainQuestion获取到题目，尝试直接从Unit获取
+    if len(main_questions) == 0:
+        print(f'[DEBUG] No questions found through PageMainQuestion, trying alternative approach')
+        # 尝试直接从Unit获取所有大题
+        from ELW.models import MainQuestion as MQ
+
+        main_questions = MQ.objects.filter(media_material__isnull=False).all()
+        print(f'[DEBUG] Alternative approach: main_questions count: {len(main_questions)}')
+
+    # 获取小题
     page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
     sub_questions = [psq.sub_question for psq in page_sub_questions]
+    print(f'[DEBUG] page_sub_questions count: {page_sub_questions.count()}')
+    print(f'[DEBUG] sub_questions count: {len(sub_questions)}')
+
+    # 如果没有通过PageSubQuestion获取到小题，尝试直接从MainQuestion获取
+    if len(sub_questions) == 0 and len(main_questions) > 0:
+        print(f'[DEBUG] No sub-questions found through PageSubQuestion, trying alternative approach')
+        from ELW.models import SubQuestion as SQ
+
+        sub_questions = []
+        for main_q in main_questions:
+            main_q_sub_questions = main_q.sub_questions.all()
+            sub_questions.extend(main_q_sub_questions)
+        print(f'[DEBUG] Alternative approach: sub_questions count: {len(sub_questions)}')
     student_answers_iterable = StudentAnswer.objects.filter(student_page_record=page_record)
     student_answers = []
     for answer in student_answers_iterable:
@@ -242,16 +412,31 @@ def practice_page(request, practice_id, order):
     graded_answers = []
     scores = {}
     if page_record.is_graded:
-        graded_answers = {sq.id:sq.answer for sq in sub_questions}
+        graded_answers = {sq.id: sq.answer for sq in sub_questions}
         for sa in student_answers:
-            if sa.score != None: scores[sa.sub_question_id] = int(sa.score)
-            elif sa.sub_question.main_question.question_type == 'comprehension': scores[sa.sub_question_id] = '批改中'
-            else: scores[sa.sub_question_id] = '批改错误'
+            if sa.score is not None:
+                scores[sa.sub_question_id] = int(sa.score)
+            elif sa.sub_question.main_question.question_type == 'comprehension':
+                scores[sa.sub_question_id] = '批改中'
+            else:
+                scores[sa.sub_question_id] = '批改错误'
 
-    media_materials = MediaMaterial.objects.filter(main_questions__in=main_questions).distinct()
+    # 获取媒体素材 - 通过MainQuestion的media_material外键
+    media_material_ids = [mq.media_material_id for mq in main_questions if hasattr(mq, 'media_material_id') and mq.media_material_id]
+    if not media_material_ids:
+        # 尝试通过main_questions关联查询
+        media_materials = MediaMaterial.objects.filter(main_questions__in=main_questions).distinct()
+    else:
+        media_materials = MediaMaterial.objects.filter(id__in=media_material_ids)
+
+    print(f'[DEBUG] main_questions count: {len(main_questions)}')
+    print(f'[DEBUG] media_material_ids: {media_material_ids}')
+    print(f'[DEBUG] media_materials count: {media_materials.count()}')
 
     random.seed(student_practice_record.user.id)
     answers_dict = load_answers(student_page_record)
+    print(f'[DEBUG] answers_dict: {answers_dict}')
+    print(f'[DEBUG] answers_dict keys: {list(answers_dict.keys())}')
 
     blank_data = {}
     correction_data = {}
@@ -265,8 +450,16 @@ def practice_page(request, practice_id, order):
                 for blank in blanks:
                     if 0 <= blank.index < len(words):
                         answer = answers_dict.get(sub_q.id, '')
-                        if is_submitted: input_html = f'<input type="text" class="blank-input" name="answer_{sub_q.id}" id="answer_{sub_q.id}" value="{answer}" disabled/>'
-                        else: input_html = f'<input type="text" class="blank-input" name="answer_{sub_q.id}" id="answer_{sub_q.id}" value="{answer}" />'
+                        if is_submitted:
+                            input_html = (
+                                f'<input type="text" class="blank-input" name="answer_{sub_q.id}" '
+                                f'id="answer_{sub_q.id}" value="{answer}" disabled/>'
+                            )
+                        else:
+                            input_html = (
+                                f'<input type="text" class="blank-input" name="answer_{sub_q.id}" '
+                                f'id="answer_{sub_q.id}" value="{answer}" />'
+                            )
                         words.insert(blank.index + 1, input_html)
                 processed_text = ' '.join(words)
                 html_parts.append(processed_text)
@@ -302,7 +495,7 @@ def practice_page(request, practice_id, order):
     main_question_ids = [mq.id for mq in main_questions]
     play_records = ExamServiceImpl.get_media_play_records_by_exam(
         student_practice_record.id,
-        main_question_ids
+        main_question_ids,
     )
     play_records_dict = {record.main_question_id: record.play_count for record in play_records}
 
@@ -333,9 +526,78 @@ def practice_page(request, practice_id, order):
         'page_submitted': is_submitted,
         'can_modify': is_submitted,
         'graded_answers': graded_answers,
-        'scores':scores,
+        'scores': scores,
     }
-    return render(request, 'practice/practice_page.html', context)
+
+    # 检查是否是API请求（接受JSON）
+    if is_json_request(request):
+        # 构建为前端期望的JSON格式
+        media_obj = None
+        if media_materials.exists():
+            media_obj = media_materials.first()
+        media_data = None
+        if media_obj:
+            media_url = media_obj.media_url if hasattr(media_obj, 'media_url') else ''
+            video_extensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm']
+            is_video = any(media_url.lower().endswith(ext) for ext in video_extensions)
+            if media_url and not media_url.startswith('http'):
+                full_url = f"http://localhost:8000{settings.MEDIA_URL}{media_url}"
+            else:
+                full_url = media_url
+            media_data = {
+                'id': media_obj.id,
+                'url': full_url,
+                'is_video': is_video,
+                'transcript': media_obj.transcript if hasattr(media_obj, 'transcript') else '',
+            }
+
+        questions_data = []
+        for sub_q in sub_questions:
+            main_q = sub_q.main_question
+            student_answer = answers_dict.get(sub_q.id, '')
+            correct_answer = sub_q.answer if hasattr(sub_q, 'answer') else ''
+            score = scores.get(sub_q.id, 0)
+            options = []
+            if main_q.question_type == 'choice' and hasattr(sub_q, 'options'):
+                options = [opt.option_content for opt in sub_q.options.all()]
+            question_item = {
+                'id': sub_q.id,
+                'question_text': sub_q.question_text,
+                'question_type': main_q.question_type,
+                'options': options,
+                'userAnswer': student_answer,
+                'correctAnswer': correct_answer,
+                'score': score,
+            }
+            questions_data.append(question_item)
+
+        json_data = {
+            'practice': {
+                'id': practice.id,
+                'title': practice.title,
+                'type': practice.type,
+            },
+            'media': media_data,
+            'questions': questions_data,
+            'answers': answers_dict,
+            'is_last_page': is_last_page,
+            'practice_record_id': student_practice_record.id,
+            'started_at': student_practice_record.started_at.isoformat() if student_practice_record.started_at else None,
+            'ended_at': student_practice_record.ended_at.isoformat() if student_practice_record.ended_at else None,
+            'MEDIA_URL': settings.MEDIA_URL,
+            'play_records': play_records_dict,
+            'remaining_time': student_page_record.remaining_time,
+            'blank_data': blank_data,
+            'correction_data': correction_data,
+            'page_submitted': is_submitted,
+            'can_modify': is_submitted,
+            'graded_answers': graded_answers,
+            'scores': scores,
+        }
+        return JsonResponse(json_data)
+    else:
+        return render(request, 'practice/practice_page.html', context)
+
 
 @csrf_exempt
 def update_remaining_time(request, page_record_id):
@@ -352,13 +614,15 @@ def update_remaining_time(request, page_record_id):
         return JsonResponse({'status': 'success'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
+
 def next_page(request, practice_id, order):
     # Use ContentService to get unit and page
     practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
     if not practice or practice.type not in ['practice', 'quiz', 'task']:
         from django.http import Http404
+
         raise Http404("Practice not found")
-    
+
     # Get pages for this unit and find the one with matching order
     pages = ContentServiceImpl.get_pages_by_unit(practice.id)
     current_page = None
@@ -368,9 +632,15 @@ def next_page(request, practice_id, order):
             break
     if not current_page:
         from django.http import Http404
+
         raise Http404("Page not found")
     next_page = practice.paper_pages.filter(order=current_page.order + 1).first()
+
+    # 优先从session获取username，如果没有则从request.user获取
     username = request.session.get('username')
+    if not username and hasattr(request, 'user') and hasattr(request.user, 'username'):
+        username = request.user.username
+
     if not username:
         messages.error(request, "You are not logged in.")
         return redirect('login')
@@ -390,7 +660,7 @@ def next_page(request, practice_id, order):
     main_question_ids = [mq.id for mq in main_questions]
     play_records = ExamServiceImpl.get_media_play_records_by_exam(
         student_practice_record.id,
-        main_question_ids
+        main_question_ids,
     )
 
     for main_question in main_questions:
@@ -406,12 +676,11 @@ def next_page(request, practice_id, order):
                 return redirect('stu_practice:practice_page', practice_id=practice.id, order=next_page.order)
 
         else:
-            #return JsonResponse({'message': f"You need to play the media at least {main_question.minimum_play} times"})
-            # messages.error(request,f"You need to play the media at least {main_question.minimum_play} times")
             if main_question.minimum_play <= 0:
                 return redirect('stu_practice:practice_page', practice_id=practice.id, order=next_page.order)
             else:
                 return redirect('stu_practice:practice_page', practice_id=practice.id, order=current_page.order)
+
 
 # 辅助函数：从 request.POST 提取答案数据（复用 accessment 的逻辑）
 def _extract_answers_from_request(request, page_record_id):
@@ -419,19 +688,19 @@ def _extract_answers_from_request(request, page_record_id):
     page_record = ExamServiceImpl.get_page_record_by_id(page_record_id)
     if not page_record:
         return {}
-    
+
     page_main_questions = PageMainQuestion.objects.filter(page=page_record.page)
     page_sub_questions = PageSubQuestion.objects.filter(page_main_question__in=page_main_questions)
     sub_questions = [psq.sub_question for psq in page_sub_questions]
-    
+
     cached_answers = cache.get(f"answers_{page_record_id}", {})
-    
+
     for sub_question in sub_questions:
         sub_question_id = sub_question.id
         main_question = sub_question.main_question
         question_type = main_question.question_type
         answer_text = ""
-        
+
         if question_type == 'choice':
             selected_option = request.POST.get(f'answer_{sub_question_id}')
             answer_text = selected_option
@@ -442,13 +711,13 @@ def _extract_answers_from_request(request, page_record_id):
             correction_types = []
             correction_texts = []
             correction_indices = []
-            
+
             for key, value in request.POST.items():
                 if key.startswith(f'correction_type_{sub_question_id}_'):
                     local_index = key.split('_')[-1]
                     correction_type = value.strip()
                     correction_text = request.POST.get(f'correction_text_{sub_question_id}_{local_index}', '').strip()
-                    
+
                     if correction_type != 'none':
                         correction_types.append(correction_type)
                         correction_texts.append(correction_text)
@@ -458,15 +727,16 @@ def _extract_answers_from_request(request, page_record_id):
                 answer_text.append({
                     'type': correction_types[i],
                     'index': correction_indices[i],
-                    'text': correction_texts[i]
+                    'text': correction_texts[i],
                 })
             answer_text = json.dumps(answer_text)
         else:
             answer_text = request.POST.get(f'answer_{sub_question_id}', '').strip()
-        
+
         cached_answers[sub_question_id] = answer_text
-    
+
     return cached_answers
+
 
 def _save_answers_to_cache(request, page_record_id):
     """保存答案到缓存"""
@@ -474,12 +744,12 @@ def _save_answers_to_cache(request, page_record_id):
     ExamServiceImpl.save_answers_to_cache(page_record_id, answers_data)
     return JsonResponse({'message': '已保存'})
 
-# _update_cache 已移至 ExamServiceImpl，不再需要
 
 def _save_answers_to_database(page_record_id):
     """从缓存中读取答案并保存到数据库"""
     ExamServiceImpl.save_answers_to_database(page_record_id)
     return JsonResponse({'message': '已保存'})
+
 
 @csrf_exempt
 def save_page(request, practice_id, order):
@@ -488,8 +758,9 @@ def save_page(request, practice_id, order):
         practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
         if not practice or practice.type not in ['practice', 'quiz', 'task']:
             from django.http import Http404
+
             raise Http404("Practice not found")
-        
+
         # Get pages for this unit and find the one with matching order
         pages = ContentServiceImpl.get_pages_by_unit(practice.id)
         current_page = None
@@ -499,8 +770,17 @@ def save_page(request, practice_id, order):
                 break
         if not current_page:
             from django.http import Http404
+
             raise Http404("Page not found")
+
+        # 优先从session获取username，如果没有则从request.user获取
         username = request.session.get('username')
+        if not username and hasattr(request, 'user') and hasattr(request.user, 'username'):
+            username = request.user.username
+
+        if not username:
+            return JsonResponse({'message': '未登录', 'status': 'error'}, status=403)
+
         student = UserServiceImpl.get_student_by_username(username)
         if not student:
             return JsonResponse({'message': '学生信息不存在', 'status': 'error'}, status=404)
@@ -516,11 +796,10 @@ def save_page(request, practice_id, order):
         # 保存答案到缓存和数据库
         if not manual_save and not is_manual_submit:  # 自动保存
             _save_answers_to_cache(request, page_record.id)
-        if manual_save and not is_manual_submit: #手动保存
+        if manual_save and not is_manual_submit:  # 手动保存
             _save_answers_to_cache(request, page_record.id)
             _save_answers_to_database(page_record.id)
             if can_modify:
-                # if not unsubmitted_main_questions:
                 page_record.submitted = True
                 page_record.save()
 
@@ -548,6 +827,7 @@ def save_page(request, practice_id, order):
         return _save_answers_to_cache(request, page_record.id)
     else:
         return JsonResponse({'message': '请求方法错误'}, status=400)
+
 
 def submit_practice(request):
     if request.method == 'POST':
@@ -586,9 +866,8 @@ def submit_practice(request):
 
             # 批改所有已提交的页面
             for page_record in page_records:
-                if (student_practice_record.submitted and page_record.submitted and not page_record.is_graded):
+                if student_practice_record.submitted and page_record.submitted and not page_record.is_graded:
                     try:
-                        # 调用批改函数
                         grade_page(page_record)
                     except Exception as e:
                         print(f"Error grading page {page_record.page.order}: {e}")
@@ -597,7 +876,14 @@ def submit_practice(request):
 
         if unsubmitted_pages and not still_submit and not finish_submit and not force_submit:
             # 有未提交的页面，返回提示信息
-            return JsonResponse({'message': '有未完成的页面，是否仍然交卷？', 'status': 'unfinished', 'unsubmitted_pages': unsubmitted_pages}, status=200)
+            return JsonResponse(
+                {
+                    'message': '有未完成的页面，是否仍然交卷？',
+                    'status': 'unfinished',
+                    'unsubmitted_pages': unsubmitted_pages,
+                },
+                status=200,
+            )
         elif not unsubmitted_pages and not force_submit and not finish_submit:
             return JsonResponse({'message': '是否确认交卷？', 'status': 'finished'}, status=200)
 
@@ -613,30 +899,33 @@ def submit_practice(request):
 
             # 批改所有已提交的页面
             for page_record in page_records:
-                if (student_practice_record.submitted and page_record.submitted and not page_record.is_graded):
+                if student_practice_record.submitted and page_record.submitted and not page_record.is_graded:
                     try:
-                        # 调用批改函数
                         grade_page(page_record)
                     except Exception as e:
                         print(f"Error grading page {page_record.page.order}: {e}")
 
             # 更新练习记录的总分
             try:
-                page_records_graded = [pr for pr in ExamServiceImpl.get_page_records_by_exam(student_practice_record.id) if pr.is_graded]
+                page_records_graded = [
+                    pr for pr in ExamServiceImpl.get_page_records_by_exam(student_practice_record.id) if pr.is_graded
+                ]
                 total_score = sum(pr.page_score for pr in page_records_graded if pr.page_score is not None) or 0
                 student_practice_record.score = total_score
                 student_practice_record.save()
             except Exception as e:
                 print(f"Error updating record score: {e}")
-            return redirect('stu_practice:practice_result', practice_id=unit.id)  # 跳转到评分页面
+            return redirect('stu_practice:practice_result', practice_id=unit.id)
     else:
         return JsonResponse({'message': '请求方法错误', 'status': 'error'}, status=400)
+
 
 def practice_result(request, practice_id):
     # Use ContentService to get unit by ID
     practice = ContentServiceImpl.get_unit_by_id(int(practice_id))
     if not practice:
         from django.http import Http404
+
         raise Http404("Practice not found")
     student_practice_record = get_object_or_404(StudentExamRecord, exam=practice)
     page_records = ExamServiceImpl.get_page_records_by_exam(student_practice_record.id)
@@ -645,25 +934,31 @@ def practice_result(request, practice_id):
     for page_record in page_records:
         student_answers = StudentAnswer.objects.filter(student_page_record=page_record)
         for answer in student_answers:
-            if answer.score != None:
-                if(answer.sub_question.main_question.question_type == "comprehension" and answer.score < 0):
-                    question_scores.append({
-                        'sub_question_type': answer.sub_question.main_question.question_type,
-                        'sub_question_text': answer.sub_question.question_text,
-                        'score': "批改中",
-                    })
+            if answer.score is not None:
+                if answer.sub_question.main_question.question_type == "comprehension" and answer.score < 0:
+                    question_scores.append(
+                        {
+                            'sub_question_type': answer.sub_question.main_question.question_type,
+                            'sub_question_text': answer.sub_question.question_text,
+                            'score': "批改中",
+                        }
+                    )
                 else:
-                    question_scores.append({
+                    question_scores.append(
+                        {
+                            'sub_question_type': answer.sub_question.main_question.question_type,
+                            'sub_question_text': answer.sub_question.question_text,
+                            'score': answer.score,
+                        }
+                    )
+            else:
+                question_scores.append(
+                    {
                         'sub_question_type': answer.sub_question.main_question.question_type,
                         'sub_question_text': answer.sub_question.question_text,
-                        'score': answer.score
-                    })
-            else:
-                question_scores.append({
-                    'sub_question_type': answer.sub_question.main_question.question_type,
-                    'sub_question_text': answer.sub_question.question_text,
-                    'score': "暂无数据"
-                })
+                        'score': "暂无数据",
+                    }
+                )
     try:
         total_score = sum(score['score'] for score in question_scores if isinstance(score['score'], decimal.Decimal))
     except Exception as e:
@@ -676,10 +971,11 @@ def practice_result(request, practice_id):
     }
     return render(request, 'practice/practice_result.html', context)
 
-# grade_page 已移至 ExamServiceImpl，使用 ExamServiceImpl.grade_page(page_record.id)
+
 def grade_page(page_record):
     """批改页面（已废弃，使用 ExamServiceImpl.grade_page）"""
     return ExamServiceImpl.grade_page(page_record.id)
+
 
 @csrf_exempt
 @require_POST
@@ -707,45 +1003,62 @@ def update_play_count(request):
         # 获取或创建播放记录
         play_record = ExamServiceImpl.get_media_play_record(
             int(student_practice_record_id),
-            int(main_question_id)
+            int(main_question_id),
         )
-        
+
         if not play_record:
             # 创建新记录
             play_record = ExamServiceImpl.update_media_play_record(
                 int(student_practice_record_id),
                 int(main_question_id),
                 0,
-                0.0
+                0.0,
             )
-        
+
         if play_record.play_count >= main_question.maximum_play:
-            return JsonResponse({"success": False, "message": "Maximum play count reached. Cannot play anymore."}, status=403)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Maximum play count reached. Cannot play anymore.",
+                },
+                status=403,
+            )
 
         # 更新播放次数
         ExamServiceImpl.update_media_play_record(
             int(student_practice_record_id),
             int(main_question_id),
             play_record.play_count + 1,
-            play_record.last_pause_time
+            play_record.last_pause_time,
         )
 
         return JsonResponse({"success": True, "message": "Play count updated successfully."})
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
 
-# grade_comprehension 和 background_grade_comprehension 已移至 ExamServiceImpl
-# 使用 ExamServiceImpl.grade_comprehension(sub_question_id, student_answer_id)
 
-@login_required
+@api_login_required
 def student_dashboard(request):
     # Note: This view uses Django User object, not username
     # UserService doesn't have get_student_by_user method yet
     # For now, we'll get username from session or user object
-    username = request.session.get('username') or request.user.username
+    username = request.session.get('username') or (
+        request.user.username if hasattr(request, 'user') and hasattr(request.user, 'username') else ''
+    )
+
+    if not username:
+        # 对于API请求返回401，对于页面请求返回错误信息
+        if 'application/json' in request.META.get('HTTP_ACCEPT', ''):
+            return JsonResponse({'error': '无法获取用户信息'}, status=401)
+        else:
+            return HttpResponse("无法获取用户信息，请重新登录。", status=401)
+
     student = UserServiceImpl.get_student_by_username(username)
     if not student:
-        return HttpResponse("学生信息不存在，请联系管理员。", status=404)
+        if 'application/json' in request.META.get('HTTP_ACCEPT', ''):
+            return JsonResponse({'error': '学生信息不存在，请联系管理员'}, status=404)
+        else:
+            return HttpResponse("学生信息不存在，请联系管理员。", status=404)
 
     # 获取学生的练习记录
     practice_records = ExamServiceImpl.get_exam_records_by_user(student.id)
@@ -756,12 +1069,14 @@ def student_dashboard(request):
         page_records = ExamServiceImpl.get_page_records_by_exam(record.id)
         page_records_graded = [pr for pr in page_records if pr.is_graded]
         total_score = sum(pr.page_score for pr in page_records_graded if pr.page_score is not None) or 0
-        practice_scores.append({
-            'practice': record.exam,
-            'total_score': total_score,
-            'started_at': record.started_at,
-            'finished_at': record.finished_at,
-        })
+        practice_scores.append(
+            {
+                'practice': record.exam,
+                'total_score': total_score,
+                'started_at': record.started_at,
+                'finished_at': record.finished_at,
+            }
+        )
 
     # 获取学生的个人信息
     student_info = {
@@ -771,14 +1086,45 @@ def student_dashboard(request):
         'seat_number': student.seat_number,
     }
 
-    context = {
-        'student_info': student_info,
-        'practice_scores': practice_scores,
-    }
-    return render(request, 'practice/student_dashboard.html', context)
+    # 检查是否是API请求（接受JSON）
+    if 'application/json' in request.META.get('HTTP_ACCEPT', ''):
+        # 转换为前端期望的格式
+        records = []
+        for record in practice_records:
+            page_records = ExamServiceImpl.get_page_records_by_exam(record.id)
+            page_records_graded = [pr for pr in page_records if pr.is_graded]
+            total_score = sum(pr.page_score for pr in page_records_graded if pr.page_score is not None) or 0
+            records.append(
+                {
+                    'id': record.id,
+                    'unit_id': record.exam.id if record.exam else None,
+                    'unit_name': record.exam.title if record.exam else '未命名练习',
+                    'status': 'completed' if record.submitted else 'in-progress',
+                    'start_time': record.started_at.isoformat() if record.started_at else None,
+                    'submit_time': record.finished_at.isoformat() if record.finished_at else None,
+                    'total_score': total_score,
+                }
+            )
+        return JsonResponse(records, safe=False)
+    else:
+        context = {
+            'student_info': student_info,
+            'practice_scores': practice_scores,
+        }
+        return render(request, 'practice/student_dashboard.html', context)
 
-@login_required
+
+@api_login_required
 def change_password(request):
+    # 获取username
+    username = request.session.get('username') or (
+        request.user.username if hasattr(request, 'user') and hasattr(request.user, 'username') else ''
+    )
+
+    if not username:
+        messages.error(request, '无法获取用户信息，请重新登录。')
+        return redirect('login')
+
     if request.method == 'POST':
         old = request.POST['old_password']
         new = request.POST['new_password']
@@ -786,7 +1132,6 @@ def change_password(request):
         # Note: This view uses Django User object and password
         # UserService doesn't have get_student_by_user method yet
         # For now, we'll get username from session or user object
-        username = request.session.get('username') or request.user.username
         student = UserServiceImpl.get_student_by_username(username)
         # Check password separately since UserService doesn't handle password verification
         if student and student.password != old:

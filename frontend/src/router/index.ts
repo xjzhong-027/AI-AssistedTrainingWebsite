@@ -172,6 +172,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '练习结果', roles: ['STUDENT'] }
       },
       {
+        path: 'practice/:id/detail/:pageId',
+        name: 'PracticeDetail',
+        component: () => import('@/views/Practice/PracticeDetail.vue'),
+        meta: { title: '练习答题详情', roles: ['STUDENT'] }
+      },
+      {
         path: 'forum',
         name: 'ForumStudent',
         component: () => import('@/views/Forum/Student.vue'),

@@ -1,6 +1,5 @@
 <template>
-  <Layout>
-    <div class="statistics-page">
+  <div class="statistics-page">
       <el-card>
         <template #header>
           <div class="card-header">
@@ -166,6 +165,46 @@
 
             <el-empty v-if="!loading && !unitStatistics" description="请选择单元查看统计数据"></el-empty>
           </el-tab-pane>
+
+          <el-tab-pane label="行为评分排名" name="behavior">
+            <el-form :inline="true" class="query-form">
+              <el-form-item label="选择班级">
+                <el-select v-model="behaviorClassId" placeholder="请选择班级" style="width: 200px" @change="loadBehaviorRanking">
+                  <el-option
+                    v-for="cls in classList"
+                    :key="cls.id"
+                    :label="cls.class_name"
+                    :value="cls.id"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="周期">
+                <el-date-picker
+                  v-model="behaviorPeriod"
+                  type="date"
+                  placeholder="选择日期"
+                  value-format="YYYY-MM-DD"
+                  @change="loadBehaviorRanking"
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" :loading="calculating" @click="triggerCalculateWeekly">
+                  计算周度评分
+                </el-button>
+              </el-form-item>
+            </el-form>
+            <div v-if="behaviorRanking && !loading" class="statistics-content">
+              <el-table :data="behaviorRanking.ranking" stripe style="width: 100%">
+                <el-table-column prop="rank" label="排名" width="80" align="center" />
+                <el-table-column prop="name" label="姓名" />
+                <el-table-column prop="F_score" label="综合行为分" width="120" align="center">
+                  <template #default="{ row }">{{ row.F_score.toFixed(1) }}</template>
+                </el-table-column>
+              </el-table>
+              <el-empty v-if="behaviorRanking.ranking.length === 0" description="该周期暂无行为评分数据，请先运行周度计算任务" />
+            </div>
+            <el-empty v-else-if="!loading && !behaviorRanking" description="请选择班级查看行为评分排名" />
+          </el-tab-pane>
         </el-tabs>
 
         <!-- 加载状态 -->
@@ -174,17 +213,16 @@
         </div>
       </el-card>
     </div>
-  </Layout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import Layout from '@/components/Layout/index.vue'
 import { getClassStatistics, getUnitStatistics } from '@/api/query'
 import { getAllClasses } from '@/api/user'
 import { getAllExams } from '@/api/exam'
+import { getClassBehaviorRanking, calculateWeeklyScores } from '@/api/behavior'
 import type { ClassStatistics, UnitStatistics } from '@/types/query'
 
 const router = useRouter()
@@ -201,6 +239,12 @@ const unitList = ref<any[]>([])
 const selectedUnitId = ref<number | undefined>(undefined)
 const unitClassFilter = ref<number | undefined>(undefined)
 const unitStatistics = ref<UnitStatistics | null>(null)
+
+// 行为评分排名
+const behaviorClassId = ref<number | undefined>(undefined)
+const behaviorPeriod = ref<string | undefined>(undefined)
+const behaviorRanking = ref<{ class_id: number; period_start: string; ranking: { student_id: number; name: string; F_score: number; rank: number }[] } | null>(null)
+const calculating = ref(false)
 
 // 获取班级列表
 const loadClasses = async () => {
@@ -255,12 +299,45 @@ const loadUnitStatistics = async () => {
   }
 }
 
+// 加载行为评分排名
+const loadBehaviorRanking = async () => {
+  if (!behaviorClassId.value) return
+
+  loading.value = true
+  try {
+    behaviorRanking.value = await getClassBehaviorRanking(behaviorClassId.value, behaviorPeriod.value)
+  } catch (error: any) {
+    console.error('加载行为排名失败', error)
+    ElMessage.error(error.message || '加载行为排名失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 触发周度评分计算
+const triggerCalculateWeekly = async () => {
+  calculating.value = true
+  try {
+    const res = await calculateWeeklyScores(behaviorPeriod.value)
+    ElMessage.success(`成功计算 ${res.period_start} ~ ${res.period_end}，更新 ${res.updated_count} 条记录`)
+    // 用计算返回的周期更新选择器，确保排名请求同一周期
+    behaviorPeriod.value = res.period_start
+    await loadBehaviorRanking()
+  } catch (error: any) {
+    ElMessage.error(error.message || '计算失败')
+  } finally {
+    calculating.value = false
+  }
+}
+
 // 切换标签页
 const handleTabChange = (tabName: string) => {
   if (tabName === 'class' && selectedClassId.value) {
     loadClassStatistics()
   } else if (tabName === 'unit' && selectedUnitId.value) {
     loadUnitStatistics()
+  } else if (tabName === 'behavior' && behaviorClassId.value) {
+    loadBehaviorRanking()
   }
 }
 
@@ -273,6 +350,7 @@ onMounted(async () => {
   if (selectedClassId.value) {
     loadClassStatistics()
   }
+  behaviorClassId.value = selectedClassId.value ?? classList.value[0]?.id
 })
 </script>
 

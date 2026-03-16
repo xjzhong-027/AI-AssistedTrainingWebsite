@@ -1,6 +1,7 @@
 from django.db import models
+from django.conf import settings
 from Account.models import Students
-from ELW.models import SubQuestion
+from ELW.models import SubQuestion, MediaMaterial
 
 
 class AIScoreRecord(models.Model):
@@ -291,3 +292,87 @@ class HintRequestLog(models.Model):
 
     def __str__(self):
         return f"{self.student.username} - 题目{self.sub_question_id} - 级别{self.level}"
+
+
+class AIQuestionGenerationRecord(models.Model):
+    """AI出题记录"""
+    STATUS_CHOICES = [
+        ('pending', '等待中'),
+        ('processing', '处理中'),
+        ('completed', '已完成'),
+        ('failed', '失败'),
+    ]
+    
+    id = models.AutoField(primary_key=True)
+    material = models.ForeignKey(
+        MediaMaterial,
+        on_delete=models.CASCADE,
+        related_name='ai_generation_records',
+        verbose_name='素材'
+    )
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='ai_generation_records',
+        verbose_name='教师'
+    )
+    question_type = models.CharField(max_length=20, verbose_name="题目类型")
+    difficulty = models.CharField(max_length=20, default='medium', verbose_name="难度")
+    generated_questions = models.JSONField(default=list, verbose_name="生成的题目")
+    final_questions = models.JSONField(default=list, verbose_name="最终确定的题目")
+    is_applied = models.BooleanField(default=False, verbose_name="是否已应用到题库")
+    ai_model = models.CharField(max_length=50, default='VolcEngine', verbose_name="AI模型")
+    status = models.CharField(max_length=20, default='pending', choices=STATUS_CHOICES, verbose_name="状态")
+    message = models.TextField(default='', verbose_name="消息")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        db_table = 'ai_question_generation_record'
+        verbose_name = 'AI出题记录'
+        verbose_name_plural = 'AI出题记录'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['material']),
+            models.Index(fields=['teacher']),
+            models.Index(fields=['status']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.material.title} - {self.question_type} - {self.created_at}"
+
+
+class AIQuestionConversationHistory(models.Model):
+    """AI出题对话历史"""
+    ROLE_CHOICES = [
+        ('system', '系统'),
+        ('user', '用户'),
+        ('assistant', 'AI助手'),
+    ]
+    
+    id = models.AutoField(primary_key=True)
+    generation_record = models.ForeignKey(
+        AIQuestionGenerationRecord,
+        on_delete=models.CASCADE,
+        related_name='conversations',
+        verbose_name='出题记录'
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, verbose_name="角色")
+    content = models.TextField(verbose_name="消息内容")
+    context = models.JSONField(default=dict, verbose_name="上下文信息")
+    message_time = models.DateTimeField(auto_now_add=True, verbose_name="消息时间")
+
+    class Meta:
+        db_table = 'ai_question_conversation_history'
+        verbose_name = 'AI出题对话历史'
+        verbose_name_plural = 'AI出题对话历史'
+        ordering = ['message_time']
+        indexes = [
+            models.Index(fields=['generation_record']),
+            models.Index(fields=['message_time']),
+        ]
+
+    def __str__(self):
+        content_preview = self.content[:50] + '...' if len(self.content) > 50 else self.content
+        return f"{self.role}: {content_preview}"

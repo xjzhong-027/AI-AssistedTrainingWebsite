@@ -142,6 +142,11 @@ class Result:
         return Result.error(message=message, code=403, data=data)
     
     @staticmethod
+    def invalid(message="invalid", data=None):
+        """参数无效 (400)。"""
+        return Result.error(message=message, code=400, data=data)
+
+    @staticmethod
     def not_found(message="not found", data=None):
         """
         Return a not found response (404).

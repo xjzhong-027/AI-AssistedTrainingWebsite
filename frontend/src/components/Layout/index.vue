@@ -246,9 +246,10 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-// 判断是否为首页
+// 判断是否显示顶栏和侧边栏（首页、教师页、检索面板等）
 const isDashboardPage = computed(() => {
-  return route.path === '/dashboard' || route.path === '/' || route.path === '/student/index' || route.path.startsWith('/teacher/')
+  return route.path === '/dashboard' || route.path === '/' || route.path === '/student/index' ||
+    route.path.startsWith('/teacher/') || route.path.startsWith('/query')
 })
 
 // 消息提示（可以从 store 或全局状态管理获取）

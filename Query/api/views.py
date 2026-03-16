@@ -50,17 +50,20 @@ class AttendanceQueryView(APIView):
         username = self._get_username(request)
         role = self._get_user_role(request)
         
-        if role == 'teacher':
+        role_lower = (role or '').lower()
+        if role_lower not in ('teacher', 'admin'):
+            return Result.forbidden(message='仅教师或管理员可查询考勤')
+
+        if role_lower == 'admin':
+            pass
+        else:
             teacher = UserServiceImpl.get_teacher_by_username(username)
-            if teacher:
-                classes = UserServiceImpl.get_teacher_classes(teacher.id)
-                class_instance = UserServiceImpl.get_class_by_id(int(class_id))
-                if not class_instance or class_instance not in classes:
-                    return Result.forbidden(message='No permission to access this class')
-            else:
+            if not teacher:
                 return Result.not_found(message='Teacher not found')
-        elif role == 'student':
-            return Result.forbidden(message='Students cannot query attendance')
+            classes = UserServiceImpl.get_teacher_classes(teacher.id)
+            class_instance = UserServiceImpl.get_class_by_id(int(class_id))
+            if not class_instance or class_instance not in classes:
+                return Result.forbidden(message='No permission to access this class')
         
         # 获取班级学生
         students = UserServiceImpl.get_class_students(int(class_id))
@@ -128,13 +131,14 @@ class StudentLearningRecordView(APIView):
         username = self._get_username(request)
         role = self._get_user_role(request)
         
-        if role == 'student':
+        role_lower = (role or '').lower()
+        if role_lower == 'student':
             # 学生只能查看自己的记录
             student = UserServiceImpl.get_student_by_username(username)
             if not student:
                 return Result.not_found(message='Student not found')
             records = ExamServiceImpl.get_student_exam_records_by_user(student.id)
-        elif role == 'teacher':
+        elif role_lower in ('teacher', 'admin'):
             # 教师可以查看指定学生或班级的记录
             if student_id:
                 records = ExamServiceImpl.get_student_exam_records_by_user(int(student_id))
@@ -166,13 +170,12 @@ class StudentLearningRecordView(APIView):
                 'started_at': record.started_at,
                 'submitted': record.submitted,
                 'score': record.score,
+                'total_score': 100,
+                'completion_time': record.finished_at or record.ended_at,
                 'integrity_score': record.integrity_score,
-                'late_score': 1.0  # 默认值，实际应从页面记录计算
+                'late_score': 1.0
             })
-        
-        serializer = StudentLearningRecordSerializer(data, many=True)
-        serializer.is_valid()
-        return Result.success(data=serializer.data, message='success')
+        return Result.success(data=data, message='success')
     
     def _get_user_role(self, request):
         """从 token 中获取用户角色"""
@@ -249,18 +252,21 @@ class ClassStatisticView(APIView):
         
         average_score = total_score / score_count if score_count > 0 else None
         
+        completion_rate = (completed_units / total_units * 100) if total_units > 0 else 0
+        exam_count = sum(1 for u in units if u.type == 'exam')
+        practice_count = sum(1 for u in units if u.type == 'practice')
+
         data = {
             'class_id': class_instance.id,
             'class_name': class_instance.class_name,
             'total_students': total_students,
-            'total_units': total_units,
-            'completed_units': completed_units,
-            'average_score': average_score
+            'completed_students': completed_units,
+            'completion_rate': round(completion_rate, 1),
+            'average_score': round(average_score, 1) if average_score is not None else None,
+            'exam_count': exam_count,
+            'practice_count': practice_count
         }
-        
-        serializer = ClassStatisticSerializer(data)
-        serializer.is_valid()
-        return Result.success(data=serializer.data, message='success')
+        return Result.success(data=data, message='success')
 
 
 @extend_schema(tags=['数据查询'])
@@ -315,19 +321,30 @@ class UnitStatisticView(APIView):
         average_score = total_score / score_count if score_count > 0 else None
         completion_rate = completed_students / total_students if total_students > 0 else 0
         
+        highest_score = None
+        lowest_score = None
+        if score_count > 0:
+            scores = []
+            for student in students:
+                record = ExamServiceImpl.get_exam_record(student.id, unit_id)
+                if record and record.submitted and record.score is not None:
+                    scores.append(float(record.score))
+            if scores:
+                highest_score = max(scores)
+                lowest_score = min(scores)
+
         data = {
             'unit_id': unit.id,
             'unit_name': unit.title,
             'unit_type': unit.type,
             'total_students': total_students,
             'completed_students': completed_students,
-            'average_score': average_score,
-            'completion_rate': completion_rate
+            'average_score': round(average_score, 1) if average_score is not None else None,
+            'completion_rate': round(completion_rate * 100, 1),
+            'highest_score': highest_score,
+            'lowest_score': lowest_score
         }
-        
-        serializer = UnitStatisticSerializer(data)
-        serializer.is_valid()
-        return Result.success(data=serializer.data, message='success')
+        return Result.success(data=data, message='success')
 
 
 @extend_schema(tags=['数据查询'])

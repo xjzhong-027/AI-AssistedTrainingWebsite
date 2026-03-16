@@ -249,6 +249,67 @@ class AIChatReplyView(APIView):
 
             context = request.data.get('context', {}) or {}
 
+            # 调试日志：打印接收到的上下文数据
+            print(f"[AIChatReplyView] 接收到的消息: {message}")
+            print(f"[AIChatReplyView] 接收到的上下文: {context}")
+
+            # 检查学习数据
+            learning_data = context.get('learning_data')
+            if learning_data:
+                print(f"[AIChatReplyView] 学习数据: {learning_data}")
+                print(f"[AIChatReplyView] 练习结果数量: {len(learning_data.get('practice_results', []))}")
+                print(f"[AIChatReplyView] 错题数量: {len(learning_data.get('incorrect_answers', []))}")
+            else:
+                print(f"[AIChatReplyView] 警告: 没有接收到学习数据")
+                # 如果没有学习数据，尝试从数据库获取
+                if hasattr(request.user, 'students'):
+                    from accessment.models import StudentExamRecord, StudentPageRecord, StudentAnswer
+                    student = request.user.students
+                    exam_records = StudentExamRecord.objects.filter(user=student).order_by('-started_at')
+
+                    practice_results = []
+                    incorrect_answers = []
+
+                    for record in exam_records:
+                        date_str = record.started_at.strftime('%Y-%m-%d')
+                        total_score = 0
+                        page_records = StudentPageRecord.objects.filter(student_exam_record=record)
+                        for page_record in page_records:
+                            if page_record.page_score:
+                                total_score += float(page_record.page_score)
+
+                        exam_name = record.exam.title if record.exam.title else f'考试 {record.id}'
+
+                        if record.exam.type == 'practice':
+                            practice_results.append({
+                                'id': record.id,
+                                'name': exam_name,
+                                'score': total_score,
+                                'date': date_str,
+                                'duration': 0
+                            })
+
+                        for page_record in page_records:
+                            answers = StudentAnswer.objects.filter(student_page_record=page_record)
+                            for answer in answers:
+                                if answer.score is not None and answer.score < answer.sub_question.score:
+                                    incorrect_answers.append({
+                                        'id': answer.id,
+                                        'question_id': answer.sub_question.id,
+                                        'question_text': answer.sub_question.question_text,
+                                        'student_answer': answer.text,
+                                        'correct_answer': answer.sub_question.answer,
+                                        'date': date_str
+                                    })
+
+                    context['learning_data'] = {
+                        'practice_results': practice_results,
+                        'exam_results': [],
+                        'incorrect_answers': incorrect_answers,
+                        'learning_trajectory': []
+                    }
+                    print(f"[AIChatReplyView] 从数据库获取学习数据: {context['learning_data']}")
+
             chat_service = ChatService()
             reply = chat_service.get_reply(message=message, context=context)
 
@@ -261,3 +322,106 @@ class AIChatReplyView(APIView):
         except Exception as e:
             print(f"AI聊天接口错误: {e}")
             return Result.error(message=f'AI回复失败: {str(e)}', code=500)
+
+
+class AILearningDataView(APIView):
+    """
+    获取学生的学习数据
+
+    GET /api/v1/ai/learning-data/
+    响应: { "practice_results": [...], "exam_results": [...], "incorrect_answers": [...], "learning_trajectory": [...] }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            if not hasattr(request.user, 'students'):
+                return Result.error(message='只有学生才能获取学习数据')
+
+            student = request.user.students
+
+            # 从数据库中获取学生的实际学习数据
+            from accessment.models import StudentExamRecord, StudentPageRecord, StudentAnswer
+            from ELW.models import Unit, PaperPage, SubQuestion
+
+            # 获取学生的考试记录（包括练习）
+            exam_records = StudentExamRecord.objects.filter(user=student).order_by('-started_at')
+
+            practice_results = []
+            exam_results = []
+            incorrect_answers = []
+            learning_trajectory = []
+
+            for record in exam_records:
+                # 计算考试/练习的日期
+                date_str = record.started_at.strftime('%Y-%m-%d')
+
+                # 计算总得分
+                total_score = 0
+                page_records = StudentPageRecord.objects.filter(student_exam_record=record)
+                for page_record in page_records:
+                    if page_record.page_score:
+                        total_score += float(page_record.page_score)
+
+                # 获取考试/练习的名称
+                exam_name = record.exam.title if record.exam.title else f'考试 {record.id}'
+
+                # 获取考试/练习的时长
+                duration = 0
+                if record.exam.time_management:
+                    duration = record.exam.time_management.duration or 0
+
+                # 根据类型添加到不同的列表
+                if record.exam.type == 'practice':
+                    practice_results.append({
+                        'id': record.id,
+                        'name': exam_name,
+                        'score': total_score,
+                        'date': date_str,
+                        'duration': duration
+                    })
+                else:
+                    exam_results.append({
+                        'id': record.id,
+                        'name': exam_name,
+                        'score': total_score,
+                        'date': date_str,
+                        'duration': duration
+                    })
+
+                # 添加到学习轨迹
+                learning_trajectory.append({
+                    'date': date_str,
+                    'score': total_score
+                })
+
+                # 获取错题
+                for page_record in page_records:
+                    answers = StudentAnswer.objects.filter(student_page_record=page_record)
+                    for answer in answers:
+                        # 检查是否为错题（得分小于满分）
+                        if answer.score is not None and answer.score < answer.sub_question.score:
+                            incorrect_answers.append({
+                                'id': answer.id,
+                                'question_id': answer.sub_question.id,
+                                'question_text': answer.sub_question.question_text,
+                                'student_answer': answer.text,
+                                'correct_answer': answer.sub_question.answer,
+                                'date': date_str
+                            })
+
+            # 按日期排序学习轨迹
+            learning_trajectory.sort(key=lambda x: x['date'])
+
+            learning_data = {
+                'practice_results': practice_results,
+                'exam_results': exam_results,
+                'incorrect_answers': incorrect_answers,
+                'learning_trajectory': learning_trajectory
+            }
+
+            return Result.success(data=learning_data, message='获取学习数据成功')
+
+        except Exception as e:
+            print(f"获取学习数据错误: {e}")
+            return Result.error(message=f'获取学习数据失败: {str(e)}')

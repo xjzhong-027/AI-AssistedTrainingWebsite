@@ -13,17 +13,22 @@ class AttendanceSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.name', read_only=True)
     student_username = serializers.CharField(source='student.username', read_only=True)
     status_display = serializers.SerializerMethodField()
-    
+    attendance_status = serializers.CharField(source='status', read_only=True)
+    created_at = serializers.SerializerMethodField()
+
     class Meta:
         model = Attendance
-        fields = ['id', 'student_id', 'student_name', 'student_username', 
-                  'week', 'status', 'status_display']
+        fields = ['id', 'student_id', 'student_name', 'student_username',
+                  'week', 'status', 'status_display', 'attendance_status', 'created_at']
         read_only_fields = ['id']
-    
+
     def get_status_display(self, obj):
         """获取状态显示文本"""
         status_choices = dict(Attendance._meta.get_field('status').choices)
         return status_choices.get(obj.status, '未知状态')
+
+    def get_created_at(self, obj):
+        return getattr(obj, 'created_at', None) or getattr(obj, 'updated_at', None)
 
 
 class ClassScheduleAdjustmentSerializer(serializers.ModelSerializer):

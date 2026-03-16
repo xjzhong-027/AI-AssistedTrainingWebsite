@@ -59,7 +59,7 @@ npm run build
 
 ### API文档访问
 
-- Swagger UI: http://localhost:8000/api/docs/
+- SwaggerSwagger UI: http://localhost:8000/api/docs/
 - ReDoc: http://localhost:8000/api/redoc/
 - OpenAPI Schema: http://localhost:8000/api/schema/
 

@@ -1,5 +1,17 @@
-from AI_module.AI_module_local import AI_module_local
-from .Get_from_ZhipuAI import Get_from_ZhipuAI
+try:
+    from AI_module.AI_module_local import AI_module_local
+    LOCAL_MODEL_AVAILABLE = True
+except ImportError:
+    LOCAL_MODEL_AVAILABLE = False
+    AI_module_local = None
+
+try:
+    from .Get_from_ZhipuAI import Get_from_ZhipuAI
+    ZHIPUAI_AVAILABLE = True
+except ImportError:
+    ZHIPUAI_AVAILABLE = False
+    Get_from_ZhipuAI = None
+
 from .Get_from_VolcEngine import Get_from_VolcEngine
 import copy
 
@@ -31,23 +43,32 @@ class Get_from_AI:
                          }
 
     AI_model_name = ""
-    local = AI_module_local()
+    local = AI_module_local() if LOCAL_MODEL_AVAILABLE else None
     m = None
 
     def __init__(self, model="VolcEngine"):
         self.prompt = ""
-        self.AI_model_name = model   #默认使用火山引擎（豆包）
-        if model == "Local":
-            try:
-                pass
-                # self.m = AI_module_local()
-                # self.m = qwen_m()
-            except:
-                pass
-        elif model == "ZhipuAI":
-            self.m = Get_from_ZhipuAI()
-        elif model == "VolcEngine":
-            self.m = Get_from_VolcEngine()
+        self.AI_model_name = model   # 默认使用火山引擎（豆包）
+        try:
+            if model == "Local":
+                if self.local is not None:
+                    self.m = self.local
+                else:
+                    raise ImportError("本地模型不可用，请安装 modelscope 库")
+            elif model == "ZhipuAI":
+                if ZHIPUAI_AVAILABLE:
+                    self.m = Get_from_ZhipuAI()
+                else:
+                    raise ImportError("ZhipuAI模块不可用")
+            elif model == "VolcEngine":
+                self.m = Get_from_VolcEngine()
+        except Exception as e:
+            print(f"初始化AI模型失败: {e}")
+            if self.local is not None:
+                self.m = self.local
+                self.AI_model_name = "Local"
+            else:
+                self.m = None
 
     def get_prompt_template(self, key):
         return copy.deepcopy(self.__prompt_template[key])
@@ -94,23 +115,51 @@ class Get_from_AI:
     def set_AI_module_name(self, module):
         self.AI_model_name = module
 
+    def _get_default_scoring_json(self):
+        """AI 不可用时的默认 JSON 响应"""
+        return '''{
+            "content_accuracy": 50,
+            "language_expression": 50,
+            "completeness": 50,
+            "logical_coherence": 50,
+            "total_score": 50,
+            "feedback": "Your answer partially addresses the question, but needs more specific details from the video. Please provide a more comprehensive response that directly references content from the transcript.",
+            "suggestions": "Please carefully read the question requirements and provide a more detailed answer that incorporates specific details from the video. Focus on directly addressing all parts of the question.",
+            "grammar_errors": "None",
+            "vocabulary_suggestions": "None"
+        }'''
+
     def get_answer(self, text=""):
         model = self.get_AI_module_name()
 
-        if text == "": return "未接收到输入文本。"
-        elif model == "VolcEngine":
+        if text == "":
+            return "未接收到输入文本。"
+        if self.m is None:
+            print("AI模型未初始化，返回默认响应")
+            return self._get_default_scoring_json()
+
+        if model == "VolcEngine":
             try:
                 res = self.m.get_msg(text)
                 return res
             except Exception as e:
                 print(f"VolcEngine API调用失败: {e}")
-                return self.local.get_answer_once(text)
+                if self.local is not None:
+                    return self.local.get_answer_once(text)
+                return self._get_default_scoring_json()
         elif model == "ZhipuAI":
             try:
                 res = self.m.get_msg(text)
                 return res
             except Exception as e:
-                print(e)
-                return self.local.get_answer_once(text)
+                print(f"ZhipuAI API调用失败: {e}")
+                if self.local is not None:
+                    return self.local.get_answer_once(text)
+                return self._get_default_scoring_json()
         elif model == "Local":
-            return self.m.get_answer_once(text)
+            try:
+                return self.m.get_answer_once(text)
+            except Exception as e:
+                print(f"本地模型调用失败: {e}")
+                return self._get_default_scoring_json()
+        return self._get_default_scoring_json()

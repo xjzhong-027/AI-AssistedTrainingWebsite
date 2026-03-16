@@ -44,7 +44,8 @@ export interface PostCreateDTO {
 export interface PostUpdateDTO {
   title?: string
   content?: string
-  isPublic?: boolean
+  is_public?: boolean
+  is_top?: boolean
 }
 
 /**

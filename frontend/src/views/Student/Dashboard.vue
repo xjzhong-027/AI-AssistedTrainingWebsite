@@ -28,7 +28,9 @@
               <div class="score-info">
                 <div class="score-title">综合学习行为评分</div>
                 <div class="score-rating">{{ scoreRating }}</div>
-                <div class="score-description">综合评分综合了您的课堂成绩、参与度、学习时长和AI使用。</div>
+                <div class="score-description">
+                  {{ behaviorScore?.feedback || '综合评分综合了您的课堂成绩、参与度、学习时长和AI使用。' }}
+                </div>
               </div>
             </div>
           </div>
@@ -149,8 +151,8 @@ import { getStudentPracticeScores, getStudentPracticeRecords } from '@/api/pract
 import AIWindow from '@/components/common/AIWindow/index.vue'
 import { getUserById, changePassword } from '@/api/user'
 import type { PracticeScore, ExamRecord } from '@/api/practice'
-import { getStudentBehaviorSummary } from '@/api/behavior'
-import type { StudentBehaviorSummary } from '@/api/behavior'
+import { getStudentBehaviorSummary, getStudentBehaviorScore } from '@/api/behavior'
+import type { StudentBehaviorSummary, StudentBehaviorScore } from '@/api/behavior'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -167,6 +169,8 @@ const studentInfo = ref({
 const practiceScores = ref<PracticeScore[]>([])
 const practiceRecordsRaw = ref<ExamRecord[]>([])
 const behaviorSummary = ref<StudentBehaviorSummary | null>(null)
+const behaviorScore = ref<StudentBehaviorScore | null>(null)
+const selectedPeriodStart = ref<string | undefined>(undefined)
 
 // 行为指标数据
 const metrics = ref({
@@ -190,8 +194,9 @@ const passwordForm = ref({
   confirmPassword: ''
 })
 
-// 计算综合评分
+// 计算综合评分：优先使用 BSA-IFM 周度评分，无数据时用练习成绩
 const overallScore = computed(() => {
+  if (behaviorScore.value?.F_score != null) return Math.round(behaviorScore.value.F_score)
   if (practiceScores.value.length === 0) return 0
   const totalScore = practiceScores.value.reduce((sum, item) => {
     const v = Number(item.totalScore)
@@ -348,7 +353,20 @@ const calculateMetrics = () => {
     return sum
   }, 0)
 
-  // 提示使用率：按「每次练习平均提示次数」简单归一化到 0-100 区间
+  // 优先使用 BSA-IFM 周度评分的维度数据
+  if (behaviorScore.value?.dimensions) {
+    const d = behaviorScore.value.dimensions
+    metrics.value = {
+      accuracy: Math.round(d.S_A),
+      hintUsage: Math.round(d.S_D),
+      studyTime: Math.round(d.S_B),
+      completionRate: Math.round(d.S_C),
+      participation: Math.round(behaviorScore.value.P_score)
+    }
+    return
+  }
+
+  // 无 BSA 数据时使用原有计算
   let hintUsage = 0
   let participation = completionRate
   if (behaviorSummary.value) {
@@ -357,7 +375,6 @@ const calculateMetrics = () => {
       const avgHintsPerPractice = hint_count / completedRecords.length
       hintUsage = Math.max(0, Math.min(100, Math.round(avgHintsPerPractice * 20)))
     }
-    // 参与度：结合最近登录次数与完成率的简易指标
     const loginFactor = Math.min(1, login_count_last_7_days / 7)
     participation = Math.max(
       0,
@@ -559,6 +576,13 @@ const loadStudentData = async () => {
 
     // 加载行为统计概览（提示次数、登录次数等）
     behaviorSummary.value = await getStudentBehaviorSummary()
+
+    // 加载 BSA-IFM 周度行为评分
+    try {
+      behaviorScore.value = await getStudentBehaviorScore(selectedPeriodStart.value) ?? null
+    } catch {
+      behaviorScore.value = null
+    }
 
     // 计算行为指标
     calculateMetrics()

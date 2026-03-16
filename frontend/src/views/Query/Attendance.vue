@@ -1,6 +1,5 @@
 <template>
-  <Layout>
-    <div class="attendance-page">
+  <div class="attendance-page">
       <el-card>
         <template #header>
           <div class="card-header">
@@ -33,16 +32,16 @@
         <el-table :data="attendanceList" v-loading="loading" stripe border style="margin-top: 20px">
           <el-table-column prop="student_name" label="学生姓名" width="120"></el-table-column>
           <el-table-column prop="week" label="周次" width="80"></el-table-column>
-          <el-table-column prop="attendance_status" label="考勤状态" width="100">
+          <el-table-column prop="attendance_status" label="考勤状态" width="120">
             <template #default="{ row }">
-              <el-tag :type="getStatusType(row.attendance_status)">
-                {{ getStatusText(row.attendance_status) }}
+              <el-tag :type="getStatusType(row.attendance_status || row.status)">
+                {{ row.status_display || getStatusText(row.attendance_status || row.status) }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="created_at" label="记录时间" width="180">
             <template #default="{ row }">
-              {{ formatDateTime(row.created_at) }}
+              {{ row.created_at ? formatDateTime(row.created_at) : '-' }}
             </template>
           </el-table-column>
         </el-table>
@@ -51,14 +50,12 @@
         <el-empty v-if="!loading && attendanceList.length === 0" description="暂无考勤记录"></el-empty>
       </el-card>
     </div>
-  </Layout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import Layout from '@/components/Layout/index.vue'
 import { queryAttendance } from '@/api/query'
 import { getAllClasses } from '@/api/user'
 import { formatDateTime } from '@/utils/format'
@@ -108,26 +105,34 @@ const handleQuery = async () => {
   }
 }
 
-// 获取状态类型
+// 获取状态类型（兼容后端 status：normal/absent/late/early-leave 等）
 const getStatusType = (status: string): string => {
   const typeMap: Record<string, string> = {
+    normal: 'success',
     present: 'success',
     absent: 'danger',
     late: 'warning',
-    leave: 'info'
+    'early-leave': 'info',
+    'late and early-leave': 'warning',
+    abnormal: 'warning',
+    vacation: 'info'
   }
-  return typeMap[status] || 'info'
+  return typeMap[status || ''] || 'info'
 }
 
-// 获取状态文本
+// 获取状态文本（后端无 status_display 时兜底）
 const getStatusText = (status: string): string => {
   const textMap: Record<string, string> = {
+    normal: '正常出勤',
     present: '出勤',
     absent: '缺勤',
     late: '迟到',
-    leave: '请假'
+    'early-leave': '早退',
+    'late and early-leave': '迟到+早退',
+    abnormal: '异常挂机',
+    vacation: '假期'
   }
-  return textMap[status] || status
+  return textMap[status || ''] || (status || '-')
 }
 
 const goBack = () => {

@@ -207,16 +207,19 @@
         <p class="desc">连线题、改错题的表单与 API 已就绪，如需在页面上直接新建可后续扩展。</p>
         <el-button type="primary" @click="goBack">返回题库</el-button>
       </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive } from 'vue'
+import { computed, ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { createMaterialQuestion } from '@/api/content'
+import { createMaterialQuestion, getMediaMaterialById } from '@/api/content'
+import AIQuestionAssistant from '@/components/common/AIQuestionWindow/index.vue'
+import type { GeneratedQuestion } from '@/api/questionGeneration'
 
 const router = useRouter()
 const route = useRoute()
@@ -225,6 +228,7 @@ const loading = ref(false)
 const submitting = ref(false)
 const formRef = ref<FormInstance>()
 const formComprehensionRef = ref<FormInstance>()
+const materialTranscript = ref('')
 
 const formComprehension = reactive({
   question_text: '',
@@ -235,13 +239,20 @@ const formComprehension = reactive({
 })
 
 const rulesComprehension: FormRules = {
-  question_text: [{ required: true, message: '请输入大题题干', trigger: 'blur' }],
-  sub_question_text: [{ required: true, message: '请输入小题题干', trigger: 'blur' }],
-  answer: [{ required: true, message: '请输入参考答案', trigger: 'blur' }]
+  question_text: [{ required: true, message: '请输入大题题干', trigger: 'blur' }]
 }
 
 const type = computed(() => (route.params.type as string) || 'choice')
 const materialId = computed(() => Number(route.params.materialId))
+
+const aiDefaultQuestionType = computed((): 'choice' | 'fill-blank' | 'comprehension' => {
+  const typeMap: Record<string, 'choice' | 'fill-blank' | 'comprehension'> = {
+    'choice': 'choice',
+    'fill-blank': 'fill-blank',
+    'comprehension': 'comprehension'
+  }
+  return typeMap[type.value] || 'choice'
+})
 
 const typeLabel = computed(() => {
   const map: Record<string, string> = {
@@ -255,6 +266,13 @@ const typeLabel = computed(() => {
 })
 
 const optLabels = ['A', 'B', 'C', 'D']
+
+interface ChoiceSubQuestion {
+  question_text: string
+  answer: string
+  score: number
+  options: Array<{ option_label: string; option_content: string; is_answer: boolean }>
+}
 
 const form = reactive({
   question_text: '',
@@ -271,33 +289,62 @@ const form = reactive({
         { option_label: 'D', option_content: '', is_answer: false }
       ]
     }
-  ]
+  ] as ChoiceSubQuestion[]
 })
 
 const rules: FormRules = {
-  question_text: [{ required: true, message: '请输入大题题干', trigger: 'blur' }],
-  'sub_questions.0.question_text': [{ required: true, message: '请输入小题题干', trigger: 'blur' }]
+  question_text: [{ required: true, message: '请输入大题题干', trigger: 'blur' }]
+}
+
+const addSubQuestion = () => {
+  form.sub_questions.push({
+    question_text: '',
+    answer: 'A',
+    score: 1,
+    options: [
+      { option_label: 'A', option_content: '', is_answer: true },
+      { option_label: 'B', option_content: '', is_answer: false },
+      { option_label: 'C', option_content: '', is_answer: false },
+      { option_label: 'D', option_content: '', is_answer: false }
+    ]
+  })
+}
+
+const removeSubQuestion = (index: number) => {
+  form.sub_questions.splice(index, 1)
+}
+
+const addComprehensionSubQuestion = () => {
+  formComprehension.sub_questions.push({
+    question_text: '',
+    answer: '',
+    score: 5
+  })
+}
+
+const removeComprehensionSubQuestion = (index: number) => {
+  formComprehension.sub_questions.splice(index, 1)
 }
 
 function buildPayload() {
-  const sub = form.sub_questions[0]
-  const options = (sub.options || []).map((opt, i) => ({
-    option_label: optLabels[i],
-    option_content: opt.option_content || '',
-    is_answer: sub.answer === optLabels[i]
-  }))
+  const subQuestions = form.sub_questions.map((sub) => {
+    const options = (sub.options || []).map((opt, i) => ({
+      option_label: optLabels[i],
+      option_content: opt.option_content || '',
+      is_answer: sub.answer === optLabels[i]
+    }))
+    return {
+      question_text: sub.question_text.trim(),
+      answer: sub.answer,
+      score: sub.score,
+      options
+    }
+  })
   return {
     question_type: 'choice' as const,
     question_text: form.question_text.trim(),
     maximum_play: form.maximum_play,
-    sub_questions: [
-      {
-        question_text: sub.question_text.trim(),
-        answer: sub.answer,
-        score: sub.score,
-        options
-      }
-    ]
+    sub_questions: subQuestions
   }
 }
 
@@ -363,7 +410,6 @@ const goBack = () => {
   router.push({ name: 'QuestionBank' })
 }
 
-// 填空题
 interface WordItem {
   content: string
   isBlank: boolean
@@ -456,6 +502,140 @@ const handleSubmitFillBlank = async () => {
     submitting.value = false
   }
 }
+
+const loadMaterial = async () => {
+  if (!materialId.value) return
+  try {
+    const material = await getMediaMaterialById(materialId.value)
+    materialTranscript.value = material.transcript || ''
+  } catch (e: any) {
+    console.error('加载素材失败', e)
+  }
+}
+
+const handleQuestionsApplied = () => {
+  ElMessage.success('AI生成的题目已添加到题库')
+  router.push({ name: 'QuestionBank' })
+}
+
+const handleFillForm = (questions: GeneratedQuestion[]) => {
+  if (questions.length === 0) {
+    ElMessage.warning('没有可填充的题目')
+    return
+  }
+
+  const firstQuestion = questions[0]
+  const questionType = firstQuestion.main_question.question_type
+
+  if (questionType === 'choice' && type.value === 'choice') {
+    form.question_text = firstQuestion.main_question.question_text || ''
+    form.maximum_play = firstQuestion.main_question.maximum_play || 3
+    
+    const allSubQuestions: ChoiceSubQuestion[] = []
+    questions.forEach(q => {
+      if (q.sub_questions) {
+        q.sub_questions.forEach(sq => {
+          allSubQuestions.push({
+            question_text: sq.question_text || '',
+            score: sq.score || 1,
+            answer: sq.correct_answer || 'A',
+            options: [
+              { option_label: 'A', option_content: sq.options?.A || '', is_answer: sq.correct_answer === 'A' },
+              { option_label: 'B', option_content: sq.options?.B || '', is_answer: sq.correct_answer === 'B' },
+              { option_label: 'C', option_content: sq.options?.C || '', is_answer: sq.correct_answer === 'C' },
+              { option_label: 'D', option_content: sq.options?.D || '', is_answer: sq.correct_answer === 'D' }
+            ]
+          })
+        })
+      }
+    })
+    
+    form.sub_questions = allSubQuestions.length > 0 ? allSubQuestions : [createEmptyChoiceSubQuestion()]
+    ElMessage.success(`已填充 ${allSubQuestions.length} 道选择题到表单`)
+    
+  } else if ((questionType === 'text' || questionType === 'blank' || questionType === 'fill-blank') && type.value === 'fill-blank') {
+    fillBlankForm.questionText = firstQuestion.main_question.question_text?.split('\n\n')[0] || '阅读下面的短文，根据上下文填空'
+    fillBlankForm.maximumPlay = firstQuestion.main_question.maximum_play || 3
+    
+    const fullText = firstQuestion.main_question.question_text?.split('\n\n').slice(1).join('\n\n') || ''
+    fillBlankForm.fullText = fullText.replace(/_{6,}/g, '______')
+    
+    const allAnswers: string[] = []
+    const allScores: number[] = []
+    questions.forEach(q => {
+      if (q.sub_questions) {
+        q.sub_questions.forEach(sq => {
+          if (sq.answer) {
+            allAnswers.push(sq.answer)
+            allScores.push(sq.score || fillBlankForm.defaultScore)
+          }
+        })
+      }
+    })
+    
+    blankAnswers.value = allAnswers
+    blankScores.value = allScores
+    
+    processText()
+    ElMessage.success(`已填充 ${allAnswers.length} 个填空到表单`)
+    
+  } else if (questionType === 'comprehension' && type.value === 'comprehension') {
+    formComprehension.question_text = firstQuestion.main_question.question_text || ''
+    formComprehension.maximum_play = firstQuestion.main_question.maximum_play || 3
+    
+    const allSubQuestions: ComprehensionSubQuestion[] = []
+    questions.forEach(q => {
+      if (q.sub_questions) {
+        q.sub_questions.forEach(sq => {
+          allSubQuestions.push({
+            question_text: sq.question_text || '',
+            answer: sq.answer || '',
+            score: sq.score || 5
+          })
+        })
+      }
+    })
+    
+    formComprehension.sub_questions = allSubQuestions.length > 0 ? allSubQuestions : [createEmptyComprehensionSubQuestion()]
+    ElMessage.success(`已填充 ${allSubQuestions.length} 道主观题到表单`)
+    
+  } else {
+    ElMessage.warning(`当前页面不支持填充${getQuestionTypeText(questionType)}，请切换到对应题型页面`)
+  }
+}
+
+const createEmptyChoiceSubQuestion = (): ChoiceSubQuestion => ({
+  question_text: '',
+  answer: 'A',
+  score: 1,
+  options: [
+    { option_label: 'A', option_content: '', is_answer: true },
+    { option_label: 'B', option_content: '', is_answer: false },
+    { option_label: 'C', option_content: '', is_answer: false },
+    { option_label: 'D', option_content: '', is_answer: false }
+  ]
+})
+
+const createEmptyComprehensionSubQuestion = (): ComprehensionSubQuestion => ({
+  question_text: '',
+  answer: '',
+  score: 5
+})
+
+const getQuestionTypeText = (t: string): string => {
+  const map: Record<string, string> = {
+    choice: '选择题',
+    matching: '连线题',
+    text: '填空题',
+    blank: '填空题',
+    comprehension: '主观题'
+  }
+  return map[t] || t
+}
+
+onMounted(() => {
+  loadMaterial()
+})
 </script>
 
 <style scoped>

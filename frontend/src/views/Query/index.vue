@@ -1,6 +1,5 @@
 <template>
-  <Layout>
-    <div class="query-page">
+  <div class="query-page">
       <div class="container card">
         <h1>检索面板</h1>
         <p class="description">数据查询和管理功能</p>
@@ -38,12 +37,10 @@
         </div>
       </div>
     </div>
-  </Layout>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import Layout from '@/components/Layout/index.vue'
 
 const router = useRouter()
 
