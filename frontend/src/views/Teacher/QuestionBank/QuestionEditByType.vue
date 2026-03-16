@@ -208,6 +208,15 @@
         <el-button type="primary" @click="goBack">返回题库</el-button>
       </div>
     </div>
+
+    <AIQuestionAssistant
+      v-if="materialId"
+      :material-id="materialId"
+      :transcript="materialTranscript"
+      :default-question-type="aiDefaultQuestionType"
+      @questions-applied="handleQuestionsApplied"
+      @fill-form="handleFillForm"
+    />
   </div>
 </template>
 
@@ -582,22 +591,13 @@ const handleFillForm = (questions: GeneratedQuestion[]) => {
   } else if (questionType === 'comprehension' && type.value === 'comprehension') {
     formComprehension.question_text = firstQuestion.main_question.question_text || ''
     formComprehension.maximum_play = firstQuestion.main_question.maximum_play || 3
-    
-    const allSubQuestions: ComprehensionSubQuestion[] = []
-    questions.forEach(q => {
-      if (q.sub_questions) {
-        q.sub_questions.forEach(sq => {
-          allSubQuestions.push({
-            question_text: sq.question_text || '',
-            answer: sq.answer || '',
-            score: sq.score || 5
-          })
-        })
-      }
-    })
-    
-    formComprehension.sub_questions = allSubQuestions.length > 0 ? allSubQuestions : [createEmptyComprehensionSubQuestion()]
-    ElMessage.success(`已填充 ${allSubQuestions.length} 道主观题到表单`)
+    const firstSub = firstQuestion.sub_questions?.[0]
+    if (firstSub) {
+      formComprehension.sub_question_text = firstSub.question_text || ''
+      formComprehension.answer = firstSub.answer || ''
+      formComprehension.score = firstSub.score || 5
+    }
+    ElMessage.success('已填充主观题到表单')
     
   } else {
     ElMessage.warning(`当前页面不支持填充${getQuestionTypeText(questionType)}，请切换到对应题型页面`)
